@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 
 // Dynamic import for Chart.js to avoid SSR issues
@@ -76,17 +76,39 @@ interface MtMData {
   contract: Contract;
 }
 
+interface PriceCurveMetadata {
+  curve: string;
+  profile: string;
+  type: string;
+  year: number | string;
+  availableYears: number[];
+  availableProfiles: string[];
+  availableTypes: string[];
+  availableStates: string[];
+  recordCount: number;
+}
+
 export default function MarkToMarketTab({
   contracts,
   selectedContract,
   setSelectedContract,
-  marketPrices,
+  marketPrices: fallbackMarketPrices,
   volumeShapes,
 }: MarkToMarketTabProps) {
   const [viewMode, setViewMode] = useState<'individual' | 'portfolio' | 'comparison'>('portfolio');
   const [selectedContracts, setSelectedContracts] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState<'name' | 'totalMtM' | 'avgMtM' | 'volatility'>('totalMtM');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  
+  // Price curve controls
+  const [isLoadingPrices, setIsLoadingPrices] = useState(true);
+  const [priceCurveData, setPriceCurveData] = useState<{ [key: string]: number[] }>({});
+  const [priceCurveMetadata, setPriceCurveMetadata] = useState<PriceCurveMetadata | null>(null);
+  const [selectedYear, setSelectedYear] = useState<number>(2025);
+  const [selectedProfile, setSelectedProfile] = useState<string>('baseload');
+  const [selectedType, setSelectedType] = useState<string>('Energy');
+  const [selectedCurve, setSelectedCurve] = useState<string>('Aurora Jan 2025');
+  const [priceError, setPriceError] = useState<string | null>(null);
 
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   
@@ -103,11 +125,55 @@ export default function MarkToMarketTab({
     10: '#feca57'
   };
 
+  // Fetch price curve data from API
+  const fetchPriceCurveData = async () => {
+    setIsLoadingPrices(true);
+    setPriceError(null);
+    
+    try {
+      const params = new URLSearchParams({
+        curve: selectedCurve,
+        year: selectedYear.toString(),
+        profile: selectedProfile,
+        type: selectedType
+      });
+      
+      const response = await fetch(`/api/price-curves?${params}`);
+      const data = await response.json();
+      
+      if (data.success) {
+        setPriceCurveData(data.marketPrices);
+        setPriceCurveMetadata(data.metadata);
+        console.log('Price curve data loaded:', data.metadata);
+      } else {
+        console.error('Failed to fetch price curves:', data.error);
+        setPriceError(data.error);
+        // Fallback to hardcoded data
+        setPriceCurveData(fallbackMarketPrices);
+      }
+    } catch (error) {
+      console.error('Error fetching price curves:', error);
+      setPriceError('Failed to load price data');
+      // Fallback to hardcoded data
+      setPriceCurveData(fallbackMarketPrices);
+    } finally {
+      setIsLoadingPrices(false);
+    }
+  };
+
+  // Load price data on component mount and when parameters change
+  useEffect(() => {
+    fetchPriceCurveData();
+  }, [selectedYear, selectedProfile, selectedType, selectedCurve]);
+
+  // Use real price data if available, otherwise fallback
+  const currentMarketPrices = Object.keys(priceCurveData).length > 0 ? priceCurveData : fallbackMarketPrices;
+
   // Calculate MtM data for all contracts
   const mtmData = useMemo(() => {
     return contracts.map((contract, index) => {
       const volumeProfile = volumeShapes[contract.volumeShape] || volumeShapes.flat;
-      const statePrices = marketPrices[contract.state] || marketPrices.NSW;
+      const statePrices = currentMarketPrices[contract.state] || currentMarketPrices.NSW;
       
       const monthlyMtM = volumeProfile.map((pct, monthIndex) => {
         const volume = contract.annualVolume * pct / 100;
@@ -141,7 +207,7 @@ export default function MarkToMarketTab({
         contract
       };
     });
-  }, [contracts, marketPrices, volumeShapes]);
+  }, [contracts, currentMarketPrices, volumeShapes]);
 
   // Sort MtM data
   const sortedMtmData = useMemo(() => {
@@ -236,26 +302,26 @@ export default function MarkToMarketTab({
         };
       }
     } else if (viewMode === 'comparison') {
-  const datasets = selectedContracts.reduce((acc, contractId, index) => {
-    const contractMtM = mtmData.find(data => data.contractId === contractId);
-    if (contractMtM) {
-      acc.push({
-        label: contractMtM.contractName,
-        data: contractMtM.monthlyMtM,
-        borderColor: getContractColor(contractId, index),
-        backgroundColor: getContractColor(contractId, index) + '20',
-        borderWidth: 2,
-        tension: 0.1,
-      });
-    }
-    return acc;
-  }, [] as import('chart.js').ChartDataset<'line'>[]); // Explicitly type the accumulator
+      const datasets = selectedContracts.reduce((acc, contractId, index) => {
+        const contractMtM = mtmData.find(data => data.contractId === contractId);
+        if (contractMtM) {
+          acc.push({
+            label: contractMtM.contractName,
+            data: contractMtM.monthlyMtM,
+            borderColor: getContractColor(contractId, index),
+            backgroundColor: getContractColor(contractId, index) + '20',
+            borderWidth: 2,
+            tension: 0.1,
+          });
+        }
+        return acc;
+      }, [] as import('chart.js').ChartDataset<'line'>[]);
 
-  return {
-    labels: months,
-    datasets: datasets
-  };
-}
+      return {
+        labels: months,
+        datasets: datasets
+      };
+    }
 
     return { labels: months, datasets: [] };
   };
@@ -373,6 +439,103 @@ export default function MarkToMarketTab({
 
   return (
     <div className="space-y-8">
+      {/* Price Curve Controls */}
+      <div className="bg-white rounded-xl p-6 shadow-md border border-gray-200">
+        <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-3">
+          📊 Price Curve Settings
+        </h2>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Curve:</label>
+            <select 
+              value={selectedCurve} 
+              onChange={(e) => setSelectedCurve(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="Aurora Jan 2025">Aurora Jan 2025</option>
+            </select>
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Year:</label>
+            <select 
+              value={selectedYear} 
+              onChange={(e) => setSelectedYear(parseInt(e.target.value))}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              disabled={isLoadingPrices}
+            >
+              {priceCurveMetadata?.availableYears?.map(year => (
+                <option key={year} value={year}>{year}</option>
+              )) || (
+                <>
+                  <option value={2024}>2024</option>
+                  <option value={2025}>2025</option>
+                  <option value={2026}>2026</option>
+                  <option value={2027}>2027</option>
+                  <option value={2028}>2028</option>
+                </>
+              )}
+            </select>
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Profile:</label>
+            <select 
+              value={selectedProfile} 
+              onChange={(e) => setSelectedProfile(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              disabled={isLoadingPrices}
+            >
+              {priceCurveMetadata?.availableProfiles?.map(profile => (
+                <option key={profile} value={profile}>{profile.charAt(0).toUpperCase() + profile.slice(1)}</option>
+              )) || (
+                <>
+                  <option value="baseload">Baseload</option>
+                  <option value="solar">Solar</option>
+                  <option value="wind">Wind</option>
+                </>
+              )}
+            </select>
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Type:</label>
+            <select 
+              value={selectedType} 
+              onChange={(e) => setSelectedType(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              disabled={isLoadingPrices}
+            >
+              {priceCurveMetadata?.availableTypes?.map(type => (
+                <option key={type} value={type}>{type}</option>
+              )) || (
+                <>
+                  <option value="Energy">Energy</option>
+                  <option value="green">Green</option>
+                </>
+              )}
+            </select>
+          </div>
+        </div>
+        
+        {/* Price Data Status */}
+        <div className="bg-gray-50 rounded-lg p-4">
+          {isLoadingPrices ? (
+            <div className="text-blue-600 font-medium">🔄 Loading price data...</div>
+          ) : priceError ? (
+            <div className="text-red-600 font-medium">⚠️ {priceError} (using fallback data)</div>
+          ) : priceCurveMetadata ? (
+            <div className="text-green-600 font-medium">
+              ✅ Loaded {priceCurveMetadata.recordCount} price records from {priceCurveMetadata.curve} 
+              ({priceCurveMetadata.availableStates?.join(', ')})
+            </div>
+          ) : (
+            <div className="text-yellow-600 font-medium">📊 Using default price data</div>
+          )}
+        </div>
+      </div>
+
       {/* Controls */}
       <div className="bg-white rounded-xl p-6 shadow-md border border-gray-200">
         <div className="flex flex-col lg:flex-row gap-6 items-start lg:items-center">
