@@ -66,7 +66,7 @@ const defaultContract: Omit<Contract, '_id'> = {
 const defaultCategories = {
   retail: [
     'Retail Customer',
-    'Industrial Customer', 
+    'Industrial Customer',
     'Government Customer',
     'Small Business',
     'Residential'
@@ -162,12 +162,12 @@ export default function ContractInputTab({
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleInputChange = (field: keyof typeof formData, value: any) => {
+  const handleInputChange = (field: keyof Omit<Contract, '_id'>, value: any) => {
     if (!formData) return;
     
     setFormData(prev => prev ? { ...prev, [field]: value } : null);
-    if (errors[field]) {
-      setErrors(prev => ({ ...prev, [field]: '' }));
+    if (errors[field as string]) { // Cast field to string for Record<string, string> index
+      setErrors(prev => ({ ...prev, [field as string]: '' }));
     }
   };
 
@@ -247,8 +247,8 @@ export default function ContractInputTab({
   };
 
   const getStatusColor = (status: string) => {
-    return status === 'active' 
-      ? 'bg-green-100 text-green-800' 
+    return status === 'active'
+      ? 'bg-green-100 text-green-800'
       : 'bg-yellow-100 text-yellow-800';
   };
 
@@ -260,7 +260,7 @@ export default function ContractInputTab({
           <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-3">
             📋 Contract Portfolio
           </h2>
-          <button 
+          <button
             onClick={handleAddNew}
             className="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-6 py-3 rounded-lg font-medium hover:from-blue-600 hover:to-purple-700 transition-all duration-200 flex items-center gap-2"
           >
@@ -295,12 +295,12 @@ export default function ContractInputTab({
               </thead>
               <tbody>
                 {contracts.map((contract, index) => (
-                  <tr 
+                  <tr
                     key={contract._id || contract.id || index}
                     onClick={() => handleRowClick(contract)}
                     className={`border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors ${
-                      selectedContract && (selectedContract._id === contract._id || selectedContract.id === contract.id) 
-                        ? 'bg-blue-50 border-l-4 border-l-blue-500' 
+                      selectedContract && (selectedContract._id === contract._id || selectedContract.id === contract.id)
+                        ? 'bg-blue-50 border-l-4 border-l-blue-500'
                         : ''
                     }`}
                   >
@@ -320,7 +320,7 @@ export default function ContractInputTab({
                     <td className="p-4 text-gray-700">{contract.counterparty}</td>
                     <td className="p-4 text-gray-700">{contract.annualVolume.toLocaleString()} MWh</td>
                     <td className="p-4 text-gray-700">${contract.strikePrice}/MWh</td>
-                    <td className="p-4 text-gray-700 text-xs">
+                    <td className="p-4 text-xs">
                       <div>{contract.startDate}</div>
                       <div>to {contract.endDate}</div>
                     </td>
@@ -331,7 +331,7 @@ export default function ContractInputTab({
                     </td>
                     <td className="p-4">
                       <div className="flex gap-2">
-                        <button 
+                        <button
                           onClick={(e) => {
                             e.stopPropagation();
                             handleEditContract(contract);
@@ -340,7 +340,7 @@ export default function ContractInputTab({
                         >
                           Edit
                         </button>
-                        <button 
+                        <button
                           onClick={(e) => {
                             e.stopPropagation();
                             handleDeleteContract(contract);
@@ -368,7 +368,7 @@ export default function ContractInputTab({
                 <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-3">
                   {isEditing ? '✏️ Edit Contract' : '➕ Add New Contract'}
                 </h2>
-                <button 
+                <button
                   onClick={handleCancelEdit}
                   className="text-gray-500 hover:text-gray-700 text-2xl"
                 >
@@ -412,7 +412,7 @@ export default function ContractInputTab({
                         id="type"
                         value={formData.type}
                         onChange={(e) => {
-                          handleInputChange('type', e.target.value);
+                          handleInputChange('type', e.target.value as Contract['type']);
                           // Reset category when type changes
                           handleInputChange('category', '');
                         }}
@@ -579,7 +579,7 @@ export default function ContractInputTab({
                       <select
                         id="volumeShape"
                         value={formData.volumeShape}
-                        onChange={(e) => handleInputChange('volumeShape', e.target.value)}
+                        onChange={(e) => handleInputChange('volumeShape', e.target.value as Contract['volumeShape'])}
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 hover:border-gray-400"
                       >
                         {volumeShapeOptions.map(shape => (
@@ -596,7 +596,7 @@ export default function ContractInputTab({
                       <select
                         id="status"
                         value={formData.status}
-                        onChange={(e) => handleInputChange('status', e.target.value)}
+                        onChange={(e) => handleInputChange('status', e.target.value as Contract['status'])}
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 hover:border-gray-400"
                       >
                         {statuses.map(status => (
@@ -690,14 +690,14 @@ export default function ContractInputTab({
 
               {/* Form Actions */}
               <div className="flex gap-4 pt-6 border-t border-gray-200 mt-8">
-                <button 
+                <button
                   onClick={handleSaveContract}
                   disabled={isSaving}
                   className="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-6 py-2 rounded-lg font-medium hover:from-blue-600 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
                 >
                   {isSaving ? 'Saving...' : (isEditing ? 'Update Contract' : 'Add Contract')}
                 </button>
-                <button 
+                <button
                   onClick={handleCancelEdit}
                   disabled={isSaving}
                   className="bg-gray-100 text-gray-700 px-6 py-2 rounded-lg font-medium hover:bg-gray-200 disabled:opacity-50 transition-all duration-200"
