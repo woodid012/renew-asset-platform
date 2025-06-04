@@ -235,20 +235,22 @@ export default function MarkToMarketTab({
         };
       }
     } else if (viewMode === 'comparison') {
-      const datasets = selectedContracts.map((contractId, index) => {
-        const contractMtM = mtmData.find(data => data.contractId === contractId);
-        if (contractMtM) {
-          return {
-            label: contractMtM.contractName,
-            data: contractMtM.monthlyMtM,
-            borderColor: getContractColor(contractId, index),
-            backgroundColor: getContractColor(contractId, index) + '20',
-            borderWidth: 2,
-            tension: 0.1,
-          };
-        }
-        return null;
-      }).filter(Boolean);
+      const datasets = selectedContracts
+        .map((contractId, index) => {
+          const contractMtM = mtmData.find(data => data.contractId === contractId);
+          if (contractMtM) {
+            return {
+              label: contractMtM.contractName,
+              data: contractMtM.monthlyMtM,
+              borderColor: getContractColor(contractId, index),
+              backgroundColor: getContractColor(contractId, index) + '20',
+              borderWidth: 2,
+              tension: 0.1,
+            };
+          }
+          return null;
+        })
+        .filter((dataset): dataset is NonNullable<typeof dataset> => dataset !== null);
 
       return {
         labels: months,
