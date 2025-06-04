@@ -90,7 +90,7 @@ export async function GET(request: NextRequest) {
       });
       
       // Generate time labels
-      const uniqueDates = [...new Set(sortedData.map((record: PriceCurveRecord) => `${record.year}-${record.month.toString().padStart(2, '0')}`))].sort();
+      const uniqueDates = [...new Set(sortedData.map((record: PriceCurveRecord) => `${record.year}-${record.month.toString().padStart(2, '0')}`))].sort() as string[];
       timeLabels = uniqueDates.map((date) => { 
         const [year, month] = date.split('-');
         const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
