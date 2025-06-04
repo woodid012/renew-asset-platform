@@ -79,18 +79,18 @@ export async function GET(request: NextRequest) {
     let timeLabels: string[] = [];
     
     // Get unique states
-    const states = [...new Set(priceCurveData.map(record => record.state))];
+    const states = [...new Set(priceCurveData.map((record: PriceCurveRecord) => record.state))];
     
     // If "all" year is selected, create time series data
     if (!year || year === 'all') {
       // Create time series with all data points
-      const sortedData = priceCurveData.sort((a, b) => {
+      const sortedData = priceCurveData.sort((a: PriceCurveRecord, b: PriceCurveRecord) => {
         if (a.year !== b.year) return a.year - b.year;
         return a.month - b.month;
       });
       
       // Generate time labels
-      const uniqueDates = [...new Set(sortedData.map(record => `${record.year}-${record.month.toString().padStart(2, '0')}`))].sort();
+      const uniqueDates = [...new Set(sortedData.map((record: PriceCurveRecord) => `${record.year}-${record.month.toString().padStart(2, '0')}`))].sort();
       timeLabels = uniqueDates.map(date => {
         const [year, month] = date.split('-');
         const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -104,7 +104,7 @@ export async function GET(request: NextRequest) {
           const [targetYear, targetMonth] = dateKey.split('-');
           
           // Find records for this state, year, and month
-          const records = priceCurveData.filter(record => 
+          const records = priceCurveData.filter((record: PriceCurveRecord) => 
             record.state === state && 
             record.year === parseInt(targetYear) && 
             record.month === parseInt(targetMonth)
@@ -112,7 +112,7 @@ export async function GET(request: NextRequest) {
           
           if (records.length > 0) {
             // If multiple profiles, average them
-            const average = records.reduce((sum, record) => sum + record.price, 0) / records.length;
+            const average = records.reduce((sum: number, record: PriceCurveRecord) => sum + record.price, 0) / records.length;
             stateData.push(average);
           } else {
             stateData.push(0);
@@ -130,9 +130,9 @@ export async function GET(request: NextRequest) {
         // Group by month and calculate averages for the specific year
         const monthlyData: { [month: number]: number[] } = {};
         
-        const stateRecords = priceCurveData.filter(record => record.state === state);
+        const stateRecords = priceCurveData.filter((record: PriceCurveRecord) => record.state === state);
         
-        stateRecords.forEach(record => {
+        stateRecords.forEach((record: PriceCurveRecord) => {
           if (!monthlyData[record.month]) {
             monthlyData[record.month] = [];
           }
@@ -143,7 +143,7 @@ export async function GET(request: NextRequest) {
         transformedData[state] = Array(12).fill(0);
         for (let month = 1; month <= 12; month++) {
           if (monthlyData[month] && monthlyData[month].length > 0) {
-            const average = monthlyData[month].reduce((sum, price) => sum + price, 0) / monthlyData[month].length;
+            const average = monthlyData[month].reduce((sum: number, price: number) => sum + price, 0) / monthlyData[month].length;
             transformedData[state][month - 1] = average;
           }
         }
@@ -154,10 +154,10 @@ export async function GET(request: NextRequest) {
     const allDataQuery = { curve: curve, type: type };
     const allData = await collection.find(allDataQuery).toArray();
     
-    const availableYears = [...new Set(allData.map(record => record.year))].sort();
-    const availableProfiles = [...new Set(allData.map(record => record.profile))];
-    const availableTypes = [...new Set(allData.map(record => record.type))];
-    const availableStates = [...new Set(allData.map(record => record.state))].sort();
+    const availableYears = [...new Set(allData.map((record: PriceCurveRecord) => record.year))].sort();
+    const availableProfiles = [...new Set(allData.map((record: PriceCurveRecord) => record.profile))];
+    const availableTypes = [...new Set(allData.map((record: PriceCurveRecord) => record.type))];
+    const availableStates = [...new Set(allData.map((record: PriceCurveRecord) => record.state))].sort();
     
     console.log(`Returning data for ${Object.keys(transformedData).length} states`);
     
