@@ -60,7 +60,6 @@ export default function TimeSeriesOutputTab({
   marketPrices,
   volumeShapes,
 }: TimeSeriesOutputTabProps) {
-  const [selectedContracts, setSelectedContracts] = useState<string[]>([]);
   const [year, setYear] = useState('2026');
   const [interval, setInterval] = useState('M');
   const [scenario, setScenario] = useState('Central');
@@ -70,9 +69,8 @@ export default function TimeSeriesOutputTab({
     setIsLoading(true);
     
     let outputData: TimeSeriesRow[] = [];
-    const contractsToProcess = selectedContracts.length > 0 
-      ? contracts.filter(c => selectedContracts.includes(c._id || c.id?.toString() || ''))
-      : contracts;
+    // Process all contracts by default
+    const contractsToProcess = contracts;
     
     contractsToProcess.forEach(contract => {
       const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -217,22 +215,6 @@ export default function TimeSeriesOutputTab({
     window.URL.revokeObjectURL(url);
   };
 
-  const handleContractToggle = (contractId: string) => {
-    setSelectedContracts(prev => 
-      prev.includes(contractId) 
-        ? prev.filter(id => id !== contractId)
-        : [...prev, contractId]
-    );
-  };
-
-  const selectAllContracts = () => {
-    setSelectedContracts(contracts.map(c => c._id || c.id?.toString() || ''));
-  };
-
-  const clearSelection = () => {
-    setSelectedContracts([]);
-  };
-
   // Calculate summary statistics
   const summaryStats = {
     totalRows: timeSeriesData.length,
@@ -251,43 +233,16 @@ export default function TimeSeriesOutputTab({
         </h2>
         
         <div className="space-y-6">
-          {/* Contract Selection */}
+          {/* Contract Summary */}
           <div>
             <h3 className="text-lg font-semibold text-gray-800 mb-4">Contract Selection</h3>
-            <div className="bg-gray-50 rounded-lg p-4 space-y-4">
-              <div className="flex flex-wrap items-center gap-4">
-                <button 
-                  onClick={selectAllContracts}
-                  className="bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors"
-                >
-                  Select All
-                </button>
-                <button 
-                  onClick={clearSelection}
-                  className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors"
-                >
-                  Clear All
-                </button>
-                <span className="text-sm text-gray-600 font-medium">
-                  {selectedContracts.length === 0 ? 'All contracts' : `${selectedContracts.length} selected`}
-                </span>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 max-h-48 overflow-y-auto">
-                {contracts.map(contract => (
-                  <label key={contract._id || contract.id} className="flex items-center gap-3 p-3 bg-white rounded-lg border border-gray-200 hover:bg-gray-50 cursor-pointer transition-colors">
-                    <input
-                      type="checkbox"
-                      checked={selectedContracts.includes(contract._id || contract.id?.toString() || '')}
-                      onChange={() => handleContractToggle(contract._id || contract.id?.toString() || '')}
-                      className="rounded text-blue-500 focus:ring-blue-500"
-                    />
-                    <div>
-                      <div className="font-medium text-gray-900 text-sm">{contract.name}</div>
-                      <div className="text-xs text-gray-500">({contract.state})</div>
-                    </div>
-                  </label>
-                ))}
+            <div className="bg-blue-50 rounded-lg p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-lg font-semibold text-blue-800">All {contracts.length} contracts selected</div>
+                  <div className="text-sm text-blue-600">Time series will be generated for all available contracts</div>
+                </div>
+                <div className="text-4xl">📊</div>
               </div>
             </div>
           </div>
