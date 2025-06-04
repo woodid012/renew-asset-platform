@@ -44,6 +44,9 @@ interface PriceCurveRecord {
   month_name: string;
 }
 
+// Type alias for the shape of the data after projection for metadata
+type ProjectedMetadata = Pick<PriceCurveRecord, 'year' | 'profile' | 'type' | 'state'>;
+
 export async function GET(request: NextRequest) {
   try {
     const { db: connectedDb } = await connectToDatabase(); // Renamed to avoid conflict
@@ -92,9 +95,8 @@ export async function GET(request: NextRequest) {
     const transformedData: { [state: string]: number[] } = {};
     let timeLabels: string[] = [];
     
-    // FIX: Explicitly type `states` as string[]
     const uniqueStatesSet = new Set<string>(priceCurveData.map((record: PriceCurveRecord) => record.state));
-    const states: string[] = Array.from(uniqueStatesSet).sort(); // Also sort states for consistent order
+    const states: string[] = Array.from(uniqueStatesSet).sort();
         
     if (!yearToFilter) { // "all" years selected or no year specified
       const sortedData = priceCurveData.sort((a: PriceCurveRecord, b: PriceCurveRecord) => {
@@ -109,7 +111,7 @@ export async function GET(request: NextRequest) {
         return `${monthNames[parseInt(mnth, 10) - 1]} ${yr}`;
       });
       
-      states.forEach(state => { // state is now correctly typed as string
+      states.forEach(state => {
         const stateData: number[] = [];
         uniqueYearMonths.forEach(yearMonthKey => {
           const [targetYearStr, targetMonthStr] = yearMonthKey.split('-');
@@ -124,47 +126,47 @@ export async function GET(request: NextRequest) {
           
           if (recordsForPeriod.length > 0) {
             const average = recordsForPeriod.reduce((sum: number, record: PriceCurveRecord) => sum + record.price, 0) / recordsForPeriod.length;
-            stateData.push(parseFloat(average.toFixed(2))); // Round to 2 decimal places
+            stateData.push(parseFloat(average.toFixed(2)));
           } else {
-            stateData.push(0); // Or null, or handle as needed
+            stateData.push(0);
           }
         });
-        transformedData[state] = stateData; // This line should now work
+        transformedData[state] = stateData;
       });
       
     } else { // Specific year selected
       timeLabels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
       
-      states.forEach(state => { // state is now correctly typed as string
-        const monthlyAverages: number[] = Array(12).fill(0); // Or null
+      states.forEach(state => {
+        const monthlyAverages: number[] = Array(12).fill(0);
         
         for (let month = 1; month <= 12; month++) {
           const recordsForMonth = priceCurveData.filter((record: PriceCurveRecord) => 
             record.state === state &&
-            record.year === yearToFilter && // Ensure we are filtering by the selected year
+            record.year === yearToFilter &&
             record.month === month
           );
           
           if (recordsForMonth.length > 0) {
             const average = recordsForMonth.reduce((sum: number, record: PriceCurveRecord) => sum + record.price, 0) / recordsForMonth.length;
-            monthlyAverages[month - 1] = parseFloat(average.toFixed(2)); // Round to 2 decimal places
+            monthlyAverages[month - 1] = parseFloat(average.toFixed(2));
           }
         }
-        transformedData[state] = monthlyAverages; // This line should now work
+        transformedData[state] = monthlyAverages;
       });
     }
     
-    // Metadata: Consider optimizing this if `allData` is very large.
-    // For now, keeping original logic but ensuring collection type.
+    // Metadata: Explicitly type the projection result.
     const allDataForCurveAndType = await connectedDb.collection<PriceCurveRecord>('price_curves')
                                         .find({ curve: curve, type: type })
-                                        .project({ year: 1, profile: 1, type: 1, state: 1 }) // Project only needed fields
+                                        .project<ProjectedMetadata>({ year: 1, profile: 1, type: 1, state: 1 }) // Specify projected type
                                         .toArray();
 
+    // These map calls should now work correctly as allDataForCurveAndType is ProjectedMetadata[]
+    // and ProjectedMetadata is assignable to Pick<PriceCurveRecord, 'year'> (and profile, type respectively).
     const availableYears = [...new Set(allDataForCurveAndType.map((record: Pick<PriceCurveRecord, 'year'>) => record.year))].sort((a, b) => a - b);
     const availableProfiles = [...new Set(allDataForCurveAndType.map((record: Pick<PriceCurveRecord, 'profile'>) => record.profile))].sort();
     const availableTypes = [...new Set(allDataForCurveAndType.map((record: Pick<PriceCurveRecord, 'type'>) => record.type))].sort();
-    // `states` is already calculated and sorted above
     
     console.log(`Returning data for ${Object.keys(transformedData).length} states`);
     
@@ -181,16 +183,15 @@ export async function GET(request: NextRequest) {
         availableYears: availableYears,
         availableProfiles: availableProfiles,
         availableTypes: availableTypes,
-        availableStates: states, // Use the already computed and sorted states
-        recordCount: priceCurveData.length, // Records matching current filter
-        totalRecordsForCurveType: allDataForCurveAndType.length, // Total records for this curve/type combination
+        availableStates: states,
+        recordCount: priceCurveData.length,
+        totalRecordsForCurveType: allDataForCurveAndType.length,
         timePoints: timeLabels.length
       }
     });
     
-  } catch (error: any) { // Catch as any or unknown then check type
+  } catch (error: any) {
     console.error('Error fetching price curves:', error);
-    // Ensure client is reset if it's a MongoDB connection error that connectToDatabase might have missed re-throwing
     if (error.message && error.message.includes('Mongo')) {
         client = undefined;
         db = undefined;
@@ -204,9 +205,8 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  // It's good practice to explicitly handle methods you don't support.
   return NextResponse.json({ 
     success: false, 
     error: 'POST method not supported for this endpoint. Use GET to fetch price curves or the Python upload script for data submission.' 
-  }, { status: 405 }); // Method Not Allowed
+  }, { status: 405 });
 }
