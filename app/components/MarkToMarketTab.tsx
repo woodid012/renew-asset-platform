@@ -6,12 +6,12 @@ import dynamic from 'next/dynamic';
 // Dynamic import for Chart.js to avoid SSR issues
 const LineChart = dynamic(() => import('react-chartjs-2').then((mod) => mod.Line), { 
   ssr: false,
-  loading: () => <div className="loading">Loading chart...</div>
+  loading: () => <div className="flex items-center justify-center h-64 text-gray-500">Loading chart...</div>
 });
 
 const BarChart = dynamic(() => import('react-chartjs-2').then((mod) => mod.Bar), { 
   ssr: false,
-  loading: () => <div className="loading">Loading chart...</div>
+  loading: () => <div className="flex items-center justify-center h-64 text-gray-500">Loading chart...</div>
 });
 
 import {
@@ -73,6 +73,7 @@ interface MtMData {
   maxMtM: number;
   minMtM: number;
   volatility: number;
+  contract: Contract;
 }
 
 export default function MarkToMarketTab({
@@ -373,100 +374,114 @@ export default function MarkToMarketTab({
   };
 
   return (
-    <div className="mtm-container">
-      <div className="mtm-controls">
-        <div className="view-mode-controls">
-          <label>View Mode:</label>
-          <div className="mode-buttons">
-            <button 
-              className={`btn-small ${viewMode === 'portfolio' ? 'active' : ''}`}
-              onClick={() => setViewMode('portfolio')}
-            >
-              Portfolio
-            </button>
-            <button 
-              className={`btn-small ${viewMode === 'individual' ? 'active' : ''}`}
-              onClick={() => setViewMode('individual')}
-            >
-              Individual
-            </button>
-            <button 
-              className={`btn-small ${viewMode === 'comparison' ? 'active' : ''}`}
-              onClick={() => setViewMode('comparison')}
-            >
-              Comparison
-            </button>
+    <div className="space-y-8">
+      {/* Controls */}
+      <div className="bg-white rounded-xl p-6 shadow-md border border-gray-200">
+        <div className="flex flex-col lg:flex-row gap-6 items-start lg:items-center">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">View Mode:</label>
+            <div className="flex gap-2">
+              <button 
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  viewMode === 'portfolio' ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+                onClick={() => setViewMode('portfolio')}
+              >
+                Portfolio
+              </button>
+              <button 
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  viewMode === 'individual' ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+                onClick={() => setViewMode('individual')}
+              >
+                Individual
+              </button>
+              <button 
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  viewMode === 'comparison' ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+                onClick={() => setViewMode('comparison')}
+              >
+                Comparison
+              </button>
+            </div>
           </div>
-        </div>
 
-        {viewMode === 'individual' && (
-          <div className="contract-selector">
-            <label>Select Contract:</label>
-            <select 
-              value={selectedContract?._id || selectedContract?.id || ''}
-              onChange={(e) => {
-                const contract = contracts.find(c => 
-                  c._id === e.target.value || c.id?.toString() === e.target.value
-                );
-                setSelectedContract(contract || null);
-              }}
-            >
-              <option value="">Choose a contract...</option>
-              {contracts.map(contract => (
-                <option 
-                  key={contract._id || contract.id} 
-                  value={contract._id || contract.id}
-                >
-                  {contract.name}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
+          {viewMode === 'individual' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Select Contract:</label>
+              <select 
+                value={selectedContract?._id || selectedContract?.id || ''}
+                onChange={(e) => {
+                  const contract = contracts.find(c => 
+                    c._id === e.target.value || c.id?.toString() === e.target.value
+                  );
+                  setSelectedContract(contract || null);
+                }}
+                className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 min-w-48"
+              >
+                <option value="">Choose a contract...</option>
+                {contracts.map(contract => (
+                  <option 
+                    key={contract._id || contract.id} 
+                    value={contract._id || contract.id}
+                  >
+                    {contract.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+        </div>
       </div>
 
-      <div className="mtm-grid">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
         {/* Main Chart */}
-        <div className="chart-container main-chart">
-          <div className="chart-wrapper">
+        <div className="xl:col-span-2 bg-white rounded-xl p-6 shadow-md border border-gray-200">
+          <div className="h-96">
             <LineChart data={createChartData()} options={chartOptions} />
           </div>
         </div>
 
         {/* Summary Statistics */}
-        <div className="card summary-stats">
-          <h2>📊 Summary Statistics</h2>
+        <div className="bg-white rounded-xl p-6 shadow-md border border-gray-200">
+          <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-3">
+            📊 Summary Statistics
+          </h2>
           {viewMode === 'portfolio' ? (
-            <div className="stats-content">
-              <div className="stat-item">
-                <span className="stat-label">Total Annual MtM:</span>
-                <span className={`stat-value ${portfolioTotals.totalMtM >= 0 ? 'positive' : 'negative'}`}>
+            <div className="space-y-4">
+              <div className="bg-gray-50 rounded-lg p-4">
+                <div className="text-sm text-gray-600">Total Annual MtM</div>
+                <div className={`text-2xl font-bold ${portfolioTotals.totalMtM >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                   {portfolioTotals.totalMtM >= 0 ? '+' : ''}${portfolioTotals.totalMtM.toLocaleString()}
-                </span>
+                </div>
               </div>
-              <div className="stat-item">
-                <span className="stat-label">Avg Monthly MtM:</span>
-                <span className={`stat-value ${portfolioTotals.avgMonthlyMtM >= 0 ? 'positive' : 'negative'}`}>
-                  {portfolioTotals.avgMonthlyMtM >= 0 ? '+' : ''}${portfolioTotals.avgMonthlyMtM.toLocaleString()}
-                </span>
-              </div>
-              <div className="stat-item">
-                <span className="stat-label">Best Month:</span>
-                <span className="stat-value positive">
-                  +${portfolioTotals.maxMtM.toLocaleString()}
-                </span>
-              </div>
-              <div className="stat-item">
-                <span className="stat-label">Worst Month:</span>
-                <span className="stat-value negative">
-                  ${portfolioTotals.minMtM.toLocaleString()}
-                </span>
-              </div>
-              <div className="stat-item">
-                <span className="stat-label">Volatility:</span>
-                <span className="stat-value">
-                  ${portfolioTotals.volatility.toLocaleString()}
-                </span>
+              <div className="space-y-3 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Avg Monthly MtM:</span>
+                  <span className={`font-semibold ${portfolioTotals.avgMonthlyMtM >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    {portfolioTotals.avgMonthlyMtM >= 0 ? '+' : ''}${portfolioTotals.avgMonthlyMtM.toLocaleString()}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Best Month:</span>
+                  <span className="font-semibold text-green-600">
+                    +${portfolioTotals.maxMtM.toLocaleString()}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Worst Month:</span>
+                  <span className="font-semibold text-red-600">
+                    ${portfolioTotals.minMtM.toLocaleString()}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Volatility:</span>
+                  <span className="font-semibold text-gray-900">
+                    ${portfolioTotals.volatility.toLocaleString()}
+                  </span>
+                </div>
               </div>
             </div>
           ) : selectedContract && viewMode === 'individual' ? (
@@ -475,58 +490,60 @@ export default function MarkToMarketTab({
                 data.contract._id === selectedContract._id || data.contract.id === selectedContract.id
               );
               return contractMtM ? (
-                <div className="stats-content">
-                  <h4>{contractMtM.contractName}</h4>
-                  <div className="stat-item">
-                    <span className="stat-label">Total Annual MtM:</span>
-                    <span className={`stat-value ${contractMtM.totalMtM >= 0 ? 'positive' : 'negative'}`}>
+                <div className="space-y-4">
+                  <h4 className="font-semibold text-gray-800">{contractMtM.contractName}</h4>
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <div className="text-sm text-gray-600">Total Annual MtM</div>
+                    <div className={`text-2xl font-bold ${contractMtM.totalMtM >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                       {contractMtM.totalMtM >= 0 ? '+' : ''}${contractMtM.totalMtM.toLocaleString()}
-                    </span>
+                    </div>
                   </div>
-                  <div className="stat-item">
-                    <span className="stat-label">Avg Monthly MtM:</span>
-                    <span className={`stat-value ${contractMtM.avgMonthlyMtM >= 0 ? 'positive' : 'negative'}`}>
-                      {contractMtM.avgMonthlyMtM >= 0 ? '+' : ''}${contractMtM.avgMonthlyMtM.toLocaleString()}
-                    </span>
-                  </div>
-                  <div className="stat-item">
-                    <span className="stat-label">Best Month:</span>
-                    <span className="stat-value positive">
-                      +${contractMtM.maxMtM.toLocaleString()}
-                    </span>
-                  </div>
-                  <div className="stat-item">
-                    <span className="stat-label">Worst Month:</span>
-                    <span className="stat-value negative">
-                      ${contractMtM.minMtM.toLocaleString()}
-                    </span>
-                  </div>
-                  <div className="stat-item">
-                    <span className="stat-label">Volatility:</span>
-                    <span className="stat-value">
-                      ${contractMtM.volatility.toLocaleString()}
-                    </span>
+                  <div className="space-y-3 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Avg Monthly MtM:</span>
+                      <span className={`font-semibold ${contractMtM.avgMonthlyMtM >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        {contractMtM.avgMonthlyMtM >= 0 ? '+' : ''}${contractMtM.avgMonthlyMtM.toLocaleString()}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Best Month:</span>
+                      <span className="font-semibold text-green-600">
+                        +${contractMtM.maxMtM.toLocaleString()}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Worst Month:</span>
+                      <span className="font-semibold text-red-600">
+                        ${contractMtM.minMtM.toLocaleString()}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Volatility:</span>
+                      <span className="font-semibold text-gray-900">
+                        ${contractMtM.volatility.toLocaleString()}
+                      </span>
+                    </div>
                   </div>
                 </div>
-              ) : <p>Select a contract to view statistics</p>;
+              ) : <p className="text-gray-500">Select a contract to view statistics</p>;
             })()
           ) : (
-            <div className="stats-content">
-              <p>Select contracts to compare in the list below</p>
-              <div className="comparison-summary">
-                <div className="stat-item">
-                  <span className="stat-label">Selected Contracts:</span>
-                  <span className="stat-value">{selectedContracts.length}</span>
+            <div className="space-y-4">
+              <p className="text-gray-500">Select contracts to compare in the list below</p>
+              <div className="space-y-3">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Selected Contracts:</span>
+                  <span className="font-semibold text-gray-900">{selectedContracts.length}</span>
                 </div>
                 {selectedContracts.length > 0 && (
-                  <div className="stat-item">
-                    <span className="stat-label">Combined MtM:</span>
-                    <span className="stat-value positive">
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <div className="text-sm text-gray-600">Combined MtM</div>
+                    <div className="text-2xl font-bold text-green-600">
                       +${selectedContracts.reduce((sum, contractId) => {
                         const data = mtmData.find(d => d.contractId === contractId);
                         return sum + (data?.totalMtM || 0);
                       }, 0).toLocaleString()}
-                    </span>
+                    </div>
                   </div>
                 )}
               </div>
@@ -535,42 +552,40 @@ export default function MarkToMarketTab({
         </div>
 
         {/* Contract Comparison Bar Chart */}
-        <div className="chart-container comparison-chart">
-          <div className="chart-wrapper">
+        <div className="xl:col-span-2 bg-white rounded-xl p-6 shadow-md border border-gray-200">
+          <div className="h-80">
             <BarChart data={createBarChartData()} options={barChartOptions} />
           </div>
         </div>
 
         {/* Contract List */}
-        <div className="card contract-mtm-list">
-          <div className="list-header">
-            <h2>📋 Contract MtM Analysis</h2>
-            <div className="sort-controls">
-              <label>Sort by:</label>
-              <select value={sortBy} onChange={(e) => setSortBy(e.target.value as any)}>
+        <div className="bg-white rounded-xl p-6 shadow-md border border-gray-200 max-h-96 overflow-y-auto">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-bold text-gray-800">📋 Contract MtM Analysis</h2>
+            <div className="flex items-center gap-2">
+              <select 
+                value={sortBy} 
+                onChange={(e) => setSortBy(e.target.value as any)}
+                className="px-3 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
                 <option value="name">Name</option>
                 <option value="totalMtM">Total MtM</option>
                 <option value="avgMtM">Avg Monthly MtM</option>
                 <option value="volatility">Volatility</option>
               </select>
               <button 
-                className="btn-small"
                 onClick={() => setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc')}
+                className="px-2 py-1 bg-gray-100 rounded text-sm hover:bg-gray-200 transition-colors"
               >
                 {sortDirection === 'asc' ? '↑' : '↓'}
               </button>
             </div>
           </div>
 
-          <div className="mtm-contract-list">
+          <div className="space-y-3">
             {sortedMtmData.map((data, index) => (
               <div 
                 key={data.contractId}
-                className={`mtm-contract-item ${
-                  selectedContract && (selectedContract._id === data.contract._id || selectedContract.id === data.contract.id) ? 'selected' : ''
-                } ${
-                  viewMode === 'comparison' && selectedContracts.includes(data.contractId) ? 'comparison-selected' : ''
-                }`}
                 onClick={() => {
                   if (viewMode === 'comparison') {
                     handleContractToggle(data.contractId);
@@ -578,40 +593,42 @@ export default function MarkToMarketTab({
                     setSelectedContract(data.contract);
                   }
                 }}
+                className={`p-4 rounded-lg border-2 cursor-pointer transition-all duration-200 hover:shadow-md ${
+                  selectedContract && (selectedContract._id === data.contract._id || selectedContract.id === data.contract.id) 
+                    ? 'border-blue-500 bg-blue-50' 
+                    : viewMode === 'comparison' && selectedContracts.includes(data.contractId)
+                    ? 'border-green-500 bg-green-50'
+                    : 'border-gray-200 hover:border-gray-300'
+                }`}
               >
-                <div className="contract-header">
-                  <div className="contract-name">
+                <div className="flex justify-between items-start mb-2">
+                  <div className="flex items-center gap-2">
                     {viewMode === 'comparison' && (
                       <input
                         type="checkbox"
                         checked={selectedContracts.includes(data.contractId)}
                         onChange={() => handleContractToggle(data.contractId)}
                         onClick={(e) => e.stopPropagation()}
+                        className="rounded"
                       />
                     )}
-                    <span className={`status-indicator status-${data.contract.status}`}></span>
-                    {data.contractName}
+                    <div className={`w-2 h-2 rounded-full ${data.contract.status === 'active' ? 'bg-green-500' : 'bg-yellow-500'}`}></div>
+                    <span className="font-semibold text-gray-900">{data.contractName}</span>
                   </div>
-                  <div className={`mtm-value ${data.totalMtM >= 0 ? 'positive' : 'negative'}`}>
+                  <div className={`text-lg font-bold ${data.totalMtM >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                     {data.totalMtM >= 0 ? '+' : ''}${data.totalMtM.toLocaleString()}
                   </div>
                 </div>
-                <div className="mtm-details">
-                  <div className="detail-item">
+                <div className="grid grid-cols-2 gap-2 text-xs text-gray-600">
+                  <div>
                     <span>Avg Monthly:</span>
-                    <span className={data.avgMonthlyMtM >= 0 ? 'positive' : 'negative'}>
+                    <span className={`ml-1 font-medium ${data.avgMonthlyMtM >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                       {data.avgMonthlyMtM >= 0 ? '+' : ''}${data.avgMonthlyMtM.toLocaleString()}
                     </span>
                   </div>
-                  <div className="detail-item">
+                  <div>
                     <span>Volatility:</span>
-                    <span>${data.volatility.toLocaleString()}</span>
-                  </div>
-                  <div className="detail-item">
-                    <span>Range:</span>
-                    <span>
-                      ${data.minMtM.toLocaleString()} to +${data.maxMtM.toLocaleString()}
-                    </span>
+                    <span className="ml-1 font-medium">${data.volatility.toLocaleString()}</span>
                   </div>
                 </div>
               </div>

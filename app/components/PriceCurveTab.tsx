@@ -6,7 +6,7 @@ import dynamic from 'next/dynamic';
 // Dynamic import for Chart.js to avoid SSR issues
 const Chart = dynamic(() => import('react-chartjs-2').then((mod) => mod.Line), { 
   ssr: false,
-  loading: () => <div className="loading">Loading chart...</div>
+  loading: () => <div className="flex items-center justify-center h-64 text-gray-500">Loading chart...</div>
 });
 
 import {
@@ -207,20 +207,28 @@ export default function PriceCurveTab({
   };
 
   return (
-    <div className="price-curve-container">
-      <div className="price-curve-grid">
-        {/* Chart Panel */}
-        <div className="chart-container">
-          <div className="chart-controls">
-            <div className="chart-view-controls">
+    <div className="space-y-8">
+      {/* Chart Panel */}
+      <div className="bg-white rounded-xl p-6 shadow-md border border-gray-200">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+          <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-3">
+            📈 Market Price Curves
+          </h2>
+          
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex gap-2">
               <button 
-                className={`btn-small ${showAll ? 'active' : ''}`}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  showAll ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
                 onClick={() => setShowAll(true)}
               >
                 Show All States
               </button>
               <button 
-                className={`btn-small ${!showAll ? 'active' : ''}`}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  !showAll ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
                 onClick={() => setShowAll(false)}
               >
                 Single State
@@ -228,12 +236,13 @@ export default function PriceCurveTab({
             </div>
             
             {!showAll && (
-              <div className="state-selector">
-                <label htmlFor="stateSelect">Select State:</label>
+              <div className="flex items-center gap-2">
+                <label htmlFor="stateSelect" className="text-sm font-medium text-gray-700">State:</label>
                 <select 
                   id="stateSelect"
                   value={selectedState} 
                   onChange={(e) => setSelectedState(e.target.value)}
+                  className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   {states.map(state => (
                     <option key={state} value={state}>{state}</option>
@@ -242,35 +251,54 @@ export default function PriceCurveTab({
               </div>
             )}
           </div>
-          
-          <div className="chart-wrapper">
-            <Chart data={createPriceCurveData()} options={chartOptions} />
-          </div>
         </div>
+        
+        <div className="h-96">
+          <Chart data={createPriceCurveData()} options={chartOptions} />
+        </div>
+      </div>
 
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Price Data Table */}
-        <div className="card price-data-panel">
-          <div className="panel-header">
-            <h2>📊 Price Data Management</h2>
-            <div className="panel-actions">
+        <div className="bg-white rounded-xl p-6 shadow-md border border-gray-200">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-3">
+              📊 Price Data Management
+            </h2>
+            <div className="flex gap-2">
               {!isEditing ? (
                 <>
-                  <button className="btn-small btn-primary" onClick={handleStartEdit}>
+                  <button 
+                    onClick={handleStartEdit}
+                    className="bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors"
+                  >
                     Edit Prices
                   </button>
-                  <button className="btn-small btn-secondary" onClick={loadSampleData}>
+                  <button 
+                    onClick={loadSampleData}
+                    className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors"
+                  >
                     Load Sample Data
                   </button>
                 </>
               ) : (
                 <>
-                  <button className="btn-small btn-success" onClick={handleSaveChanges}>
+                  <button 
+                    onClick={handleSaveChanges}
+                    className="bg-green-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-600 transition-colors"
+                  >
                     Save Changes
                   </button>
-                  <button className="btn-small btn-secondary" onClick={handleCancelEdit}>
+                  <button 
+                    onClick={handleCancelEdit}
+                    className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors"
+                  >
                     Cancel
                   </button>
-                  <button className="btn-small btn-info" onClick={loadSampleData}>
+                  <button 
+                    onClick={loadSampleData}
+                    className="bg-blue-100 text-blue-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-200 transition-colors"
+                  >
                     Load Sample
                   </button>
                 </>
@@ -278,33 +306,35 @@ export default function PriceCurveTab({
             </div>
           </div>
 
-          <div className="price-table-container">
-            <table className="price-table">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
               <thead>
-                <tr>
-                  <th>Month</th>
+                <tr className="bg-gray-50 border-b border-gray-200">
+                  <th className="text-left p-3 font-semibold text-gray-700 sticky left-0 bg-gray-50">Month</th>
                   {states.map(state => (
-                    <th key={state} style={{ color: stateColors[state] }}>{state}</th>
+                    <th key={state} className="text-center p-3 font-semibold" style={{ color: stateColors[state] }}>
+                      {state}
+                    </th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {months.map((month, monthIndex) => (
-                  <tr key={month}>
-                    <td className="month-cell">{month}</td>
+                  <tr key={month} className="border-b border-gray-100 hover:bg-gray-50">
+                    <td className="p-3 font-medium text-gray-800 sticky left-0 bg-white">{month}</td>
                     {states.map(state => (
-                      <td key={state}>
+                      <td key={state} className="p-3 text-center">
                         {isEditing ? (
                           <input
                             type="number"
                             value={getCurrentPrices(state)[monthIndex] || 0}
                             onChange={(e) => handlePriceChange(state, monthIndex, e.target.value)}
-                            className="price-input"
+                            className="w-20 px-2 py-1 border border-gray-300 rounded text-center text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                             step="0.01"
                             min="0"
                           />
                         ) : (
-                          <span className="price-value">
+                          <span className="font-medium text-gray-700">
                             ${getCurrentPrices(state)[monthIndex]?.toFixed(2) || '0.00'}
                           </span>
                         )}
@@ -318,32 +348,38 @@ export default function PriceCurveTab({
         </div>
 
         {/* Statistics Panel */}
-        <div className="card statistics-panel">
-          <h2>📈 Price Statistics</h2>
-          <div className="stats-grid">
+        <div className="bg-white rounded-xl p-6 shadow-md border border-gray-200">
+          <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-3">
+            📈 Price Statistics
+          </h2>
+          <div className="space-y-4">
             {states.map(state => {
               const stats = calculateStats(marketPrices[state]);
               return (
-                <div key={state} className="stat-card">
-                  <div className="stat-header" style={{ borderLeftColor: stateColors[state] }}>
-                    <h4>{state}</h4>
+                <div key={state} className="border border-gray-200 rounded-lg p-4">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div 
+                      className="w-4 h-4 rounded"
+                      style={{ backgroundColor: stateColors[state] }}
+                    ></div>
+                    <h4 className="font-semibold text-gray-800">{state}</h4>
                   </div>
-                  <div className="stat-values">
-                    <div className="stat-item">
-                      <span className="stat-label">Average:</span>
-                      <span className="stat-value">${stats.avg.toFixed(2)}</span>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="text-gray-600 font-medium">Average:</span>
+                      <span className="ml-2 text-gray-900 font-semibold">${stats.avg.toFixed(2)}</span>
                     </div>
-                    <div className="stat-item">
-                      <span className="stat-label">Min:</span>
-                      <span className="stat-value text-green">${stats.min.toFixed(2)}</span>
+                    <div>
+                      <span className="text-gray-600 font-medium">Volatility:</span>
+                      <span className="ml-2 text-gray-900 font-semibold">${stats.volatility.toFixed(2)}</span>
                     </div>
-                    <div className="stat-item">
-                      <span className="stat-label">Max:</span>
-                      <span className="stat-value text-red">${stats.max.toFixed(2)}</span>
+                    <div>
+                      <span className="text-gray-600 font-medium">Min:</span>
+                      <span className="ml-2 text-green-600 font-semibold">${stats.min.toFixed(2)}</span>
                     </div>
-                    <div className="stat-item">
-                      <span className="stat-label">Volatility:</span>
-                      <span className="stat-value">${stats.volatility.toFixed(2)}</span>
+                    <div>
+                      <span className="text-gray-600 font-medium">Max:</span>
+                      <span className="ml-2 text-red-600 font-semibold">${stats.max.toFixed(2)}</span>
                     </div>
                   </div>
                 </div>
@@ -351,37 +387,41 @@ export default function PriceCurveTab({
             })}
           </div>
         </div>
+      </div>
 
-        {/* Information Panel */}
-        <div className="card info-panel">
-          <h2>ℹ️ Price Curve Information</h2>
-          <div className="info-content">
-            <p>
-              These price curves represent the monthly average electricity prices for each state 
-              and are used for mark-to-market calculations across your contract portfolio.
-            </p>
-            
-            <div className="info-section">
-              <h4>Data Sources:</h4>
-              <ul>
-                <li>AEMO market data (historical averages)</li>
-                <li>Forward price forecasts</li>
-                <li>Seasonal adjustments</li>
+      {/* Information Panel */}
+      <div className="bg-white rounded-xl p-6 shadow-md border border-gray-200">
+        <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-3">
+          ℹ️ Price Curve Information
+        </h2>
+        <div className="prose prose-gray max-w-none">
+          <p className="text-gray-600 leading-relaxed mb-4">
+            These price curves represent the monthly average electricity prices for each state 
+            and are used for mark-to-market calculations across your contract portfolio.
+          </p>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
+            <div>
+              <h4 className="font-semibold text-gray-800 mb-3">Data Sources:</h4>
+              <ul className="text-sm text-gray-600 space-y-1">
+                <li>• AEMO market data (historical averages)</li>
+                <li>• Forward price forecasts</li>
+                <li>• Seasonal adjustments</li>
               </ul>
             </div>
 
-            <div className="info-section">
-              <h4>Usage:</h4>
-              <ul>
-                <li>Contract mark-to-market valuations</li>
-                <li>Risk assessment and scenario analysis</li>
-                <li>Time series output generation</li>
+            <div>
+              <h4 className="font-semibold text-gray-800 mb-3">Usage:</h4>
+              <ul className="text-sm text-gray-600 space-y-1">
+                <li>• Contract mark-to-market valuations</li>
+                <li>• Risk assessment and scenario analysis</li>
+                <li>• Time series output generation</li>
               </ul>
             </div>
 
-            <div className="info-section">
-              <h4>Update Frequency:</h4>
-              <p>
+            <div>
+              <h4 className="font-semibold text-gray-800 mb-3">Update Frequency:</h4>
+              <p className="text-sm text-gray-600">
                 Price curves should be updated monthly or when significant market 
                 events occur that may affect forward price expectations.
               </p>

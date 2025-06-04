@@ -3,12 +3,16 @@
 import { useState } from 'react';
 import dynamic from 'next/dynamic';
 
-// Dynamic import for Chart.js to avoid SSR issues
-const Chart = dynamic(() => import('react-chartjs-2').then((mod) => mod.Line), { 
-  ssr: false,
-  loading: () => <div className="loading">Loading chart...</div>
-});
+// Proper dynamic import for Chart.js
+const Line = dynamic(
+  () => import('react-chartjs-2').then((mod) => mod.Line),
+  { 
+    ssr: false,
+    loading: () => <div className="flex items-center justify-center h-64 text-gray-500">Loading chart...</div>
+  }
+);
 
+// Register Chart.js components - do this only once
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -20,15 +24,18 @@ import {
   Legend,
 } from 'chart.js';
 
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend
-);
+// Register only once at module level
+if (typeof window !== 'undefined') {
+  ChartJS.register(
+    CategoryScale,
+    LinearScale,
+    PointElement,
+    LineElement,
+    Title,
+    Tooltip,
+    Legend
+  );
+}
 
 interface Contract {
   _id?: string;
@@ -67,16 +74,25 @@ export default function ContractSummaryTab({
 
   // Chart colors for different contracts
   const chartColorsByContract: { [key: string]: string } = {
-    1: '#667eea', // NSW Solar
-    2: '#764ba2', // VIC Wind  
-    3: '#f093fb', // SA Government
-    4: '#4facfe', // NSW Baseload
-    5: '#43e97b'  // QLD Industrial
+    1: '#667eea',
+    2: '#764ba2', 
+    3: '#f093fb',
+    4: '#4facfe',
+    5: '#43e97b'
   };
 
   const getContractColor = (contract: Contract, index: number): string => {
     return chartColorsByContract[contract._id || contract.id?.toString() || (index + 1).toString()] || 
            chartColorsByContract[(index + 1).toString()] || '#667eea';
+  };
+
+  const getContractTypeColor = (type: string) => {
+    switch (type) {
+      case 'retail': return 'bg-orange-100 text-orange-800';
+      case 'wholesale': return 'bg-green-100 text-green-800';
+      case 'offtake': return 'bg-purple-100 text-purple-800';
+      default: return 'bg-blue-100 text-blue-800';
+    }
   };
 
   // Create volume chart data
@@ -85,7 +101,7 @@ export default function ContractSummaryTab({
     
     const datasets = contracts.map((contract, index) => {
       const volumeProfile = volumeShapes[contract.volumeShape];
-      const monthlyVolumes = volumeProfile.map(pct => (contract.annualVolume * pct / 100));
+      const monthlyVolumes = volumeProfile?.map(pct => (contract.annualVolume * pct / 100)) || [];
       const color = getContractColor(contract, index);
       
       return {
@@ -110,13 +126,13 @@ export default function ContractSummaryTab({
     
     const datasets = contracts.map((contract, index) => {
       const volumeProfile = volumeShapes[contract.volumeShape];
-      const statePrices = marketPrices[contract.state] || marketPrices.NSW;
+      const statePrices = marketPrices[contract.state] || marketPrices.NSW || [];
       const color = getContractColor(contract, index);
       
-      const monthlyMtM = volumeProfile.map((pct, monthIndex) => {
+      const monthlyMtM = volumeProfile?.map((pct, monthIndex) => {
         const volume = contract.annualVolume * pct / 100;
         const strikeValue = volume * contract.strikePrice;
-        const marketValue = volume * statePrices[monthIndex];
+        const marketValue = volume * (statePrices[monthIndex] || 0);
         
         let netMtM;
         if (contract.type === 'retail') {
@@ -126,7 +142,7 @@ export default function ContractSummaryTab({
         }
         
         return netMtM;
-      });
+      }) || [];
       
       return {
         label: contract.name,
@@ -213,158 +229,204 @@ export default function ContractSummaryTab({
   };
 
   return (
-    <div className="main-grid">
-      <div className="left-panel">
-        <div className="card">
-          <h2>📋 Contract Portfolio</h2>
-          <div className="contract-list">
-            {contracts.map((contract, index) => (
-              <div 
-                key={contract._id || contract.id || index}
-                className={`contract-item ${selectedContract && (selectedContract._id === contract._id || selectedContract.id === contract.id) ? 'selected' : ''}`}
-                onClick={() => setSelectedContract(contract)}
-              >
-                <div className="contract-header">
-                  <div className="contract-name">
-                    <span className={`status-indicator status-${contract.status}`}></span>
-                    {contract.name}
-                  </div>
-                  <div className={`contract-type ${contract.type}`}>{contract.type.toUpperCase()}</div>
-                </div>
-                <div className="contract-details">
-                  <div className="detail-item">
-                    <div className="detail-label">State</div>
-                    <div>{contract.state}</div>
-                  </div>
-                  <div className="detail-item">
-                    <div className="detail-label">Volume Shape</div>
-                    <div>{contract.volumeShape.charAt(0).toUpperCase() + contract.volumeShape.slice(1)}</div>
-                  </div>
-                  <div className="detail-item">
-                    <div className="detail-label">Annual Volume</div>
-                    <div>{contract.annualVolume.toLocaleString()} MWh</div>
-                  </div>
-                </div>
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      {/* Left Panel */}
+      <div className="space-y-6">
+        
+        {/* Contract Portfolio */}
+        <div className="bg-white rounded-xl p-6 shadow-md border border-gray-200">
+          <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-3">
+            📋 Contract Portfolio
+          </h2>
+          <div className="space-y-4">
+            {contracts.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                <p>No contracts found. Add contracts in the Contract Input tab.</p>
               </div>
-            ))}
+            ) : (
+              contracts.map((contract, index) => (
+                <div 
+                  key={contract._id || contract.id || index}
+                  onClick={() => setSelectedContract(contract)}
+                  className={`p-4 rounded-lg border-2 cursor-pointer transition-all duration-200 hover:shadow-md ${
+                    selectedContract && (selectedContract._id === contract._id || selectedContract.id === contract.id) 
+                      ? 'border-blue-500 bg-blue-50' 
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  <div className="flex justify-between items-start mb-3">
+                    <div className="flex items-center gap-2">
+                      <div className={`w-2 h-2 rounded-full ${contract.status === 'active' ? 'bg-green-500' : 'bg-yellow-500'}`}></div>
+                      <span className="font-semibold text-gray-900">{contract.name}</span>
+                    </div>
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium uppercase ${getContractTypeColor(contract.type)}`}>
+                      {contract.type}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="text-gray-600 font-medium">State:</span>
+                      <span className="ml-2 text-gray-900">{contract.state}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-600 font-medium">Shape:</span>
+                      <span className="ml-2 text-gray-900 capitalize">{contract.volumeShape}</span>
+                    </div>
+                    <div className="col-span-2">
+                      <span className="text-gray-600 font-medium">Annual Volume:</span>
+                      <span className="ml-2 text-gray-900 font-semibold">{contract.annualVolume.toLocaleString()} MWh</span>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
 
-        <div className="card">
-          <h2>📊 Contract Summary</h2>
-          <div id="contractSummary">
-            {!selectedContract ? (
-              <p style={{ color: '#718096', textAlign: 'center', padding: '40px 0' }}>
-                Select a contract to view details
-              </p>
-            ) : (
-              <div>
-                <h3 style={{ color: '#2d3748', marginBottom: '20px' }}>{selectedContract.name}</h3>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '20px' }}>
-                  <div>
-                    <div style={{ fontWeight: '500', color: '#4a5568', marginBottom: '5px' }}>Counterparty</div>
-                    <div style={{ color: '#2d3748' }}>{selectedContract.counterparty}</div>
-                  </div>
-                  <div>
-                    <div style={{ fontWeight: '500', color: '#4a5568', marginBottom: '5px' }}>Category</div>
-                    <div style={{ color: '#2d3748' }}>{selectedContract.category}</div>
-                  </div>
-                  <div>
-                    <div style={{ fontWeight: '500', color: '#4a5568', marginBottom: '5px' }}>Contract Period</div>
-                    <div style={{ color: '#2d3748' }}>{selectedContract.startDate} to {selectedContract.endDate}</div>
-                  </div>
-                  <div>
-                    <div style={{ fontWeight: '500', color: '#4a5568', marginBottom: '5px' }}>Strike Price</div>
-                    <div style={{ color: '#2d3748' }}>${selectedContract.strikePrice}/MWh</div>
-                  </div>
-                  <div>
-                    <div style={{ fontWeight: '500', color: '#4a5568', marginBottom: '5px' }}>Indexation</div>
-                    <div style={{ color: '#2d3748' }}>{selectedContract.indexation}</div>
-                  </div>
-                  <div>
-                    <div style={{ fontWeight: '500', color: '#4a5568', marginBottom: '5px' }}>Reference Date</div>
-                    <div style={{ color: '#2d3748' }}>{selectedContract.referenceDate}</div>
-                  </div>
+        {/* Contract Details */}
+        <div className="bg-white rounded-xl p-6 shadow-md border border-gray-200">
+          <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-3">
+            📊 Contract Summary
+          </h2>
+          {!selectedContract ? (
+            <div className="text-center py-12 text-gray-500">
+              <p>Select a contract to view details</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <h3 className="text-xl font-semibold text-gray-800 mb-4">{selectedContract.name}</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <div className="text-sm font-medium text-gray-600">Counterparty</div>
+                  <div className="text-gray-900">{selectedContract.counterparty}</div>
                 </div>
-                <div style={{ marginTop: '20px' }}>
-                  <div style={{ fontWeight: '500', color: '#4a5568', marginBottom: '10px' }}>
+                <div className="space-y-2">
+                  <div className="text-sm font-medium text-gray-600">Category</div>
+                  <div className="text-gray-900">{selectedContract.category}</div>
+                </div>
+                <div className="space-y-2">
+                  <div className="text-sm font-medium text-gray-600">Contract Period</div>
+                  <div className="text-gray-900">{selectedContract.startDate} to {selectedContract.endDate}</div>
+                </div>
+                <div className="space-y-2">
+                  <div className="text-sm font-medium text-gray-600">Strike Price</div>
+                  <div className="text-gray-900">${selectedContract.strikePrice}/MWh</div>
+                </div>
+                <div className="space-y-2">
+                  <div className="text-sm font-medium text-gray-600">Indexation</div>
+                  <div className="text-gray-900">{selectedContract.indexation}</div>
+                </div>
+                <div className="space-y-2">
+                  <div className="text-sm font-medium text-gray-600">Reference Date</div>
+                  <div className="text-gray-900">{selectedContract.referenceDate}</div>
+                </div>
+              </div>
+              
+              {/* Monthly Volume Profile */}
+              {volumeShapes[selectedContract.volumeShape] && (
+                <div className="mt-6">
+                  <div className="text-sm font-medium text-gray-600 mb-3">
                     Monthly Volume Profile ({selectedContract.volumeShape})
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '8px', fontSize: '0.8rem' }}>
+                  <div className="grid grid-cols-6 gap-2 text-xs">
                     {volumeShapes[selectedContract.volumeShape].map((pct, i) => (
-                      <div key={i} style={{ background: '#f7fafc', padding: '8px', borderRadius: '4px', textAlign: 'center' }}>
-                        <div style={{ fontWeight: '500' }}>
+                      <div key={i} className="bg-gray-50 p-2 rounded text-center">
+                        <div className="font-medium text-gray-800">
                           {['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][i]}
                         </div>
-                        <div style={{ color: '#4299e1' }}>{pct.toFixed(1)}%</div>
+                        <div className="text-blue-600 font-medium">{pct.toFixed(1)}%</div>
                       </div>
                     ))}
                   </div>
                 </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Right Panel - Charts */}
+      <div className="space-y-6">
+        
+        {/* Volume Chart */}
+        <div className="bg-white rounded-xl p-6 shadow-md border border-gray-200">
+          <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-3">
+            📈 Portfolio Volume Analysis
+          </h2>
+          <div className="h-80">
+            {contracts.length > 0 ? (
+              <Line data={createVolumeChartData()} options={chartOptions} />
+            ) : (
+              <div className="flex items-center justify-center h-full text-gray-500">
+                <p>Add contracts to see volume analysis</p>
               </div>
             )}
           </div>
-        </div>
-      </div>
-
-      <div className="chart-container">
-        <h2>📈 Portfolio Volume Analysis</h2>
-        <div className="chart-wrapper">
           {contracts.length > 0 && (
-            <Chart data={createVolumeChartData()} options={chartOptions} />
-          )}
-        </div>
-        <div className="chart-legend">
-          {contracts.map((contract, index) => (
-            <div key={contract._id || contract.id || index} className="legend-item">
-              <div 
-                className="legend-color" 
-                style={{ backgroundColor: getContractColor(contract, index) }}
-              ></div>
-              <span>{contract.name} ({contract.annualVolume.toLocaleString()} MWh/yr)</span>
+            <div className="mt-4 flex flex-wrap gap-4">
+              {contracts.map((contract, index) => (
+                <div key={contract._id || contract.id || index} className="flex items-center gap-2 text-sm">
+                  <div 
+                    className="w-4 h-4 rounded"
+                    style={{ backgroundColor: getContractColor(contract, index) }}
+                  ></div>
+                  <span className="text-gray-700">{contract.name} ({contract.annualVolume.toLocaleString()} MWh/yr)</span>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="chart-container" style={{ gridColumn: '1 / -1' }}>
-        <h2>💰 Net MtM Earnings</h2>
-        <div className="chart-wrapper">
-          {contracts.length > 0 && (
-            <Chart data={createMtMChartData()} options={mtmChartOptions} />
           )}
         </div>
-        <div className="chart-legend">
-          {contracts.map((contract, index) => {
-            // Calculate total annual MtM for the legend
-            const volumeProfile = volumeShapes[contract.volumeShape];
-            const statePrices = marketPrices[contract.state] || marketPrices.NSW;
-            
-            let totalMtM = 0;
-            volumeProfile.forEach((pct, monthIndex) => {
-              const volume = contract.annualVolume * pct / 100;
-              const strikeValue = volume * contract.strikePrice;
-              const marketValue = volume * statePrices[monthIndex];
-              
-              let netMtM;
-              if (contract.type === 'retail') {
-                netMtM = strikeValue - marketValue;
-              } else {
-                netMtM = marketValue - strikeValue;
-              }
-              totalMtM += netMtM;
-            });
-            
-            return (
-              <div key={contract._id || contract.id || index} className="legend-item">
-                <div 
-                  className="legend-color" 
-                  style={{ backgroundColor: getContractColor(contract, index) }}
-                ></div>
-                <span>{contract.name} ({totalMtM >= 0 ? '+' : ''}${totalMtM.toLocaleString()})</span>
+
+        {/* MtM Chart */}
+        <div className="bg-white rounded-xl p-6 shadow-md border border-gray-200">
+          <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-3">
+            💰 Net MtM Earnings
+          </h2>
+          <div className="h-80">
+            {contracts.length > 0 ? (
+              <Line data={createMtMChartData()} options={mtmChartOptions} />
+            ) : (
+              <div className="flex items-center justify-center h-full text-gray-500">
+                <p>Add contracts to see MtM analysis</p>
               </div>
-            );
-          })}
+            )}
+          </div>
+          {contracts.length > 0 && (
+            <div className="mt-4 flex flex-wrap gap-4">
+              {contracts.map((contract, index) => {
+                // Calculate total annual MtM for the legend
+                const volumeProfile = volumeShapes[contract.volumeShape] || [];
+                const statePrices = marketPrices[contract.state] || marketPrices.NSW || [];
+                
+                let totalMtM = 0;
+                volumeProfile.forEach((pct, monthIndex) => {
+                  const volume = contract.annualVolume * pct / 100;
+                  const strikeValue = volume * contract.strikePrice;
+                  const marketValue = volume * (statePrices[monthIndex] || 0);
+                  
+                  let netMtM;
+                  if (contract.type === 'retail') {
+                    netMtM = strikeValue - marketValue;
+                  } else {
+                    netMtM = marketValue - strikeValue;
+                  }
+                  totalMtM += netMtM;
+                });
+                
+                return (
+                  <div key={contract._id || contract.id || index} className="flex items-center gap-2 text-sm">
+                    <div 
+                      className="w-4 h-4 rounded"
+                      style={{ backgroundColor: getContractColor(contract, index) }}
+                    ></div>
+                    <span className="text-gray-700">
+                      {contract.name} ({totalMtM >= 0 ? '+' : ''}${totalMtM.toLocaleString()})
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
     </div>

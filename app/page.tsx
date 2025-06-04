@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Head from 'next/head';
 
-// Import tab components (we'll create these next)
+// Import tab components
 import ContractSummaryTab from './components/ContractSummaryTab';
 import ContractInputTab from './components/ContractInputTab';
 import PriceCurveTab from './components/PriceCurveTab';
@@ -216,9 +216,10 @@ export default function EnergyContractManagement() {
 
   if (isInitialLoading) {
     return (
-      <div className="container">
-        <div className="loading" style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div>Loading Energy Contract Management System...</div>
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="loading mb-4"></div>
+          <div className="text-gray-600">Loading Energy Contract Management System...</div>
         </div>
       </div>
     );
@@ -233,19 +234,26 @@ export default function EnergyContractManagement() {
         <link rel="icon" href="/favicon.ico" />
       </Head>
 
-      <div className="container">
-        <div className="header">
-          <h1>Energy Contract Management System</h1>
-          <p>Manage wholesale, retail, and offtake energy contracts with flexible volume profiling and time series output</p>
+      <div className="max-w-7xl mx-auto p-5">
+        {/* Header */}
+        <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white p-8 rounded-xl mb-8 shadow-lg">
+          <h1 className="text-4xl font-bold mb-3">Energy Contract Management System</h1>
+          <p className="text-blue-100 text-lg">
+            Manage wholesale, retail, and offtake energy contracts with flexible volume profiling and time series output
+          </p>
         </div>
 
         {/* Tab Navigation */}
-        <div className="tab-navigation">
-          <div className="tab-buttons">
+        <div className="bg-white rounded-xl p-2 shadow-md border border-gray-200 mb-8">
+          <div className="flex gap-1 overflow-x-auto">
             {tabs.map((tab) => (
               <button
                 key={tab.id}
-                className={`tab-button ${activeTab === tab.id ? 'active' : ''}`}
+                className={`px-5 py-3 rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${
+                  activeTab === tab.id
+                    ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-md'
+                    : 'text-gray-600 hover:bg-gray-100 hover:text-gray-800'
+                }`}
                 onClick={() => setActiveTab(tab.id)}
               >
                 {tab.label}
@@ -255,7 +263,7 @@ export default function EnergyContractManagement() {
         </div>
 
         {/* Tab Content */}
-        <div className="tab-content">
+        <div className="min-h-96">
           {activeTab === 'summary' && <ContractSummaryTab {...commonProps} />}
           {activeTab === 'input' && <ContractInputTab {...commonProps} />}
           {activeTab === 'price-curve' && <PriceCurveTab {...commonProps} />}

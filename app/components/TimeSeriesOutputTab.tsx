@@ -243,39 +243,49 @@ export default function TimeSeriesOutputTab({
   };
 
   return (
-    <div className="timeseries-container">
+    <div className="space-y-8">
       {/* Generation Controls */}
-      <div className="controls">
-        <h3>🔧 Time Series Generation Controls</h3>
+      <div className="bg-white rounded-xl p-6 shadow-md border border-gray-200">
+        <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-3">
+          🔧 Time Series Generation Controls
+        </h2>
         
-        <div className="control-sections">
+        <div className="space-y-6">
           {/* Contract Selection */}
-          <div className="control-section">
-            <h4>Contract Selection</h4>
-            <div className="contract-selection">
-              <div className="selection-actions">
-                <button className="btn-small btn-primary" onClick={selectAllContracts}>
+          <div>
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">Contract Selection</h3>
+            <div className="bg-gray-50 rounded-lg p-4 space-y-4">
+              <div className="flex flex-wrap items-center gap-4">
+                <button 
+                  onClick={selectAllContracts}
+                  className="bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors"
+                >
                   Select All
                 </button>
-                <button className="btn-small btn-secondary" onClick={clearSelection}>
+                <button 
+                  onClick={clearSelection}
+                  className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors"
+                >
                   Clear All
                 </button>
-                <span className="selection-count">
+                <span className="text-sm text-gray-600 font-medium">
                   {selectedContracts.length === 0 ? 'All contracts' : `${selectedContracts.length} selected`}
                 </span>
               </div>
               
-              <div className="contract-checkboxes">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 max-h-48 overflow-y-auto">
                 {contracts.map(contract => (
-                  <label key={contract._id || contract.id} className="contract-checkbox">
+                  <label key={contract._id || contract.id} className="flex items-center gap-3 p-3 bg-white rounded-lg border border-gray-200 hover:bg-gray-50 cursor-pointer transition-colors">
                     <input
                       type="checkbox"
                       checked={selectedContracts.includes(contract._id || contract.id?.toString() || '')}
                       onChange={() => handleContractToggle(contract._id || contract.id?.toString() || '')}
+                      className="rounded text-blue-500 focus:ring-blue-500"
                     />
-                    <span className="checkbox-label">
-                      {contract.name} ({contract.state})
-                    </span>
+                    <div>
+                      <div className="font-medium text-gray-900 text-sm">{contract.name}</div>
+                      <div className="text-xs text-gray-500">({contract.state})</div>
+                    </div>
                   </label>
                 ))}
               </div>
@@ -283,12 +293,19 @@ export default function TimeSeriesOutputTab({
           </div>
 
           {/* Parameters */}
-          <div className="control-section">
-            <h4>Generation Parameters</h4>
-            <div className="parameter-grid">
-              <div className="form-group">
-                <label htmlFor="yearSelect">Financial Year</label>
-                <select id="yearSelect" value={year} onChange={(e) => setYear(e.target.value)}>
+          <div>
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">Generation Parameters</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div>
+                <label htmlFor="yearSelect" className="block text-sm font-medium text-gray-700 mb-2">
+                  Financial Year
+                </label>
+                <select 
+                  id="yearSelect" 
+                  value={year} 
+                  onChange={(e) => setYear(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
                   <option value="2024">FY 2024</option>
                   <option value="2025">FY 2025</option>
                   <option value="2026">FY 2026</option>
@@ -297,9 +314,16 @@ export default function TimeSeriesOutputTab({
                 </select>
               </div>
               
-              <div className="form-group">
-                <label htmlFor="intervalSelect">Time Interval</label>
-                <select id="intervalSelect" value={interval} onChange={(e) => setInterval(e.target.value)}>
+              <div>
+                <label htmlFor="intervalSelect" className="block text-sm font-medium text-gray-700 mb-2">
+                  Time Interval
+                </label>
+                <select 
+                  id="intervalSelect" 
+                  value={interval} 
+                  onChange={(e) => setInterval(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
                   <option value="M">Monthly</option>
                   <option value="Y">Yearly</option>
                   <option value="D" disabled>Daily (Coming Soon)</option>
@@ -308,9 +332,16 @@ export default function TimeSeriesOutputTab({
                 </select>
               </div>
               
-              <div className="form-group">
-                <label htmlFor="scenarioSelect">Scenario</label>
-                <select id="scenarioSelect" value={scenario} onChange={(e) => setScenario(e.target.value)}>
+              <div>
+                <label htmlFor="scenarioSelect" className="block text-sm font-medium text-gray-700 mb-2">
+                  Scenario
+                </label>
+                <select 
+                  id="scenarioSelect" 
+                  value={scenario} 
+                  onChange={(e) => setScenario(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
                   <option value="Central">Central</option>
                   <option value="High">High</option>
                   <option value="Low">Low</option>
@@ -318,8 +349,12 @@ export default function TimeSeriesOutputTab({
                 </select>
               </div>
               
-              <div className="form-group">
-                <button className="btn btn-primary" onClick={generateTimeSeries} disabled={isLoading}>
+              <div className="flex items-end">
+                <button 
+                  onClick={generateTimeSeries} 
+                  disabled={isLoading}
+                  className="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white px-6 py-2 rounded-lg font-medium hover:from-blue-600 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+                >
                   {isLoading ? 'Generating...' : 'Generate Time Series'}
                 </button>
               </div>
@@ -327,25 +362,34 @@ export default function TimeSeriesOutputTab({
           </div>
 
           {/* Export Options */}
-          <div className="control-section">
-            <h4>Export Options</h4>
-            <div className="export-controls">
-              <div className="form-group">
-                <label htmlFor="exportFormat">Export Format</label>
-                <select id="exportFormat" value={exportFormat} onChange={(e) => setExportFormat(e.target.value)}>
+          <div>
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">Export Options</h3>
+            <div className="flex flex-wrap items-center gap-4">
+              <div>
+                <label htmlFor="exportFormat" className="block text-sm font-medium text-gray-700 mb-2">
+                  Export Format
+                </label>
+                <select 
+                  id="exportFormat" 
+                  value={exportFormat} 
+                  onChange={(e) => setExportFormat(e.target.value)}
+                  className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
                   <option value="csv">CSV</option>
                   <option value="json">JSON</option>
                   <option value="excel" disabled>Excel (Coming Soon)</option>
                 </select>
               </div>
               
-              <button 
-                className="btn btn-success" 
-                onClick={exportData}
-                disabled={timeSeriesData.length === 0}
-              >
-                📊 Export Data
-              </button>
+              <div className="flex items-end">
+                <button 
+                  onClick={exportData}
+                  disabled={timeSeriesData.length === 0}
+                  className="bg-green-500 text-white px-6 py-2 rounded-lg font-medium hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 flex items-center gap-2"
+                >
+                  📊 Export Data
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -353,105 +397,121 @@ export default function TimeSeriesOutputTab({
 
       {/* Summary Statistics */}
       {timeSeriesData.length > 0 && (
-        <div className="card summary-panel">
-          <h2>📈 Generation Summary</h2>
-          <div className="summary-grid">
-            <div className="summary-stat">
-              <span className="stat-label">Total Rows:</span>
-              <span className="stat-value">{summaryStats.totalRows.toLocaleString()}</span>
+        <div className="bg-white rounded-xl p-6 shadow-md border border-gray-200">
+          <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-3">
+            📈 Generation Summary
+          </h2>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+            <div className="bg-blue-50 rounded-lg p-4 text-center">
+              <div className="text-2xl font-bold text-blue-600">{summaryStats.totalRows.toLocaleString()}</div>
+              <div className="text-sm text-gray-600 font-medium">Total Rows</div>
             </div>
-            <div className="summary-stat">
-              <span className="stat-label">Total Volume:</span>
-              <span className="stat-value">{summaryStats.totalVolume.toLocaleString()} MWh</span>
+            <div className="bg-green-50 rounded-lg p-4 text-center">
+              <div className="text-2xl font-bold text-green-600">{summaryStats.totalVolume.toLocaleString()}</div>
+              <div className="text-sm text-gray-600 font-medium">Total Volume (MWh)</div>
             </div>
-            <div className="summary-stat">
-              <span className="stat-label">Net MtM:</span>
-              <span className={`stat-value ${summaryStats.totalMtM >= 0 ? 'positive' : 'negative'}`}>
+            <div className="bg-purple-50 rounded-lg p-4 text-center">
+              <div className={`text-2xl font-bold ${summaryStats.totalMtM >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                 {summaryStats.totalMtM >= 0 ? '+' : ''}${summaryStats.totalMtM.toLocaleString()}
-              </span>
+              </div>
+              <div className="text-sm text-gray-600 font-medium">Net MtM</div>
             </div>
-            <div className="summary-stat">
-              <span className="stat-label">Contracts:</span>
-              <span className="stat-value">{summaryStats.uniqueContracts}</span>
+            <div className="bg-yellow-50 rounded-lg p-4 text-center">
+              <div className="text-2xl font-bold text-yellow-600">{summaryStats.uniqueContracts}</div>
+              <div className="text-sm text-gray-600 font-medium">Contracts</div>
             </div>
-            <div className="summary-stat">
-              <span className="stat-label">States:</span>
-              <span className="stat-value">{summaryStats.uniqueStates}</span>
+            <div className="bg-indigo-50 rounded-lg p-4 text-center">
+              <div className="text-2xl font-bold text-indigo-600">{summaryStats.uniqueStates}</div>
+              <div className="text-sm text-gray-600 font-medium">States</div>
             </div>
-            <div className="summary-stat">
-              <span className="stat-label">Period:</span>
-              <span className="stat-value">{year} ({interval === 'M' ? 'Monthly' : 'Yearly'})</span>
+            <div className="bg-gray-50 rounded-lg p-4 text-center">
+              <div className="text-2xl font-bold text-gray-600">{year}</div>
+              <div className="text-sm text-gray-600 font-medium">{interval === 'M' ? 'Monthly' : 'Yearly'}</div>
             </div>
           </div>
         </div>
       )}
 
       {/* Data Output Table */}
-      <div className="output-section">
-        <div className="output-header">
-          <h2>📈 Time Series Output</h2>
+      <div className="bg-white rounded-xl p-6 shadow-md border border-gray-200">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-3">
+            📈 Time Series Output
+          </h2>
           {timeSeriesData.length > 0 && (
-            <div className="output-actions">
-              <button className="btn-small btn-info" onClick={() => window.print()}>
+            <div className="flex gap-2">
+              <button 
+                onClick={() => window.print()}
+                className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors flex items-center gap-2"
+              >
                 🖨️ Print
               </button>
-              <button className="btn-small btn-success" onClick={exportData}>
+              <button 
+                onClick={exportData}
+                className="bg-green-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-600 transition-colors flex items-center gap-2"
+              >
                 📊 Export
               </button>
             </div>
           )}
         </div>
         
-        <div className="table-container">
-          <table className="output-table">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
             <thead>
-              <tr>
-                <th>Buy/Sell</th>
-                <th>Deal Name</th>
-                <th>State</th>
-                <th>Type</th>
-                <th>Month</th>
-                <th>Year</th>
-                <th>FY</th>
-                <th>Unit</th>
-                <th>Scenario</th>
-                <th>Sub Type</th>
-                <th>Volume %</th>
-                <th>Volume (MWh)</th>
-                <th>Strike Price</th>
-                <th>Strike Price × Volume</th>
-                <th>Market Price</th>
-                <th>Market Price × Volume</th>
-                <th>Net MtM</th>
+              <tr className="bg-gray-50 border-b border-gray-200">
+                <th className="text-left p-3 font-semibold text-gray-700">Buy/Sell</th>
+                <th className="text-left p-3 font-semibold text-gray-700">Deal Name</th>
+                <th className="text-left p-3 font-semibold text-gray-700">State</th>
+                <th className="text-left p-3 font-semibold text-gray-700">Type</th>
+                <th className="text-left p-3 font-semibold text-gray-700">Month</th>
+                <th className="text-left p-3 font-semibold text-gray-700">Year</th>
+                <th className="text-left p-3 font-semibold text-gray-700">FY</th>
+                <th className="text-left p-3 font-semibold text-gray-700">Unit</th>
+                <th className="text-left p-3 font-semibold text-gray-700">Scenario</th>
+                <th className="text-left p-3 font-semibold text-gray-700">Sub Type</th>
+                <th className="text-left p-3 font-semibold text-gray-700">Volume %</th>
+                <th className="text-left p-3 font-semibold text-gray-700">Volume (MWh)</th>
+                <th className="text-left p-3 font-semibold text-gray-700">Strike Price</th>
+                <th className="text-left p-3 font-semibold text-gray-700">Strike Price × Volume</th>
+                <th className="text-left p-3 font-semibold text-gray-700">Market Price</th>
+                <th className="text-left p-3 font-semibold text-gray-700">Market Price × Volume</th>
+                <th className="text-left p-3 font-semibold text-gray-700">Net MtM</th>
               </tr>
             </thead>
             <tbody>
               {timeSeriesData.length === 0 ? (
                 <tr>
-                  <td colSpan={17} className="no-data">
+                  <td colSpan={17} className="text-center py-12 text-gray-500">
                     Click "Generate Time Series" to see output data
                   </td>
                 </tr>
               ) : (
                 timeSeriesData.map((row, index) => (
-                  <tr key={index}>
-                    <td>{row.buysell}</td>
-                    <td>{row.deal_name}</td>
-                    <td>{row.state}</td>
-                    <td>{row.type}</td>
-                    <td>{row.month_start}</td>
-                    <td>{row.year}</td>
-                    <td>{row.fy}</td>
-                    <td>{row.unit}</td>
-                    <td>{row.scenario}</td>
-                    <td>{row.sub_type}</td>
-                    <td>{row.volume_pct.toFixed(1)}%</td>
-                    <td>{parseFloat(row.volume_mwh).toLocaleString()}</td>
-                    <td>${row.strike_price.toFixed(2)}</td>
-                    <td>${row.strike_price_x_volume.toLocaleString()}</td>
-                    <td>${row.market_price.toFixed(2)}</td>
-                    <td>${row.market_price_x_volume.toLocaleString()}</td>
-                    <td className={row.net_mtm >= 0 ? 'positive' : 'negative'}>
+                  <tr key={index} className="border-b border-gray-100 hover:bg-gray-50">
+                    <td className="p-3">
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        row.buysell === 'Buy' ? 'bg-blue-100 text-blue-800' : 'bg-orange-100 text-orange-800'
+                      }`}>
+                        {row.buysell}
+                      </span>
+                    </td>
+                    <td className="p-3 font-medium text-gray-900">{row.deal_name}</td>
+                    <td className="p-3">{row.state}</td>
+                    <td className="p-3">{row.type}</td>
+                    <td className="p-3">{row.month_start}</td>
+                    <td className="p-3">{row.year}</td>
+                    <td className="p-3">{row.fy}</td>
+                    <td className="p-3">{row.unit}</td>
+                    <td className="p-3">{row.scenario}</td>
+                    <td className="p-3">{row.sub_type}</td>
+                    <td className="p-3">{row.volume_pct.toFixed(1)}%</td>
+                    <td className="p-3 font-medium">{parseFloat(row.volume_mwh).toLocaleString()}</td>
+                    <td className="p-3">${row.strike_price.toFixed(2)}</td>
+                    <td className="p-3">${row.strike_price_x_volume.toLocaleString()}</td>
+                    <td className="p-3">${row.market_price.toFixed(2)}</td>
+                    <td className="p-3">${row.market_price_x_volume.toLocaleString()}</td>
+                    <td className={`p-3 font-semibold ${row.net_mtm >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                       ${row.net_mtm.toLocaleString()}
                     </td>
                   </tr>
