@@ -28,6 +28,7 @@ interface ContractInputTabProps {
   addContract: (contract: Omit<Contract, '_id'>) => Promise<Contract>;
   updateContract: (contract: Contract) => Promise<Contract>;
   deleteContract: (contractId: string) => Promise<void>;
+  volumeShapes: { [key: string]: number[] };
 }
 
 const defaultContract: Omit<Contract, '_id'> = {
@@ -47,6 +48,20 @@ const defaultContract: Omit<Contract, '_id'> = {
   referenceDate: '',
 };
 
+// Default categories that can be expanded through settings
+const defaultCategories = [
+  'Solar Farm',
+  'Wind Farm', 
+  'Battery Storage',
+  'Retail Customer',
+  'Industrial Customer',
+  'Government Customer',
+  'Swap',
+  'Cap',
+  'Floor',
+  'Other'
+];
+
 export default function ContractInputTab({
   contracts,
   selectedContract,
@@ -54,6 +69,7 @@ export default function ContractInputTab({
   addContract,
   updateContract,
   deleteContract,
+  volumeShapes,
 }: ContractInputTabProps) {
   const [formData, setFormData] = useState<Omit<Contract, '_id'>>(defaultContract);
   const [isEditing, setIsEditing] = useState(false);
@@ -66,7 +82,7 @@ export default function ContractInputTab({
     { value: 'wholesale', label: 'Wholesale' },
     { value: 'offtake', label: 'Offtake' }
   ];
-  const volumeShapes = [
+  const volumeShapeOptions = [
     { value: 'flat', label: 'Flat' },
     { value: 'solar', label: 'Solar' },
     { value: 'wind', label: 'Wind' },
@@ -85,6 +101,12 @@ export default function ContractInputTab({
     'Escalation 2%',
     'Escalation 3%'
   ];
+  const unitTypes = [
+    { value: 'Energy', label: 'Energy' },
+    { value: 'Green', label: 'Green' }
+  ];
+
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
@@ -134,7 +156,6 @@ export default function ContractInputTab({
       handleCancelEdit();
     } catch (error) {
       console.error('Error saving contract:', error);
-      // You might want to show a toast notification here
     } finally {
       setIsSaving(false);
     }
@@ -166,10 +187,20 @@ export default function ContractInputTab({
     setErrors({});
   };
 
+  const handleRowClick = (contract: Contract) => {
+    setSelectedContract(contract);
+  };
+
+  // Calculate monthly volumes for display
+  const getMonthlyVolumes = (contract: Contract) => {
+    const volumeProfile = volumeShapes[contract.volumeShape] || volumeShapes.flat;
+    return volumeProfile.map(pct => (contract.annualVolume * pct / 100));
+  };
+
   return (
     <div className="contract-input-container">
-      <div className="input-grid">
-        {/* Contract Form */}
+      <div className="input-layout">
+        {/* Left side - Contract Form */}
         <div className="card contract-form">
           <h2>
             {isEditing ? '✏️ Edit Contract' : '➕ Add New Contract'}
@@ -204,14 +235,17 @@ export default function ContractInputTab({
 
             <div className="form-group">
               <label htmlFor="category">Category *</label>
-              <input
+              <select
                 id="category"
-                type="text"
                 value={formData.category}
                 onChange={(e) => handleInputChange('category', e.target.value)}
                 className={errors.category ? 'error' : ''}
-                placeholder="e.g., Solar Farm, Wind Farm, Retail Customer"
-              />
+              >
+                <option value="">Select category...</option>
+                {defaultCategories.map(category => (
+                  <option key={category} value={category}>{category}</option>
+                ))}
+              </select>
               {errors.category && <span className="error-text">{errors.category}</span>}
             </div>
 
@@ -296,13 +330,26 @@ export default function ContractInputTab({
             </div>
 
             <div className="form-group">
+              <label htmlFor="unit">Unit</label>
+              <select
+                id="unit"
+                value={formData.unit}
+                onChange={(e) => handleInputChange('unit', e.target.value)}
+              >
+                {unitTypes.map(unit => (
+                  <option key={unit.value} value={unit.value}>{unit.label}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="form-group">
               <label htmlFor="volumeShape">Volume Shape</label>
               <select
                 id="volumeShape"
                 value={formData.volumeShape}
                 onChange={(e) => handleInputChange('volumeShape', e.target.value)}
               >
-                {volumeShapes.map(shape => (
+                {volumeShapeOptions.map(shape => (
                   <option key={shape.value} value={shape.value}>{shape.label}</option>
                 ))}
               </select>
@@ -343,17 +390,6 @@ export default function ContractInputTab({
                 onChange={(e) => handleInputChange('referenceDate', e.target.value)}
               />
             </div>
-
-            <div className="form-group">
-              <label htmlFor="unit">Unit</label>
-              <input
-                id="unit"
-                type="text"
-                value={formData.unit}
-                onChange={(e) => handleInputChange('unit', e.target.value)}
-                placeholder="Energy"
-              />
-            </div>
           </div>
 
           <div className="form-actions">
@@ -376,72 +412,137 @@ export default function ContractInputTab({
           </div>
         </div>
 
-        {/* Contract List */}
-        <div className="card contract-list-panel">
-          <h2>📋 Existing Contracts</h2>
-          <div className="contract-list">
-            {contracts.length === 0 ? (
-              <p style={{ color: '#718096', textAlign: 'center', padding: '40px 0' }}>
-                No contracts found. Add your first contract using the form.
-              </p>
-            ) : (
-              contracts.map((contract, index) => (
-                <div 
-                  key={contract._id || contract.id || index}
-                  className={`contract-item ${selectedContract && (selectedContract._id === contract._id || selectedContract.id === contract.id) ? 'selected' : ''}`}
-                >
-                  <div className="contract-header">
-                    <div className="contract-name">
+        {/* Right side - Annual Volume Preview */}
+        <div className="card volume-preview">
+          <h2>📊 Volume Preview</h2>
+          {formData.annualVolume > 0 ? (
+            <div className="volume-preview-content">
+              <div className="annual-summary">
+                <div className="summary-item">
+                  <span className="summary-label">Annual Volume:</span>
+                  <span className="summary-value">{formData.annualVolume.toLocaleString()} MWh</span>
+                </div>
+                <div className="summary-item">
+                  <span className="summary-label">Volume Shape:</span>
+                  <span className="summary-value">{formData.volumeShape.charAt(0).toUpperCase() + formData.volumeShape.slice(1)}</span>
+                </div>
+                <div className="summary-item">
+                  <span className="summary-label">Unit:</span>
+                  <span className="summary-value">{formData.unit}</span>
+                </div>
+              </div>
+              
+              <div className="monthly-breakdown">
+                <h4>Monthly Volume Distribution</h4>
+                <div className="monthly-grid">
+                  {months.map((month, index) => {
+                    const volumeProfile = volumeShapes[formData.volumeShape] || volumeShapes.flat;
+                    const monthlyVolume = formData.annualVolume * volumeProfile[index] / 100;
+                    const percentage = volumeProfile[index];
+                    
+                    return (
+                      <div key={month} className="monthly-item">
+                        <div className="month-label">{month}</div>
+                        <div className="month-percentage">{percentage.toFixed(1)}%</div>
+                        <div className="month-volume">{monthlyVolume.toLocaleString()} MWh</div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="no-preview">
+              <p>Enter an annual volume to see the monthly distribution preview</p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Contract List Table */}
+      <div className="card contracts-table">
+        <h2>📋 Existing Contracts</h2>
+        {contracts.length === 0 ? (
+          <div className="no-contracts">
+            <p>No contracts found. Add your first contract using the form above.</p>
+          </div>
+        ) : (
+          <div className="table-container">
+            <table className="contracts-table-element">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Type</th>
+                  <th>Category</th>
+                  <th>State</th>
+                  <th>Counterparty</th>
+                  <th>Annual Volume</th>
+                  <th>Strike Price</th>
+                  <th>Period</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {contracts.map((contract, index) => (
+                  <tr 
+                    key={contract._id || contract.id || index}
+                    className={`table-row ${selectedContract && (selectedContract._id === contract._id || selectedContract.id === contract.id) ? 'selected' : ''}`}
+                    onClick={() => handleRowClick(contract)}
+                  >
+                    <td className="contract-name-cell">
                       <span className={`status-indicator status-${contract.status}`}></span>
                       {contract.name}
-                    </div>
-                    <div className={`contract-type ${contract.type}`}>{contract.type.toUpperCase()}</div>
-                  </div>
-                  <div className="contract-details">
-                    <div className="detail-item">
-                      <div className="detail-label">Counterparty</div>
-                      <div>{contract.counterparty}</div>
-                    </div>
-                    <div className="detail-item">
-                      <div className="detail-label">State</div>
-                      <div>{contract.state}</div>
-                    </div>
-                    <div className="detail-item">
-                      <div className="detail-label">Volume</div>
-                      <div>{contract.annualVolume.toLocaleString()} MWh</div>
-                    </div>
-                    <div className="detail-item">
-                      <div className="detail-label">Strike Price</div>
-                      <div>${contract.strikePrice}/MWh</div>
-                    </div>
-                    <div className="detail-item">
-                      <div className="detail-label">Period</div>
-                      <div>{contract.startDate} to {contract.endDate}</div>
-                    </div>
-                    <div className="detail-item">
-                      <div className="detail-label">Volume Shape</div>
-                      <div>{contract.volumeShape.charAt(0).toUpperCase() + contract.volumeShape.slice(1)}</div>
-                    </div>
-                  </div>
-                  <div className="contract-actions">
-                    <button 
-                      className="btn-small btn-edit"
-                      onClick={() => handleEditContract(contract)}
-                    >
-                      Edit
-                    </button>
-                    <button 
-                      className="btn-small btn-delete"
-                      onClick={() => handleDeleteContract(contract)}
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </div>
-              ))
-            )}
+                    </td>
+                    <td>
+                      <span className={`contract-type-badge ${contract.type}`}>
+                        {contract.type.toUpperCase()}
+                      </span>
+                    </td>
+                    <td>{contract.category}</td>
+                    <td>{contract.state}</td>
+                    <td>{contract.counterparty}</td>
+                    <td>{contract.annualVolume.toLocaleString()} MWh</td>
+                    <td>${contract.strikePrice}/MWh</td>
+                    <td>
+                      <div className="period-cell">
+                        <div>{contract.startDate}</div>
+                        <div>to {contract.endDate}</div>
+                      </div>
+                    </td>
+                    <td>
+                      <span className={`status-badge status-${contract.status}`}>
+                        {contract.status.charAt(0).toUpperCase() + contract.status.slice(1)}
+                      </span>
+                    </td>
+                    <td>
+                      <div className="action-buttons">
+                        <button 
+                          className="btn-small btn-edit"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEditContract(contract);
+                          }}
+                        >
+                          Edit
+                        </button>
+                        <button 
+                          className="btn-small btn-delete"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteContract(contract);
+                          }}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
