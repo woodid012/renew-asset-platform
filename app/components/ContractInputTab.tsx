@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 interface Contract {
   _id?: string;
@@ -19,6 +19,12 @@ interface Contract {
   status: 'active' | 'pending';
   indexation: string;
   referenceDate: string;
+  // New fields
+  pricingType?: 'fixed' | 'escalation' | 'timeseries';
+  escalationRate?: number;
+  priceTimeSeries?: number[];
+  priceInterval?: 'monthly' | 'quarterly' | 'yearly';
+  productDetail?: 'CY' | 'FY' | 'Q1' | 'Q2' | 'Q3' | 'Q4';
 }
 
 interface SettingsData {
@@ -61,6 +67,11 @@ const defaultContract: Omit<Contract, '_id'> = {
   status: 'active',
   indexation: 'Fixed',
   referenceDate: '',
+  pricingType: 'fixed',
+  escalationRate: 0,
+  priceTimeSeries: [],
+  priceInterval: 'monthly',
+  productDetail: 'CY',
 };
 
 const defaultCategories = {
@@ -131,7 +142,67 @@ export default function ContractInputTab({
     label: unit
   }));
 
+  const productDetails = [
+    { value: 'CY', label: 'Calendar Year' },
+    { value: 'FY', label: 'Financial Year' },
+    { value: 'Q1', label: 'Q1' },
+    { value: 'Q2', label: 'Q2' },
+    { value: 'Q3', label: 'Q3' },
+    { value: 'Q4', label: 'Q4' }
+  ];
+
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+  // Calculate contract length in years
+  const getContractLength = () => {
+    if (!formData?.startDate || !formData?.endDate) return 0;
+    const start = new Date(formData.startDate);
+    const end = new Date(formData.endDate);
+    const diffTime = Math.abs(end.getTime() - start.getTime());
+    const diffYears = diffTime / (1000 * 60 * 60 * 24 * 365.25);
+    return Math.round(diffYears * 10) / 10; // Round to 1 decimal place
+  };
+
+  // Calculate number of periods based on contract length and interval
+  const getNumberOfPeriods = () => {
+    const contractLength = getContractLength();
+    if (!contractLength || !formData?.priceInterval) return 0;
+    
+    switch (formData.priceInterval) {
+      case 'monthly': return Math.ceil(contractLength * 12);
+      case 'quarterly': return Math.ceil(contractLength * 4);
+      case 'yearly': return Math.ceil(contractLength);
+      default: return 0;
+    }
+  };
+
+  // Generate time series prices based on interval
+  const generateTimeSeries = () => {
+    const periods = getNumberOfPeriods();
+    const basePrice = formData?.strikePrice || 0;
+    const escalationRate = (formData?.escalationRate || 0) / 100;
+    
+    const prices: number[] = [];
+    for (let i = 0; i < periods; i++) {
+      let periodPrice = basePrice;
+      if (formData?.pricingType === 'escalation') {
+        // Apply escalation based on interval
+        const yearsElapsed = formData.priceInterval === 'monthly' ? i / 12 : 
+                            formData.priceInterval === 'quarterly' ? i / 4 : i;
+        periodPrice = basePrice * Math.pow(1 + escalationRate, yearsElapsed);
+      }
+      prices.push(Math.round(periodPrice * 100) / 100);
+    }
+    return prices;
+  };
+
+  // Update time series when relevant fields change
+  useEffect(() => {
+    if (formData && (formData.pricingType === 'escalation' || formData.pricingType === 'timeseries')) {
+      const newTimeSeries = generateTimeSeries();
+      setFormData(prev => prev ? { ...prev, priceTimeSeries: newTimeSeries } : null);
+    }
+  }, [formData?.startDate, formData?.endDate, formData?.strikePrice, formData?.escalationRate, formData?.priceInterval, formData?.pricingType]);
 
   // Get categories based on contract type
   const getAvailableCategories = (contractType: string) => {
@@ -139,6 +210,20 @@ export default function ContractInputTab({
       return settings.contractTypes[contractType as keyof typeof settings.contractTypes] || [];
     }
     return defaultCategories[contractType as keyof typeof defaultCategories] || [];
+  };
+
+  // Get volume unit label based on contract type
+  const getVolumeUnitLabel = () => {
+    return formData?.type === 'wholesale' ? 'Annual Volume (MW)' : 'Annual Volume (MWh)';
+  };
+
+  // Convert MW to MWh for wholesale contracts
+  const getAnnualMWh = () => {
+    if (formData?.type === 'wholesale') {
+      // Convert MW to MWh (MW * 8760 hours)
+      return formData.annualVolume * 8760;
+    }
+    return formData?.annualVolume || 0;
   };
 
   const validateForm = (): boolean => {
@@ -158,6 +243,10 @@ export default function ContractInputTab({
       newErrors.endDate = 'End date must be after start date';
     }
 
+    if (formData.pricingType === 'escalation' && !formData.referenceDate) {
+      newErrors.referenceDate = 'Reference date is required for escalation pricing';
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -166,9 +255,16 @@ export default function ContractInputTab({
     if (!formData) return;
     
     setFormData(prev => prev ? { ...prev, [field]: value } : null);
-    if (errors[field as string]) { // Cast field to string for Record<string, string> index
+    if (errors[field as string]) {
       setErrors(prev => ({ ...prev, [field as string]: '' }));
     }
+  };
+
+  const handlePriceTimeSeriesChange = (index: number, value: number) => {
+    if (!formData?.priceTimeSeries) return;
+    const newTimeSeries = [...formData.priceTimeSeries];
+    newTimeSeries[index] = value;
+    setFormData(prev => prev ? { ...prev, priceTimeSeries: newTimeSeries } : null);
   };
 
   const handleAddNew = () => {
@@ -318,7 +414,12 @@ export default function ContractInputTab({
                     <td className="p-4 text-gray-700">{contract.category}</td>
                     <td className="p-4 text-gray-700">{contract.state}</td>
                     <td className="p-4 text-gray-700">{contract.counterparty}</td>
-                    <td className="p-4 text-gray-700">{contract.annualVolume.toLocaleString()} MWh</td>
+                    <td className="p-4 text-gray-700">
+                      {contract.type === 'wholesale' 
+                        ? `${contract.annualVolume.toLocaleString()} MW`
+                        : `${contract.annualVolume.toLocaleString()} MWh`
+                      }
+                    </td>
                     <td className="p-4 text-gray-700">${contract.strikePrice}/MWh</td>
                     <td className="p-4 text-xs">
                       <div>{contract.startDate}</div>
@@ -362,7 +463,7 @@ export default function ContractInputTab({
       {/* Contract Form Modal */}
       {showForm && formData && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl max-w-6xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-xl max-w-7xl w-full max-h-[90vh] overflow-y-auto">
             <div className="sticky top-0 bg-white border-b border-gray-200 p-6">
               <div className="flex justify-between items-center">
                 <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-3">
@@ -445,6 +546,25 @@ export default function ContractInputTab({
                       {errors.category && <p className="mt-1 text-sm text-red-600">{errors.category}</p>}
                     </div>
 
+                    {/* Product Detail (for wholesale) */}
+                    {formData.type === 'wholesale' && (
+                      <div>
+                        <label htmlFor="productDetail" className="block text-sm font-medium text-gray-700 mb-2">
+                          Product Detail
+                        </label>
+                        <select
+                          id="productDetail"
+                          value={formData.productDetail || 'CY'}
+                          onChange={(e) => handleInputChange('productDetail', e.target.value as Contract['productDetail'])}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 hover:border-gray-400"
+                        >
+                          {productDetails.map(detail => (
+                            <option key={detail.value} value={detail.value}>{detail.label}</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+
                     {/* State */}
                     <div>
                       <label htmlFor="state" className="block text-sm font-medium text-gray-700 mb-2">
@@ -517,7 +637,7 @@ export default function ContractInputTab({
                     {/* Annual Volume */}
                     <div>
                       <label htmlFor="annualVolume" className="block text-sm font-medium text-gray-700 mb-2">
-                        Annual Volume (MWh) *
+                        {getVolumeUnitLabel()} *
                       </label>
                       <input
                         id="annualVolume"
@@ -527,31 +647,11 @@ export default function ContractInputTab({
                         className={`w-full px-4 py-2 border rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                           errors.annualVolume ? 'border-red-500 bg-red-50' : 'border-gray-300 hover:border-gray-400'
                         }`}
-                        placeholder="Enter annual volume"
+                        placeholder={`Enter annual volume in ${formData.type === 'wholesale' ? 'MW' : 'MWh'}`}
                         min="0"
                         step="1000"
                       />
                       {errors.annualVolume && <p className="mt-1 text-sm text-red-600">{errors.annualVolume}</p>}
-                    </div>
-
-                    {/* Strike Price */}
-                    <div>
-                      <label htmlFor="strikePrice" className="block text-sm font-medium text-gray-700 mb-2">
-                        Strike Price ($/MWh) *
-                      </label>
-                      <input
-                        id="strikePrice"
-                        type="number"
-                        value={formData.strikePrice || ''}
-                        onChange={(e) => handleInputChange('strikePrice', parseFloat(e.target.value) || 0)}
-                        className={`w-full px-4 py-2 border rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                          errors.strikePrice ? 'border-red-500 bg-red-50' : 'border-gray-300 hover:border-gray-400'
-                        }`}
-                        placeholder="Enter strike price"
-                        min="0"
-                        step="0.01"
-                      />
-                      {errors.strikePrice && <p className="mt-1 text-sm text-red-600">{errors.strikePrice}</p>}
                     </div>
 
                     {/* Unit */}
@@ -604,51 +704,170 @@ export default function ContractInputTab({
                         ))}
                       </select>
                     </div>
+                  </div>
 
-                    {/* Indexation */}
-                    <div>
-                      <label htmlFor="indexation" className="block text-sm font-medium text-gray-700 mb-2">
-                        Indexation
-                      </label>
-                      <select
-                        id="indexation"
-                        value={formData.indexation}
-                        onChange={(e) => handleInputChange('indexation', e.target.value)}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 hover:border-gray-400"
-                      >
-                        {indexationTypes.map(indexation => (
-                          <option key={indexation} value={indexation}>{indexation}</option>
-                        ))}
-                      </select>
-                    </div>
+                  {/* Pricing Section */}
+                  <div className="border-t border-gray-200 pt-6">
+                    <h4 className="text-md font-semibold text-gray-800 mb-4">💰 Pricing & Indexation</h4>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {/* Pricing Type */}
+                      <div className="md:col-span-2">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Pricing Type *
+                        </label>
+                        <div className="flex gap-4">
+                          <label className="flex items-center">
+                            <input
+                              type="radio"
+                              name="pricingType"
+                              value="fixed"
+                              checked={formData.pricingType === 'fixed'}
+                              onChange={(e) => handleInputChange('pricingType', e.target.value)}
+                              className="mr-2"
+                            />
+                            Fixed Price
+                          </label>
+                          <label className="flex items-center">
+                            <input
+                              type="radio"
+                              name="pricingType"
+                              value="escalation"
+                              checked={formData.pricingType === 'escalation'}
+                              onChange={(e) => handleInputChange('pricingType', e.target.value)}
+                              className="mr-2"
+                            />
+                            Escalation
+                          </label>
+                          <label className="flex items-center">
+                            <input
+                              type="radio"
+                              name="pricingType"
+                              value="timeseries"
+                              checked={formData.pricingType === 'timeseries'}
+                              onChange={(e) => handleInputChange('pricingType', e.target.value)}
+                              className="mr-2"
+                            />
+                            Time Series
+                          </label>
+                        </div>
+                      </div>
 
-                    {/* Reference Date */}
-                    <div>
-                      <label htmlFor="referenceDate" className="block text-sm font-medium text-gray-700 mb-2">
-                        Reference Date
-                      </label>
-                      <input
-                        id="referenceDate"
-                        type="date"
-                        value={formData.referenceDate}
-                        onChange={(e) => handleInputChange('referenceDate', e.target.value)}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 hover:border-gray-400"
-                      />
+                      {/* Strike Price */}
+                      <div>
+                        <label htmlFor="strikePrice" className="block text-sm font-medium text-gray-700 mb-2">
+                          {formData.pricingType === 'fixed' ? 'Strike Price ($/MWh)' : 'Base Price ($/MWh)'} *
+                        </label>
+                        <input
+                          id="strikePrice"
+                          type="number"
+                          value={formData.strikePrice || ''}
+                          onChange={(e) => handleInputChange('strikePrice', parseFloat(e.target.value) || 0)}
+                          className={`w-full px-4 py-2 border rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                            errors.strikePrice ? 'border-red-500 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                          }`}
+                          placeholder="Enter price"
+                          min="0"
+                          step="0.01"
+                        />
+                        {errors.strikePrice && <p className="mt-1 text-sm text-red-600">{errors.strikePrice}</p>}
+                      </div>
+
+                      {/* Indexation */}
+                      <div>
+                        <label htmlFor="indexation" className="block text-sm font-medium text-gray-700 mb-2">
+                          Indexation
+                        </label>
+                        <select
+                          id="indexation"
+                          value={formData.indexation}
+                          onChange={(e) => handleInputChange('indexation', e.target.value)}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 hover:border-gray-400"
+                        >
+                          {indexationTypes.map(indexation => (
+                            <option key={indexation} value={indexation}>{indexation}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* Escalation Rate (if escalation selected) */}
+                      {formData.pricingType === 'escalation' && (
+                        <div>
+                          <label htmlFor="escalationRate" className="block text-sm font-medium text-gray-700 mb-2">
+                            Escalation Rate (% per year) *
+                          </label>
+                          <input
+                            id="escalationRate"
+                            type="number"
+                            value={formData.escalationRate || ''}
+                            onChange={(e) => handleInputChange('escalationRate', parseFloat(e.target.value) || 0)}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 hover:border-gray-400"
+                            placeholder="Enter escalation rate"
+                            min="0"
+                            step="0.1"
+                          />
+                        </div>
+                      )}
+
+                      {/* Price Interval (if escalation or timeseries) */}
+                      {(formData.pricingType === 'escalation' || formData.pricingType === 'timeseries') && (
+                        <div>
+                          <label htmlFor="priceInterval" className="block text-sm font-medium text-gray-700 mb-2">
+                            Price Interval
+                          </label>
+                          <select
+                            id="priceInterval"
+                            value={formData.priceInterval}
+                            onChange={(e) => handleInputChange('priceInterval', e.target.value as Contract['priceInterval'])}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 hover:border-gray-400"
+                          >
+                            <option value="monthly">Monthly</option>
+                            <option value="quarterly">Quarterly</option>
+                            <option value="yearly">Yearly</option>
+                          </select>
+                        </div>
+                      )}
+
+                      {/* Reference Date */}
+                      <div className={formData.pricingType === 'escalation' ? 'md:col-span-2' : ''}>
+                        <label htmlFor="referenceDate" className="block text-sm font-medium text-gray-700 mb-2">
+                          Reference Date {formData.pricingType === 'escalation' ? '*' : ''}
+                        </label>
+                        <input
+                          id="referenceDate"
+                          type="date"
+                          value={formData.referenceDate}
+                          onChange={(e) => handleInputChange('referenceDate', e.target.value)}
+                          className={`w-full px-4 py-2 border rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                            errors.referenceDate ? 'border-red-500 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                          }`}
+                        />
+                        {errors.referenceDate && <p className="mt-1 text-sm text-red-600">{errors.referenceDate}</p>}
+                      </div>
                     </div>
                   </div>
                 </div>
 
-                {/* Volume Preview */}
+                {/* General Details Preview */}
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-800 mb-4">Volume Preview</h3>
+                  <h3 className="text-lg font-semibold text-gray-800 mb-4">📊 General Details</h3>
                   
-                  {formData.annualVolume > 0 ? (
+                  {formData.annualVolume > 0 || formData.strikePrice > 0 ? (
                     <div className="space-y-6">
-                      {/* Summary */}
+                      {/* Contract Summary */}
                       <div className="bg-gray-50 rounded-lg p-4 space-y-3">
                         <div className="flex justify-between items-center">
+                          <span className="text-gray-600 font-medium">Contract Length:</span>
+                          <span className="text-gray-900 font-semibold">{getContractLength()} years</span>
+                        </div>
+                        <div className="flex justify-between items-center">
                           <span className="text-gray-600 font-medium">Annual Volume:</span>
-                          <span className="text-gray-900 font-semibold">{formData.annualVolume.toLocaleString()} MWh</span>
+                          <span className="text-gray-900 font-semibold">
+                            {formData.type === 'wholesale' 
+                              ? `${formData.annualVolume.toLocaleString()} MW (${getAnnualMWh().toLocaleString()} MWh)`
+                              : `${formData.annualVolume.toLocaleString()} MWh`
+                            }
+                          </span>
                         </div>
                         <div className="flex justify-between items-center">
                           <span className="text-gray-600 font-medium">Volume Shape:</span>
@@ -658,31 +877,90 @@ export default function ContractInputTab({
                           <span className="text-gray-600 font-medium">Unit:</span>
                           <span className="text-gray-900 font-semibold">{formData.unit}</span>
                         </div>
-                      </div>
-                      
-                      {/* Monthly Breakdown */}
-                      <div>
-                        <h4 className="text-md font-semibold text-gray-800 mb-4">Monthly Volume Distribution</h4>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                          {months.map((month, index) => {
-                            const volumeProfile = volumeShapes[formData.volumeShape] || volumeShapes.flat;
-                            const monthlyVolume = formData.annualVolume * volumeProfile[index] / 100;
-                            const percentage = volumeProfile[index];
-                            
-                            return (
-                              <div key={month} className="bg-white border border-gray-200 rounded-lg p-3 text-center hover:bg-gray-50 transition-colors">
-                                <div className="font-semibold text-gray-800 text-sm">{month}</div>
-                                <div className="text-blue-600 font-medium text-sm">{percentage.toFixed(1)}%</div>
-                                <div className="text-gray-600 text-xs">{monthlyVolume.toLocaleString()} MWh</div>
-                              </div>
-                            );
-                          })}
+                        <div className="flex justify-between items-center">
+                          <span className="text-gray-600 font-medium">Pricing Type:</span>
+                          <span className="text-gray-900 font-semibold capitalize">{formData.pricingType}</span>
                         </div>
+                        {formData.pricingType === 'escalation' && (
+                          <div className="flex justify-between items-center">
+                            <span className="text-gray-600 font-medium">Escalation Rate:</span>
+                            <span className="text-gray-900 font-semibold">{formData.escalationRate}% per year</span>
+                          </div>
+                        )}
                       </div>
+
+                      {/* Volume Distribution */}
+                      {formData.annualVolume > 0 && (
+                        <div>
+                          <h4 className="text-md font-semibold text-gray-800 mb-4">📈 Monthly Volume Distribution</h4>
+                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                            {months.map((month, index) => {
+                              const volumeProfile = volumeShapes[formData.volumeShape] || volumeShapes.flat;
+                              const annualMWh = getAnnualMWh();
+                              const monthlyVolume = annualMWh * volumeProfile[index] / 100;
+                              const percentage = volumeProfile[index];
+                              
+                              return (
+                                <div key={month} className="bg-white border border-gray-200 rounded-lg p-3 text-center hover:bg-gray-50 transition-colors">
+                                  <div className="font-semibold text-gray-800 text-sm">{month}</div>
+                                  <div className="text-blue-600 font-medium text-sm">{percentage.toFixed(1)}%</div>
+                                  <div className="text-gray-600 text-xs">{monthlyVolume.toLocaleString()} MWh</div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Price Distribution */}
+                      {formData.pricingType !== 'fixed' && formData.priceTimeSeries && formData.priceTimeSeries.length > 0 && (
+                        <div>
+                          <h4 className="text-md font-semibold text-gray-800 mb-4">💵 Price Schedule</h4>
+                          <div className="max-h-60 overflow-y-auto">
+                            {formData.pricingType === 'timeseries' ? (
+                              <div className="grid grid-cols-1 gap-2">
+                                {formData.priceTimeSeries.map((price, index) => (
+                                  <div key={index} className="flex items-center gap-3 bg-white border border-gray-200 rounded p-3">
+                                    <span className="text-sm font-medium text-gray-600 w-20">
+                                      {formData.priceInterval === 'monthly' ? `Month ${index + 1}` :
+                                       formData.priceInterval === 'quarterly' ? `Q${index + 1}` :
+                                       `Year ${index + 1}`}:
+                                    </span>
+                                    <input
+                                      type="number"
+                                      value={price}
+                                      onChange={(e) => handlePriceTimeSeriesChange(index, parseFloat(e.target.value) || 0)}
+                                      className="flex-1 px-3 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                      step="0.01"
+                                      min="0"
+                                    />
+                                    <span className="text-sm text-gray-500">$/MWh</span>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <div className="grid grid-cols-1 gap-2">
+                                {formData.priceTimeSeries.map((price, index) => (
+                                  <div key={index} className="flex justify-between items-center bg-white border border-gray-200 rounded p-3">
+                                    <span className="text-sm font-medium text-gray-600">
+                                      {formData.priceInterval === 'monthly' ? `Month ${index + 1}` :
+                                       formData.priceInterval === 'quarterly' ? `Q${index + 1}` :
+                                       `Year ${index + 1}`}:
+                                    </span>
+                                    <span className="text-sm font-semibold text-gray-900">
+                                      ${price.toFixed(2)}/MWh
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ) : (
                     <div className="text-center py-12 text-gray-500">
-                      <p>Enter an annual volume to see the monthly distribution preview</p>
+                      <p>Enter contract details to see the general preview</p>
                     </div>
                   )}
                 </div>
