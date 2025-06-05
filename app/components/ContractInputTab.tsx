@@ -383,6 +383,7 @@ export default function ContractInputTab({
                   <th className="text-left p-4 font-semibold text-gray-700">State</th>
                   <th className="text-left p-4 font-semibold text-gray-700">Counterparty</th>
                   <th className="text-left p-4 font-semibold text-gray-700">Annual Volume</th>
+                   <th className="text-left p-4 font-semibold text-gray-700">Unit</th>                 
                   <th className="text-left p-4 font-semibold text-gray-700">Strike Price</th>
                   <th className="text-left p-4 font-semibold text-gray-700">Period</th>
                   <th className="text-left p-4 font-semibold text-gray-700">Status</th>
@@ -420,6 +421,7 @@ export default function ContractInputTab({
                         : `${contract.annualVolume.toLocaleString()} MWh`
                       }
                     </td>
+                                        <td className="p-4 text-gray-700">{contract.unit}</td>
                     <td className="p-4 text-gray-700">${contract.strikePrice}/MWh</td>
                     <td className="p-4 text-xs">
                       <div>{contract.startDate}</div>

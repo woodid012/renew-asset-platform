@@ -72,20 +72,6 @@ export default function ContractSummaryTab({
   volumeShapes,
 }: ContractSummaryTabProps) {
 
-  // Chart colors for different contracts
-  const chartColorsByContract: { [key: string]: string } = {
-    1: '#667eea',
-    2: '#764ba2', 
-    3: '#f093fb',
-    4: '#4facfe',
-    5: '#43e97b'
-  };
-
-  const getContractColor = (contract: Contract, index: number): string => {
-    return chartColorsByContract[contract._id || contract.id?.toString() || (index + 1).toString()] || 
-           chartColorsByContract[(index + 1).toString()] || '#667eea';
-  };
-
   const getContractTypeColor = (type: string) => {
     switch (type) {
       case 'retail': return 'bg-orange-100 text-orange-800';
@@ -95,41 +81,137 @@ export default function ContractSummaryTab({
     }
   };
 
-  // Create volume chart data
-  const createVolumeChartData = () => {
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  // Helper function to determine if contract is Green or Energy based on category
+  const isGreenContract = (category: string): boolean => {
+    return category.toLowerCase().includes('green') || 
+           category.toLowerCase().includes('renewable') ||
+           category.toLowerCase().includes('solar') ||
+           category.toLowerCase().includes('wind');
+  };
+
+  // Create portfolio volume chart data by calendar year
+  const createPortfolioVolumeChartData = () => {
+    // Generate years from 2024 to 2030
+    const years = Array.from({length: 7}, (_, i) => (2024 + i).toString());
     
-    const datasets = contracts.map((contract, index) => {
-      const volumeProfile = volumeShapes[contract.volumeShape];
-      const monthlyVolumes = volumeProfile?.map(pct => (contract.annualVolume * pct / 100)) || [];
-      const color = getContractColor(contract, index);
-      
-      return {
-        label: contract.name,
-        data: monthlyVolumes,
-        borderColor: color,
-        backgroundColor: color + '80',
-        borderWidth: selectedContract && (selectedContract._id === contract._id || selectedContract.id === contract.id) ? 4 : 2,
-        tension: 0.1
-      };
+    // Initialize data structures
+    const retailGreenData = new Array(years.length).fill(0);
+    const retailEnergyData = new Array(years.length).fill(0);
+    const wholesaleGreenData = new Array(years.length).fill(0);
+    const wholesaleEnergyData = new Array(years.length).fill(0);
+    const offtakeGreenData = new Array(years.length).fill(0);
+    const offtakeEnergyData = new Array(years.length).fill(0);
+
+    contracts.forEach(contract => {
+      const startYear = new Date(contract.startDate).getFullYear();
+      const endYear = new Date(contract.endDate).getFullYear();
+      const isGreen = isGreenContract(contract.category);
+
+      years.forEach((year, yearIndex) => {
+        const currentYear = parseInt(year);
+        
+        // Check if contract is active in this year
+        if (currentYear >= startYear && currentYear <= endYear) {
+          if (contract.type === 'retail') {
+            if (isGreen) {
+              retailGreenData[yearIndex] += contract.annualVolume;
+            } else {
+              retailEnergyData[yearIndex] += contract.annualVolume;
+            }
+          } else if (contract.type === 'wholesale') {
+            if (isGreen) {
+              wholesaleGreenData[yearIndex] += contract.annualVolume;
+            } else {
+              wholesaleEnergyData[yearIndex] += contract.annualVolume;
+            }
+          } else if (contract.type === 'offtake') {
+            if (isGreen) {
+              offtakeGreenData[yearIndex] += contract.annualVolume;
+            } else {
+              offtakeEnergyData[yearIndex] += contract.annualVolume;
+            }
+          }
+        }
+      });
     });
 
     return {
-      labels: months,
-      datasets: datasets
+      labels: years,
+      datasets: [
+        // Retail as dotted lines
+        {
+          label: 'Retail - Green',
+          data: retailGreenData,
+          borderColor: '#10b981',
+          backgroundColor: 'transparent',
+          borderWidth: 3,
+          borderDash: [5, 5],
+          tension: 0.1,
+          fill: false
+        },
+        {
+          label: 'Retail - Energy',
+          data: retailEnergyData,
+          borderColor: '#f59e0b',
+          backgroundColor: 'transparent',
+          borderWidth: 3,
+          borderDash: [5, 5],
+          tension: 0.1,
+          fill: false
+        },
+        // Stacked wholesale and offtake
+        {
+          label: 'Wholesale - Green',
+          data: wholesaleGreenData,
+          backgroundColor: '#10b98180',
+          borderColor: '#10b981',
+          borderWidth: 1,
+          fill: true
+        },
+        {
+          label: 'Wholesale - Energy',
+          data: wholesaleEnergyData,
+          backgroundColor: '#f59e0b80',
+          borderColor: '#f59e0b',
+          borderWidth: 1,
+          fill: true
+        },
+        {
+          label: 'Offtake - Green',
+          data: offtakeGreenData,
+          backgroundColor: '#8b5cf680',
+          borderColor: '#8b5cf6',
+          borderWidth: 1,
+          fill: true
+        },
+        {
+          label: 'Offtake - Energy',
+          data: offtakeEnergyData,
+          backgroundColor: '#ef444480',
+          borderColor: '#ef4444',
+          borderWidth: 1,
+          fill: true
+        }
+      ]
     };
   };
 
-  // Create MtM chart data
-  const createMtMChartData = () => {
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    
-    const datasets = contracts.map((contract, index) => {
-      const volumeProfile = volumeShapes[contract.volumeShape];
+  // Calculate MtM earnings by type and category
+  const calculateMtMEarnings = () => {
+    const mtmResults = {
+      retail: { green: 0, energy: 0, total: 0 },
+      wholesale: { green: 0, energy: 0, total: 0 },
+      offtake: { green: 0, energy: 0, total: 0 },
+      totals: { green: 0, energy: 0, combined: 0 }
+    };
+
+    contracts.forEach(contract => {
+      const volumeProfile = volumeShapes[contract.volumeShape] || [];
       const statePrices = marketPrices[contract.state] || marketPrices.NSW || [];
-      const color = getContractColor(contract, index);
+      const isGreen = isGreenContract(contract.category);
       
-      const monthlyMtM = volumeProfile?.map((pct, monthIndex) => {
+      let contractMtM = 0;
+      volumeProfile.forEach((pct, monthIndex) => {
         const volume = contract.annualVolume * pct / 100;
         const strikeValue = volume * contract.strikePrice;
         const marketValue = volume * (statePrices[monthIndex] || 0);
@@ -140,45 +222,52 @@ export default function ContractSummaryTab({
         } else {
           netMtM = marketValue - strikeValue;
         }
-        
-        return netMtM;
-      }) || [];
+        contractMtM += netMtM;
+      });
+
+      // Add to appropriate buckets
+      if (isGreen) {
+        mtmResults[contract.type].green += contractMtM;
+        mtmResults.totals.green += contractMtM;
+      } else {
+        mtmResults[contract.type].energy += contractMtM;
+        mtmResults.totals.energy += contractMtM;
+      }
       
-      return {
-        label: contract.name,
-        data: monthlyMtM,
-        borderColor: color,
-        backgroundColor: color + '80',
-        borderWidth: 2,
-        tension: 0.1
-      };
+      mtmResults[contract.type].total += contractMtM;
+      mtmResults.totals.combined += contractMtM;
     });
 
-    return {
-      labels: months,
-      datasets: datasets
-    };
+    return mtmResults;
   };
 
-  const chartOptions = {
+  const portfolioChartOptions = {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
       title: {
         display: true,
-        text: 'Monthly Volume Profile by Contract',
+        text: 'Portfolio Volume by Calendar Year',
         font: {
           size: 16,
           weight: 'bold' as const
         }
       },
       legend: {
-        display: false
+        display: true,
+        position: 'top' as const
       }
     },
     scales: {
+      x: {
+        title: {
+          display: true,
+          text: 'Year'
+        }
+      },
       y: {
         beginAtZero: true,
+        stacked: true,
         title: {
           display: true,
           text: 'Volume (MWh)'
@@ -188,12 +277,6 @@ export default function ContractSummaryTab({
             return value.toLocaleString();
           }
         }
-      },
-      x: {
-        title: {
-          display: true,
-          text: 'Month'
-        }
       }
     },
     animation: {
@@ -201,32 +284,7 @@ export default function ContractSummaryTab({
     }
   };
 
-  const mtmChartOptions = {
-    ...chartOptions,
-    plugins: {
-      ...chartOptions.plugins,
-      title: {
-        ...chartOptions.plugins.title,
-        text: 'Monthly Net Mark-to-Market Earnings by Contract'
-      }
-    },
-    scales: {
-      ...chartOptions.scales,
-      y: {
-        ...chartOptions.scales.y,
-        beginAtZero: false,
-        title: {
-          display: true,
-          text: 'Net MtM ($)'
-        },
-        ticks: {
-          callback: function(value: any) {
-            return '$' + value.toLocaleString();
-          }
-        }
-      }
-    }
-  };
+  const mtmEarnings = calculateMtMEarnings();
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -258,6 +316,9 @@ export default function ContractSummaryTab({
                     <div className="flex items-center gap-2">
                       <div className={`w-2 h-2 rounded-full ${contract.status === 'active' ? 'bg-green-500' : 'bg-yellow-500'}`}></div>
                       <span className="font-semibold text-gray-900">{contract.name}</span>
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${isGreenContract(contract.category) ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'}`}>
+                        {isGreenContract(contract.category) ? 'Green' : 'Energy'}
+                      </span>
                     </div>
                     <span className={`px-2 py-1 rounded-full text-xs font-medium uppercase ${getContractTypeColor(contract.type)}`}>
                       {contract.type}
@@ -283,10 +344,93 @@ export default function ContractSummaryTab({
           </div>
         </div>
 
+        {/* MtM Earnings Summary */}
+        <div className="bg-white rounded-xl p-6 shadow-md border border-gray-200">
+          <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-3">
+            💰 MtM Earnings Summary
+          </h2>
+          <div className="space-y-6">
+            {/* By Contract Type */}
+            <div>
+              <h3 className="text-lg font-semibold text-gray-700 mb-3">By Contract Type</h3>
+              <div className="space-y-3">
+                {['retail', 'wholesale', 'offtake'].map(type => (
+                  <div key={type} className="bg-gray-50 p-4 rounded-lg">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="font-medium text-gray-800 capitalize">{type}</span>
+                      <span className={`font-bold ${mtmEarnings[type as keyof typeof mtmEarnings].total >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        ${mtmEarnings[type as keyof typeof mtmEarnings].total.toLocaleString()}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Green:</span>
+                        <span className={mtmEarnings[type as keyof typeof mtmEarnings].green >= 0 ? 'text-green-600' : 'text-red-600'}>
+                          ${mtmEarnings[type as keyof typeof mtmEarnings].green.toLocaleString()}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Energy:</span>
+                        <span className={mtmEarnings[type as keyof typeof mtmEarnings].energy >= 0 ? 'text-green-600' : 'text-red-600'}>
+                          ${mtmEarnings[type as keyof typeof mtmEarnings].energy.toLocaleString()}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Portfolio Totals */}
+            <div>
+              <h3 className="text-lg font-semibold text-gray-700 mb-3">Portfolio Totals</h3>
+              <div className="bg-blue-50 p-4 rounded-lg border-2 border-blue-200">
+                <div className="grid grid-cols-3 gap-4 text-center">
+                  <div>
+                    <div className="text-sm text-gray-600 mb-1">Green Total</div>
+                    <div className={`text-lg font-bold ${mtmEarnings.totals.green >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      ${mtmEarnings.totals.green.toLocaleString()}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-sm text-gray-600 mb-1">Energy Total</div>
+                    <div className={`text-lg font-bold ${mtmEarnings.totals.energy >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      ${mtmEarnings.totals.energy.toLocaleString()}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-sm text-gray-600 mb-1">Combined Total</div>
+                    <div className={`text-xl font-bold ${mtmEarnings.totals.combined >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      ${mtmEarnings.totals.combined.toLocaleString()}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Right Panel - Charts */}
+      <div className="space-y-6">
+        
+        {/* Portfolio Volume Chart */}
+        <div className="bg-white rounded-xl p-6 shadow-md border border-gray-200">
+          <div className="h-96">
+            {contracts.length > 0 ? (
+              <Line data={createPortfolioVolumeChartData()} options={portfolioChartOptions} />
+            ) : (
+              <div className="flex items-center justify-center h-full text-gray-500">
+                <p>Add contracts to see portfolio volume analysis</p>
+              </div>
+            )}
+          </div>
+        </div>
+
         {/* Contract Details */}
         <div className="bg-white rounded-xl p-6 shadow-md border border-gray-200">
           <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-3">
-            📊 Contract Summary
+            📊 Contract Details
           </h2>
           {!selectedContract ? (
             <div className="text-center py-12 text-gray-500">
@@ -340,91 +484,6 @@ export default function ContractSummaryTab({
                   </div>
                 </div>
               )}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Right Panel - Charts */}
-      <div className="space-y-6">
-        
-        {/* Volume Chart */}
-        <div className="bg-white rounded-xl p-6 shadow-md border border-gray-200">
-          <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-3">
-            📈 Portfolio Volume Analysis
-          </h2>
-          <div className="h-80">
-            {contracts.length > 0 ? (
-              <Line data={createVolumeChartData()} options={chartOptions} />
-            ) : (
-              <div className="flex items-center justify-center h-full text-gray-500">
-                <p>Add contracts to see volume analysis</p>
-              </div>
-            )}
-          </div>
-          {contracts.length > 0 && (
-            <div className="mt-4 flex flex-wrap gap-4">
-              {contracts.map((contract, index) => (
-                <div key={contract._id || contract.id || index} className="flex items-center gap-2 text-sm">
-                  <div 
-                    className="w-4 h-4 rounded"
-                    style={{ backgroundColor: getContractColor(contract, index) }}
-                  ></div>
-                  <span className="text-gray-700">{contract.name} ({contract.annualVolume.toLocaleString()} MWh/yr)</span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* MtM Chart */}
-        <div className="bg-white rounded-xl p-6 shadow-md border border-gray-200">
-          <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-3">
-            💰 Net MtM Earnings
-          </h2>
-          <div className="h-80">
-            {contracts.length > 0 ? (
-              <Line data={createMtMChartData()} options={mtmChartOptions} />
-            ) : (
-              <div className="flex items-center justify-center h-full text-gray-500">
-                <p>Add contracts to see MtM analysis</p>
-              </div>
-            )}
-          </div>
-          {contracts.length > 0 && (
-            <div className="mt-4 flex flex-wrap gap-4">
-              {contracts.map((contract, index) => {
-                // Calculate total annual MtM for the legend
-                const volumeProfile = volumeShapes[contract.volumeShape] || [];
-                const statePrices = marketPrices[contract.state] || marketPrices.NSW || [];
-                
-                let totalMtM = 0;
-                volumeProfile.forEach((pct, monthIndex) => {
-                  const volume = contract.annualVolume * pct / 100;
-                  const strikeValue = volume * contract.strikePrice;
-                  const marketValue = volume * (statePrices[monthIndex] || 0);
-                  
-                  let netMtM;
-                  if (contract.type === 'retail') {
-                    netMtM = strikeValue - marketValue;
-                  } else {
-                    netMtM = marketValue - strikeValue;
-                  }
-                  totalMtM += netMtM;
-                });
-                
-                return (
-                  <div key={contract._id || contract.id || index} className="flex items-center gap-2 text-sm">
-                    <div 
-                      className="w-4 h-4 rounded"
-                      style={{ backgroundColor: getContractColor(contract, index) }}
-                    ></div>
-                    <span className="text-gray-700">
-                      {contract.name} ({totalMtM >= 0 ? '+' : ''}${totalMtM.toLocaleString()})
-                    </span>
-                  </div>
-                );
-              })}
             </div>
           )}
         </div>
