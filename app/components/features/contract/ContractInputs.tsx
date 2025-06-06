@@ -2,19 +2,10 @@
 
 import { useState, useEffect } from 'react';
 
-interface TimeBasedPricingPeriod {
-  id: string;
-  name: string;
-  price: number;
-  startTime: string;
-  endTime: string;
-  daysOfWeek: boolean[]; // [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
-}
-
-interface CustomVolumeData {
-  interval: 'hourly' | 'daily' | 'monthly';
-  data: number[];
-  startDate: string;
+interface TimeSeriesDataPoint {
+  period: string; // YYYY-MM format
+  volume: number; // MWh
+  date?: Date;
 }
 
 interface Contract {
@@ -39,11 +30,29 @@ interface Contract {
   priceTimeSeries?: number[];
   priceInterval?: 'monthly' | 'quarterly' | 'yearly';
   productDetail?: 'CY' | 'FY' | 'Q1' | 'Q2' | 'Q3' | 'Q4';
+  
+  // Enhanced volume fields
+  timeSeriesData?: TimeSeriesDataPoint[];
+  tenor?: {
+    value: number;
+    unit: 'months' | 'years';
+  };
+  dataSource?: 'manual' | 'csv_import' | 'api_import';
+  yearsCovered?: number[];
+  totalVolume?: number;
+  
+  // Time-based pricing
   timeBasedPricing?: {
-    periods: TimeBasedPricingPeriod[];
+    periods: Array<{
+      id: string;
+      name: string;
+      price: number;
+      startTime: string;
+      endTime: string;
+      daysOfWeek: boolean[];
+    }>;
     defaultPrice: number;
   };
-  customVolumeData?: CustomVolumeData;
 }
 
 interface SettingsData {
@@ -58,7 +67,7 @@ interface SettingsData {
   unitTypes: string[];
 }
 
-interface ContractInputsProps {
+interface EnhancedContractInputsProps {
   formData: Omit<Contract, '_id'> | null;
   isEditing: boolean;
   errors: Record<string, string>;
@@ -73,13 +82,79 @@ interface ContractInputsProps {
 const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-const defaultCategories = {
-  retail: ['Retail Customer', 'Industrial Customer', 'Government Customer', 'Small Business', 'Residential'],
-  wholesale: ['Swap', 'Cap', 'Floor', 'Forward', 'Option'],
-  offtake: ['Solar Farm', 'Wind Farm', 'Battery Storage', 'Hydro', 'Gas Peaker']
+// Volume calculation utilities
+const VolumeUtils = {
+  hasMonthlyData: (contract: Contract): boolean => {
+    return !!(contract.timeSeriesData && contract.timeSeriesData.length > 0);
+  },
+
+  getMonthlyVolumes: (contract: Contract, year: number): number[] => {
+    if (!contract.timeSeriesData) {
+      return VolumeUtils.calculateFromPercentages(contract);
+    }
+
+    const monthlyVolumes = new Array(12).fill(0);
+    
+    contract.timeSeriesData.forEach(data => {
+      const [dataYear, dataMonth] = data.period.split('-').map(Number);
+      
+      if (dataYear === year && dataMonth >= 1 && dataMonth <= 12) {
+        monthlyVolumes[dataMonth - 1] = data.volume;
+      }
+    });
+
+    return monthlyVolumes;
+  },
+
+  calculateFromPercentages: (contract: Contract): number[] => {
+    const volumeShapes = {
+      flat: [8.33, 8.33, 8.33, 8.33, 8.33, 8.33, 8.33, 8.33, 8.33, 8.33, 8.33, 8.33],
+      solar: [6.5, 7.2, 8.8, 9.5, 10.2, 8.9, 9.1, 9.8, 8.6, 7.4, 6.8, 7.2],
+      wind: [11.2, 10.8, 9.2, 7.8, 6.5, 5.9, 6.2, 7.1, 8.4, 9.6, 10.8, 11.5],
+      custom: [5.0, 6.0, 7.5, 9.0, 11.0, 12.5, 13.0, 12.0, 10.5, 8.5, 7.0, 6.0]
+    };
+
+    const percentages = volumeShapes[contract.volumeShape] || volumeShapes.flat;
+    return percentages.map(pct => (contract.annualVolume * pct) / 100);
+  },
+
+  calculateTotalVolume: (timeSeriesData: TimeSeriesDataPoint[]): number => {
+    if (!timeSeriesData) return 0;
+    return timeSeriesData.reduce((sum, data) => sum + data.volume, 0);
+  },
+
+  getYearsCovered: (timeSeriesData: TimeSeriesDataPoint[]): number[] => {
+    if (!timeSeriesData) return [];
+    
+    const years = new Set<number>();
+    timeSeriesData.forEach(data => {
+      const year = parseInt(data.period.split('-')[0]);
+      if (!isNaN(year)) {
+        years.add(year);
+      }
+    });
+    
+    return Array.from(years).sort();
+  },
+
+  calculateEndDate: (startDate: string, tenor: { value: number; unit: 'months' | 'years' }): string => {
+    const start = new Date(startDate);
+    let endDate = new Date(start);
+
+    if (tenor.unit === 'months') {
+      endDate.setMonth(endDate.getMonth() + tenor.value);
+    } else {
+      endDate.setFullYear(endDate.getFullYear() + tenor.value);
+    }
+
+    // Round to end of month
+    endDate = new Date(endDate.getFullYear(), endDate.getMonth() + 1, 0);
+    
+    return endDate.toISOString().split('T')[0];
+  }
 };
 
-export default function ContractInputs({
+export default function EnhancedContractInputs({
   formData,
   isEditing,
   errors,
@@ -89,218 +164,129 @@ export default function ContractInputs({
   onSave,
   onCancel,
   isSaving,
-}: ContractInputsProps) {
-  const [customVolumeFile, setCustomVolumeFile] = useState<File | null>(null);
-  const [volumeDataPreview, setVolumeDataPreview] = useState<number[]>([]);
+}: EnhancedContractInputsProps) {
+  const [volumeDataFile, setVolumeDataFile] = useState<File | null>(null);
+  const [volumeDataPreview, setVolumeDataPreview] = useState<TimeSeriesDataPoint[]>([]);
+  const [showVolumeEditor, setShowVolumeEditor] = useState(false);
 
   if (!formData) return null;
 
-  // Generate time series prices based on interval
-  const generateTimeSeries = () => {
-    const periods = getNumberOfPeriods();
-    const basePrice = formData.strikePrice || 0;
-    const escalationRate = (formData.escalationRate || 0) / 100;
-    
-    const prices: number[] = [];
-    for (let i = 0; i < periods; i++) {
-      let periodPrice = basePrice;
-      if (formData.pricingType === 'escalation') {
-        const yearsElapsed = formData.priceInterval === 'monthly' ? i / 12 : 
-                            formData.priceInterval === 'quarterly' ? i / 4 : i;
-        periodPrice = basePrice * Math.pow(1 + escalationRate, yearsElapsed);
-      }
-      prices.push(Math.round(periodPrice * 100) / 100);
-    }
-    return prices;
-  };
-
-  // Calculate contract length in years
-  const getContractLength = () => {
-    if (!formData.startDate || !formData.endDate) return 0;
-    const start = new Date(formData.startDate);
-    const end = new Date(formData.endDate);
-    const diffTime = Math.abs(end.getTime() - start.getTime());
-    const diffYears = diffTime / (1000 * 60 * 60 * 24 * 365.25);
-    return Math.round(diffYears * 10) / 10;
-  };
-
-  // Calculate number of periods based on contract length and interval
-  const getNumberOfPeriods = () => {
-    const contractLength = getContractLength();
-    if (!contractLength || !formData.priceInterval) return 0;
-    
-    switch (formData.priceInterval) {
-      case 'monthly': return Math.ceil(contractLength * 12);
-      case 'quarterly': return Math.ceil(contractLength * 4);
-      case 'yearly': return Math.ceil(contractLength);
-      default: return 0;
-    }
-  };
-
-  // Update time series when relevant fields change
+  // Initialize default start date to current year
   useEffect(() => {
-    if (formData && (formData.pricingType === 'escalation' || formData.pricingType === 'timeseries')) {
-      const newTimeSeries = generateTimeSeries();
-      onInputChange('priceTimeSeries', newTimeSeries);
+    if (!formData.startDate) {
+      const currentYear = new Date().getFullYear();
+      const defaultStartDate = `${currentYear}-01-01`;
+      onInputChange('startDate', defaultStartDate);
     }
-  }, [formData.startDate, formData.endDate, formData.strikePrice, formData.escalationRate, formData.priceInterval, formData.pricingType]);
+  }, []);
+
+  // Update end date when tenor changes
+  const handleTenorChange = (field: 'value' | 'unit', value: number | string) => {
+    const currentTenor = formData.tenor || { value: 1, unit: 'years' };
+    const newTenor = { ...currentTenor, [field]: field === 'value' ? Number(value) : value };
+    
+    onInputChange('tenor', newTenor);
+    
+    if (formData.startDate && newTenor.value > 0) {
+      const newEndDate = VolumeUtils.calculateEndDate(formData.startDate, newTenor);
+      onInputChange('endDate', newEndDate);
+    }
+  };
+
+  // Update end date when start date changes
+  const handleStartDateChange = (startDate: string) => {
+    onInputChange('startDate', startDate);
+    
+    if (formData.tenor && formData.tenor.value > 0) {
+      const newEndDate = VolumeUtils.calculateEndDate(startDate, formData.tenor);
+      onInputChange('endDate', newEndDate);
+    }
+  };
+
+  // Handle CSV volume data upload
+  const handleVolumeDataUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setVolumeDataFile(file);
+
+    try {
+      const text = await file.text();
+      const lines = text.split('\n').filter(line => line.trim());
+      const headers = lines[0].toLowerCase().split(',');
+      
+      // Find period and volume columns
+      const periodIndex = headers.findIndex(h => h.includes('period') || h.includes('date') || h.includes('month'));
+      const volumeIndex = headers.findIndex(h => h.includes('volume') || h.includes('mwh') || h.includes('energy'));
+      
+      if (periodIndex === -1 || volumeIndex === -1) {
+        alert('CSV must have columns for period (date/month) and volume (MWh)');
+        return;
+      }
+
+      const timeSeriesData: TimeSeriesDataPoint[] = [];
+      
+      lines.slice(1).forEach(line => {
+        const cells = line.split(',');
+        const periodStr = cells[periodIndex]?.trim();
+        const volumeStr = cells[volumeIndex]?.trim();
+        
+        if (!periodStr || !volumeStr) return;
+        
+        // Parse period - support various formats
+        let period = '';
+        if (periodStr.match(/^\d{4}-\d{2}$/)) {
+          // Already in YYYY-MM format
+          period = periodStr;
+        } else if (periodStr.match(/^\d{1,2}\/\d{4}$/)) {
+          // MM/YYYY format
+          const [month, year] = periodStr.split('/');
+          period = `${year}-${month.padStart(2, '0')}`;
+        } else if (periodStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+          // YYYY-MM-DD format - extract YYYY-MM
+          period = periodStr.substring(0, 7);
+        }
+        
+        const volume = parseFloat(volumeStr);
+        if (period && !isNaN(volume)) {
+          timeSeriesData.push({ period, volume });
+        }
+      });
+
+      if (timeSeriesData.length === 0) {
+        alert('No valid volume data found in CSV');
+        return;
+      }
+
+      // Calculate totals and metadata
+      const totalVolume = VolumeUtils.calculateTotalVolume(timeSeriesData);
+      const yearsCovered = VolumeUtils.getYearsCovered(timeSeriesData);
+
+      setVolumeDataPreview(timeSeriesData.slice(0, 12)); // Show first 12 for preview
+
+      // Update form data
+      onInputChange('timeSeriesData', timeSeriesData);
+      onInputChange('totalVolume', totalVolume);
+      onInputChange('yearsCovered', yearsCovered);
+      onInputChange('dataSource', 'csv_import');
+      onInputChange('annualVolume', totalVolume); // Update annual volume to match total
+
+    } catch (error) {
+      console.error('Error parsing volume file:', error);
+      alert('Error parsing volume file. Please ensure it\'s a valid CSV with period and volume columns.');
+    }
+  };
 
   // Get categories based on contract type
   const getAvailableCategories = (contractType: string) => {
     if (settings?.contractTypes) {
       return settings.contractTypes[contractType as keyof typeof settings.contractTypes] || [];
     }
-    return defaultCategories[contractType as keyof typeof defaultCategories] || [];
+    return [];
   };
 
-  // Get volume unit label based on contract type
-  const getVolumeUnitLabel = () => {
-    return formData.type === 'wholesale' ? 'Annual Volume (MW)' : 'Annual Volume (MWh)';
-  };
-
-  // Convert MW to MWh for wholesale contracts
-  const getAnnualMWh = () => {
-    if (formData.type === 'wholesale') {
-      return formData.annualVolume * 8760;
-    }
-    return formData.annualVolume || 0;
-  };
-
-  // Handle time-based pricing period changes
-  const addTimeBasedPeriod = () => {
-    const newPeriod: TimeBasedPricingPeriod = {
-      id: Date.now().toString(),
-      name: `Period ${(formData.timeBasedPricing?.periods.length || 0) + 1}`,
-      price: formData.strikePrice || 0,
-      startTime: '07:00',
-      endTime: '22:00',
-      daysOfWeek: [true, true, true, true, true, false, false] // Mon-Fri default
-    };
-
-    const currentPricing = formData.timeBasedPricing || { periods: [], defaultPrice: formData.strikePrice || 0 };
-    const updatedPricing = {
-      ...currentPricing,
-      periods: [...currentPricing.periods, newPeriod]
-    };
-
-    onInputChange('timeBasedPricing', updatedPricing);
-  };
-
-  const updateTimeBasedPeriod = (periodId: string, field: keyof TimeBasedPricingPeriod, value: any) => {
-    if (!formData.timeBasedPricing) return;
-
-    const updatedPeriods = formData.timeBasedPricing.periods.map(period =>
-      period.id === periodId ? { ...period, [field]: value } : period
-    );
-
-    const updatedPricing = {
-      ...formData.timeBasedPricing,
-      periods: updatedPeriods
-    };
-
-    onInputChange('timeBasedPricing', updatedPricing);
-  };
-
-  const removeTimeBasedPeriod = (periodId: string) => {
-    if (!formData.timeBasedPricing) return;
-
-    const updatedPeriods = formData.timeBasedPricing.periods.filter(period => period.id !== periodId);
-    const updatedPricing = {
-      ...formData.timeBasedPricing,
-      periods: updatedPeriods
-    };
-
-    onInputChange('timeBasedPricing', updatedPricing);
-  };
-
-  const updateDayOfWeek = (periodId: string, dayIndex: number, checked: boolean) => {
-    if (!formData.timeBasedPricing) return;
-
-    const updatedPeriods = formData.timeBasedPricing.periods.map(period => {
-      if (period.id === periodId) {
-        const newDaysOfWeek = [...period.daysOfWeek];
-        newDaysOfWeek[dayIndex] = checked;
-        return { ...period, daysOfWeek: newDaysOfWeek };
-      }
-      return period;
-    });
-
-    const updatedPricing = {
-      ...formData.timeBasedPricing,
-      periods: updatedPeriods
-    };
-
-    onInputChange('timeBasedPricing', updatedPricing);
-  };
-
-  // Handle custom volume data upload
-  const handleVolumeFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    setCustomVolumeFile(file);
-
-    // Parse CSV file
-    try {
-      const text = await file.text();
-      const lines = text.split('\n').filter(line => line.trim());
-      const values = lines.slice(1).map(line => {
-        const cells = line.split(',');
-        return parseFloat(cells[1]) || 0; // Assuming second column is volume
-      });
-
-      setVolumeDataPreview(values.slice(0, 12)); // Show first 12 values
-
-      const customVolumeData: CustomVolumeData = {
-        interval: 'monthly', // Default, user can change
-        data: values,
-        startDate: formData.startDate
-      };
-
-      onInputChange('customVolumeData', customVolumeData);
-    } catch (error) {
-      console.error('Error parsing volume file:', error);
-      alert('Error parsing volume file. Please ensure it\'s a valid CSV with volume data in the second column.');
-    }
-  };
-
-  // Handle price time series change
-  const handlePriceTimeSeriesChange = (index: number, value: number) => {
-    if (!formData.priceTimeSeries) return;
-    const newTimeSeries = [...formData.priceTimeSeries];
-    newTimeSeries[index] = value;
-    onInputChange('priceTimeSeries', newTimeSeries);
-  };
-
-  const contractTypes = [
-    { value: 'retail', label: 'Retail' },
-    { value: 'wholesale', label: 'Wholesale' },
-    { value: 'offtake', label: 'Offtake' }
-  ];
-
-  const volumeShapeOptions = Object.keys(volumeShapes).map(shape => ({
-    value: shape,
-    label: shape.charAt(0).toUpperCase() + shape.slice(1)
-  }));
-
-  const statuses = [
-    { value: 'active', label: 'Active' },
-    { value: 'pending', label: 'Pending' }
-  ];
-
-  const unitTypes = (settings?.unitTypes || ['Energy', 'Green']).map(unit => ({
-    value: unit,
-    label: unit
-  }));
-
-  const productDetails = [
-    { value: 'CY', label: 'Calendar Year' },
-    { value: 'FY', label: 'Financial Year' },
-    { value: 'Q1', label: 'Q1' },
-    { value: 'Q2', label: 'Q2' },
-    { value: 'Q3', label: 'Q3' },
-    { value: 'Q4', label: 'Q4' }
-  ];
+  // Check if we should show percentage-based volume preview
+  const showPercentagePreview = !VolumeUtils.hasMonthlyData(formData);
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -359,9 +345,9 @@ export default function ContractInputs({
                     }}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 hover:border-gray-400"
                   >
-                    {contractTypes.map(type => (
-                      <option key={type.value} value={type.value}>{type.label}</option>
-                    ))}
+                    <option value="retail">Retail</option>
+                    <option value="wholesale">Wholesale</option>
+                    <option value="offtake">Offtake</option>
                   </select>
                 </div>
 
@@ -385,25 +371,6 @@ export default function ContractInputs({
                   </select>
                   {errors.category && <p className="mt-1 text-sm text-red-600">{errors.category}</p>}
                 </div>
-
-                {/* Product Detail (for wholesale) */}
-                {formData.type === 'wholesale' && (
-                  <div>
-                    <label htmlFor="productDetail" className="block text-sm font-medium text-gray-700 mb-2">
-                      Product Detail
-                    </label>
-                    <select
-                      id="productDetail"
-                      value={formData.productDetail || 'CY'}
-                      onChange={(e) => onInputChange('productDetail', e.target.value as Contract['productDetail'])}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 hover:border-gray-400"
-                    >
-                      {productDetails.map(detail => (
-                        <option key={detail.value} value={detail.value}>{detail.label}</option>
-                      ))}
-                    </select>
-                  </div>
-                )}
 
                 {/* State */}
                 <div>
@@ -449,7 +416,7 @@ export default function ContractInputs({
                     id="startDate"
                     type="date"
                     value={formData.startDate}
-                    onChange={(e) => onInputChange('startDate', e.target.value)}
+                    onChange={(e) => handleStartDateChange(e.target.value)}
                     className={`w-full px-4 py-2 border rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                       errors.startDate ? 'border-red-500 bg-red-50' : 'border-gray-300 hover:border-gray-400'
                     }`}
@@ -457,47 +424,52 @@ export default function ContractInputs({
                   {errors.startDate && <p className="mt-1 text-sm text-red-600">{errors.startDate}</p>}
                 </div>
 
-                {/* End Date */}
+                {/* Tenor Input - NEW */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Contract Tenor *
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="number"
+                      value={formData.tenor?.value || 1}
+                      onChange={(e) => handleTenorChange('value', e.target.value)}
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      min="1"
+                      max="50"
+                    />
+                    <select
+                      value={formData.tenor?.unit || 'years'}
+                      onChange={(e) => handleTenorChange('unit', e.target.value)}
+                      className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="months">Months</option>
+                      <option value="years">Years</option>
+                    </select>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    End date will be calculated and rounded to month end
+                  </p>
+                </div>
+
+                {/* End Date (calculated) */}
                 <div>
                   <label htmlFor="endDate" className="block text-sm font-medium text-gray-700 mb-2">
-                    End Date *
+                    End Date (Calculated)
                   </label>
                   <input
                     id="endDate"
                     type="date"
                     value={formData.endDate}
-                    onChange={(e) => onInputChange('endDate', e.target.value)}
-                    className={`w-full px-4 py-2 border rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                      errors.endDate ? 'border-red-500 bg-red-50' : 'border-gray-300 hover:border-gray-400'
-                    }`}
+                    readOnly
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-600"
                   />
-                  {errors.endDate && <p className="mt-1 text-sm text-red-600">{errors.endDate}</p>}
                 </div>
 
-                {/* Annual Volume */}
-                <div>
-                  <label htmlFor="annualVolume" className="block text-sm font-medium text-gray-700 mb-2">
-                    {getVolumeUnitLabel()} *
-                  </label>
-                  <input
-                    id="annualVolume"
-                    type="number"
-                    value={formData.annualVolume || ''}
-                    onChange={(e) => onInputChange('annualVolume', parseFloat(e.target.value) || 0)}
-                    className={`w-full px-4 py-2 border rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                      errors.annualVolume ? 'border-red-500 bg-red-50' : 'border-gray-300 hover:border-gray-400'
-                    }`}
-                    placeholder={`Enter annual volume in ${formData.type === 'wholesale' ? 'MW' : 'MWh'}`}
-                    min="0"
-                    step="1000"
-                  />
-                  {errors.annualVolume && <p className="mt-1 text-sm text-red-600">{errors.annualVolume}</p>}
-                </div>
-
-                {/* Unit */}
+                {/* Type (was Unit) */}
                 <div>
                   <label htmlFor="unit" className="block text-sm font-medium text-gray-700 mb-2">
-                    Unit
+                    Type
                   </label>
                   <select
                     id="unit"
@@ -505,25 +477,8 @@ export default function ContractInputs({
                     onChange={(e) => onInputChange('unit', e.target.value)}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 hover:border-gray-400"
                   >
-                    {unitTypes.map(unit => (
-                      <option key={unit.value} value={unit.value}>{unit.label}</option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Volume Shape */}
-                <div>
-                  <label htmlFor="volumeShape" className="block text-sm font-medium text-gray-700 mb-2">
-                    Volume Shape
-                  </label>
-                  <select
-                    id="volumeShape"
-                    value={formData.volumeShape}
-                    onChange={(e) => onInputChange('volumeShape', e.target.value as Contract['volumeShape'])}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 hover:border-gray-400"
-                  >
-                    {volumeShapeOptions.map(shape => (
-                      <option key={shape.value} value={shape.value}>{shape.label}</option>
+                    {settings.unitTypes.map(unit => (
+                      <option key={unit} value={unit}>{unit}</option>
                     ))}
                   </select>
                 </div>
@@ -539,126 +494,159 @@ export default function ContractInputs({
                     onChange={(e) => onInputChange('status', e.target.value as Contract['status'])}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 hover:border-gray-400"
                   >
-                    {statuses.map(status => (
-                      <option key={status.value} value={status.value}>{status.label}</option>
-                    ))}
+                    <option value="active">Active</option>
+                    <option value="pending">Pending</option>
                   </select>
                 </div>
               </div>
 
-              {/* Custom Volume Data Upload */}
+              {/* Volume Data Section - ENHANCED */}
               <div className="border-t border-gray-200 pt-6 mb-6">
-                <h4 className="text-md font-semibold text-gray-800 mb-4">📊 Custom Volume Data (Optional)</h4>
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Upload Volume Time Series (CSV)
+                <h4 className="text-md font-semibold text-gray-800 mb-4">📊 Volume Data</h4>
+                
+                {/* Volume Data Source Selection */}
+                <div className="mb-4">
+                  <div className="flex gap-4 mb-4">
+                    <label className="flex items-center">
+                      <input
+                        type="radio"
+                        name="volumeSource"
+                        checked={!VolumeUtils.hasMonthlyData(formData)}
+                        onChange={() => {
+                          onInputChange('timeSeriesData', undefined);
+                          onInputChange('dataSource', 'manual');
+                        }}
+                        className="mr-2"
+                      />
+                      Use Volume Shape (Percentage)
+                    </label>
+                    <label className="flex items-center">
+                      <input
+                        type="radio"
+                        name="volumeSource"
+                        checked={VolumeUtils.hasMonthlyData(formData)}
+                        onChange={() => setShowVolumeEditor(true)}
+                        className="mr-2"
+                      />
+                      Use Monthly Volume Data
+                    </label>
+                  </div>
+                </div>
+
+                {/* Annual Volume (for percentage-based) */}
+                {!VolumeUtils.hasMonthlyData(formData) && (
+                  <div className="mb-4">
+                    <label htmlFor="annualVolume" className="block text-sm font-medium text-gray-700 mb-2">
+                      Annual Volume (MWh) *
                     </label>
                     <input
-                      type="file"
-                      accept=".csv"
-                      onChange={handleVolumeFileUpload}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                      id="annualVolume"
+                      type="number"
+                      value={formData.annualVolume || ''}
+                      onChange={(e) => onInputChange('annualVolume', parseFloat(e.target.value) || 0)}
+                      className={`w-full px-4 py-2 border rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                        errors.annualVolume ? 'border-red-500 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                      }`}
+                      placeholder="Enter annual volume in MWh"
+                      min="0"
+                      step="1000"
                     />
-                    <p className="text-xs text-gray-500 mt-1">
-                      CSV format: Date, Volume(MWh), ... First row should be headers.
-                    </p>
+                    {errors.annualVolume && <p className="mt-1 text-sm text-red-600">{errors.annualVolume}</p>}
+                    
+                    {/* Volume Shape */}
+                    <div className="mt-4">
+                      <label htmlFor="volumeShape" className="block text-sm font-medium text-gray-700 mb-2">
+                        Volume Shape
+                      </label>
+                      <select
+                        id="volumeShape"
+                        value={formData.volumeShape}
+                        onChange={(e) => onInputChange('volumeShape', e.target.value as Contract['volumeShape'])}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 hover:border-gray-400"
+                      >
+                        <option value="flat">Flat</option>
+                        <option value="solar">Solar</option>
+                        <option value="wind">Wind</option>
+                        <option value="custom">Custom</option>
+                      </select>
+                    </div>
                   </div>
+                )}
 
-                  {formData.customVolumeData && (
-                    <div className="bg-blue-50 rounded-lg p-4">
-                      <h5 className="font-medium text-blue-800 mb-2">Custom Volume Data Loaded</h5>
-                      <div className="grid grid-cols-2 gap-4 text-sm">
-                        <div>
-                          <span className="text-blue-600">Data Points:</span>
-                          <span className="ml-2 font-medium">{formData.customVolumeData.data.length}</span>
-                        </div>
-                        <div>
-                          <span className="text-blue-600">Interval:</span>
-                          <span className="ml-2 font-medium capitalize">{formData.customVolumeData.interval}</span>
-                        </div>
-                      </div>
-                      {volumeDataPreview.length > 0 && (
-                        <div className="mt-2">
-                          <span className="text-blue-600 text-xs">Preview (first 12 values):</span>
-                          <div className="grid grid-cols-6 gap-1 mt-1">
-                            {volumeDataPreview.map((value, index) => (
-                              <div key={index} className="text-xs bg-white px-2 py-1 rounded">
-                                {value.toFixed(0)} MWh
-                              </div>
-                            ))}
+                {/* Monthly Volume Data Upload/Input */}
+                {VolumeUtils.hasMonthlyData(formData) && (
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Upload Monthly Volume Data (CSV)
+                      </label>
+                      <input
+                        type="file"
+                        accept=".csv"
+                        onChange={handleVolumeDataUpload}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        CSV format: Period (YYYY-MM), Volume(MWh). First row should be headers.
+                      </p>
+                    </div>
+
+                    {formData.timeSeriesData && formData.timeSeriesData.length > 0 && (
+                      <div className="bg-green-50 rounded-lg p-4">
+                        <h5 className="font-medium text-green-800 mb-2">✅ Monthly Volume Data Loaded</h5>
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+                          <div>
+                            <span className="text-green-600">Data Points:</span>
+                            <span className="ml-2 font-medium">{formData.timeSeriesData.length}</span>
+                          </div>
+                          <div>
+                            <span className="text-green-600">Total Volume:</span>
+                            <span className="ml-2 font-medium">{formData.totalVolume?.toLocaleString() || 0} MWh</span>
+                          </div>
+                          <div>
+                            <span className="text-green-600">Years Covered:</span>
+                            <span className="ml-2 font-medium">{formData.yearsCovered?.join(', ') || 'None'}</span>
                           </div>
                         </div>
-                      )}
-                    </div>
-                  )}
-                </div>
+                        
+                        <div className="mt-3">
+                          <button
+                            type="button"
+                            onClick={() => setShowVolumeEditor(!showVolumeEditor)}
+                            className="text-sm bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700 transition-colors"
+                          >
+                            {showVolumeEditor ? 'Hide' : 'Show'} Volume Editor
+                          </button>
+                        </div>
+
+                        {showVolumeEditor && (
+                          <div className="mt-4 max-h-60 overflow-y-auto">
+                            <div className="text-xs font-medium text-green-700 mb-2">Monthly Volume Data:</div>
+                            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                              {formData.timeSeriesData.map((data, index) => (
+                                <div key={index} className="bg-white border border-green-200 rounded p-2">
+                                  <div className="text-xs text-green-600">{data.period}</div>
+                                  <div className="font-medium text-sm">{data.volume.toFixed(0)} MWh</div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Pricing Section */}
               <div className="border-t border-gray-200 pt-6">
-                <h4 className="text-md font-semibold text-gray-800 mb-4">💰 Pricing & Indexation</h4>
+                <h4 className="text-md font-semibold text-gray-800 mb-4">💰 Pricing</h4>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Pricing Type */}
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Pricing Type *
-                    </label>
-                    <div className="flex gap-4 flex-wrap">
-                      <label className="flex items-center">
-                        <input
-                          type="radio"
-                          name="pricingType"
-                          value="fixed"
-                          checked={formData.pricingType === 'fixed'}
-                          onChange={(e) => onInputChange('pricingType', e.target.value)}
-                          className="mr-2"
-                        />
-                        Fixed Price
-                      </label>
-                      <label className="flex items-center">
-                        <input
-                          type="radio"
-                          name="pricingType"
-                          value="escalation"
-                          checked={formData.pricingType === 'escalation'}
-                          onChange={(e) => onInputChange('pricingType', e.target.value)}
-                          className="mr-2"
-                        />
-                        Escalation
-                      </label>
-                      <label className="flex items-center">
-                        <input
-                          type="radio"
-                          name="pricingType"
-                          value="timeseries"
-                          checked={formData.pricingType === 'timeseries'}
-                          onChange={(e) => onInputChange('pricingType', e.target.value)}
-                          className="mr-2"
-                        />
-                        Time Series
-                      </label>
-                      <label className="flex items-center">
-                        <input
-                          type="radio"
-                          name="pricingType"
-                          value="custom_time_of_day"
-                          checked={formData.pricingType === 'custom_time_of_day'}
-                          onChange={(e) => onInputChange('pricingType', e.target.value)}
-                          className="mr-2"
-                        />
-                        Time-of-Day
-                      </label>
-                    </div>
-                  </div>
-
                   {/* Strike Price */}
                   <div>
                     <label htmlFor="strikePrice" className="block text-sm font-medium text-gray-700 mb-2">
-                      {formData.pricingType === 'fixed' ? 'Strike Price ($/MWh)' : 
-                       formData.pricingType === 'custom_time_of_day' ? 'Default Price ($/MWh)' : 
-                       'Base Price ($/MWh)'} *
+                      Strike Price ($/MWh) *
                     </label>
                     <input
                       id="strikePrice"
@@ -692,179 +680,20 @@ export default function ContractInputs({
                     </select>
                   </div>
 
-                  {/* Escalation Rate (if escalation selected) */}
-                  {formData.pricingType === 'escalation' && (
-                    <div>
-                      <label htmlFor="escalationRate" className="block text-sm font-medium text-gray-700 mb-2">
-                        Escalation Rate (% per year) *
-                      </label>
-                      <input
-                        id="escalationRate"
-                        type="number"
-                        value={formData.escalationRate || ''}
-                        onChange={(e) => onInputChange('escalationRate', parseFloat(e.target.value) || 0)}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 hover:border-gray-400"
-                        placeholder="Enter escalation rate"
-                        min="0"
-                        step="0.1"
-                      />
-                    </div>
-                  )}
-
-                  {/* Price Interval (if escalation or timeseries) */}
-                  {(formData.pricingType === 'escalation' || formData.pricingType === 'timeseries') && (
-                    <div>
-                      <label htmlFor="priceInterval" className="block text-sm font-medium text-gray-700 mb-2">
-                        Price Interval
-                      </label>
-                      <select
-                        id="priceInterval"
-                        value={formData.priceInterval}
-                        onChange={(e) => onInputChange('priceInterval', e.target.value as Contract['priceInterval'])}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 hover:border-gray-400"
-                      >
-                        <option value="monthly">Monthly</option>
-                        <option value="quarterly">Quarterly</option>
-                        <option value="yearly">Yearly</option>
-                      </select>
-                    </div>
-                  )}
-
                   {/* Reference Date */}
-                  <div className={formData.pricingType === 'escalation' ? 'md:col-span-2' : ''}>
+                  <div className="md:col-span-2">
                     <label htmlFor="referenceDate" className="block text-sm font-medium text-gray-700 mb-2">
-                      Reference Date {formData.pricingType === 'escalation' ? '*' : ''}
+                      Reference Date
                     </label>
                     <input
                       id="referenceDate"
                       type="date"
                       value={formData.referenceDate}
                       onChange={(e) => onInputChange('referenceDate', e.target.value)}
-                      className={`w-full px-4 py-2 border rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                        errors.referenceDate ? 'border-red-500 bg-red-50' : 'border-gray-300 hover:border-gray-400'
-                      }`}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 hover:border-gray-400"
                     />
-                    {errors.referenceDate && <p className="mt-1 text-sm text-red-600">{errors.referenceDate}</p>}
                   </div>
                 </div>
-
-                {/* Time-of-Day Pricing */}
-                {formData.pricingType === 'custom_time_of_day' && (
-                  <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-                    <div className="flex justify-between items-center mb-4">
-                      <h5 className="font-medium text-gray-800">⏰ Time-of-Day Pricing Periods</h5>
-                      <button
-                        type="button"
-                        onClick={addTimeBasedPeriod}
-                        className="bg-blue-500 text-white px-3 py-1 rounded text-sm hover:bg-blue-600 transition-colors"
-                      >
-                        + Add Period
-                      </button>
-                    </div>
-
-                    {formData.timeBasedPricing && formData.timeBasedPricing.periods.length > 0 ? (
-                      <div className="space-y-4">
-                        {formData.timeBasedPricing.periods.map((period) => (
-                          <div key={period.id} className="bg-white p-4 rounded border">
-                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-3">
-                              <div>
-                                <label className="block text-xs font-medium text-gray-600 mb-1">Period Name</label>
-                                <input
-                                  type="text"
-                                  value={period.name}
-                                  onChange={(e) => updateTimeBasedPeriod(period.id, 'name', e.target.value)}
-                                  className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-                                />
-                              </div>
-                              <div>
-                                <label className="block text-xs font-medium text-gray-600 mb-1">Price ($/MWh)</label>
-                                <input
-                                  type="number"
-                                  value={period.price}
-                                  onChange={(e) => updateTimeBasedPeriod(period.id, 'price', parseFloat(e.target.value) || 0)}
-                                  className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-                                  step="0.01"
-                                  min="0"
-                                />
-                              </div>
-                              <div>
-                                <label className="block text-xs font-medium text-gray-600 mb-1">Start Time</label>
-                                <input
-                                  type="time"
-                                  value={period.startTime}
-                                  onChange={(e) => updateTimeBasedPeriod(period.id, 'startTime', e.target.value)}
-                                  className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-                                />
-                              </div>
-                              <div>
-                                <label className="block text-xs font-medium text-gray-600 mb-1">End Time</label>
-                                <input
-                                  type="time"
-                                  value={period.endTime}
-                                  onChange={(e) => updateTimeBasedPeriod(period.id, 'endTime', e.target.value)}
-                                  className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-                                />
-                              </div>
-                            </div>
-                            
-                            <div className="mb-3">
-                              <label className="block text-xs font-medium text-gray-600 mb-2">Days of Week</label>
-                              <div className="flex gap-2">
-                                {dayNames.map((day, index) => (
-                                  <label key={day} className="flex items-center">
-                                    <input
-                                      type="checkbox"
-                                      checked={period.daysOfWeek[index]}
-                                      onChange={(e) => updateDayOfWeek(period.id, index, e.target.checked)}
-                                      className="mr-1"
-                                    />
-                                    <span className="text-xs">{day}</span>
-                                  </label>
-                                ))}
-                              </div>
-                            </div>
-
-                            <div className="flex justify-end">
-                              <button
-                                type="button"
-                                onClick={() => removeTimeBasedPeriod(period.id)}
-                                className="bg-red-500 text-white px-2 py-1 rounded text-xs hover:bg-red-600 transition-colors"
-                              >
-                                Remove
-                              </button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="text-center py-4 text-gray-500 text-sm">
-                        No pricing periods defined. Click "Add Period" to create time-based pricing rules.
-                      </div>
-                    )}
-
-                    {formData.timeBasedPricing && (
-                      <div className="mt-4 p-3 bg-blue-50 rounded">
-                        <label className="block text-xs font-medium text-gray-600 mb-1">
-                          Default Price ($/MWh) - for times not covered by periods above
-                        </label>
-                        <input
-                          type="number"
-                          value={formData.timeBasedPricing.defaultPrice}
-                          onChange={(e) => {
-                            const updatedPricing = {
-                              ...formData.timeBasedPricing!,
-                              defaultPrice: parseFloat(e.target.value) || 0
-                            };
-                            onInputChange('timeBasedPricing', updatedPricing);
-                          }}
-                          className="w-32 px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-                          step="0.01"
-                          min="0"
-                        />
-                      </div>
-                    )}
-                  </div>
-                )}
               </div>
             </div>
 
@@ -872,63 +701,73 @@ export default function ContractInputs({
             <div>
               <h3 className="text-lg font-semibold text-gray-800 mb-4">📊 Contract Preview</h3>
               
-              {formData.annualVolume > 0 || formData.strikePrice > 0 ? (
+              {(formData.annualVolume > 0 || formData.timeSeriesData?.length) && formData.strikePrice > 0 ? (
                 <div className="space-y-6">
+                  
                   {/* Contract Summary */}
                   <div className="bg-gray-50 rounded-lg p-4 space-y-3">
                     <div className="flex justify-between items-center">
-                      <span className="text-gray-600 font-medium">Contract Length:</span>
-                      <span className="text-gray-900 font-semibold">{getContractLength()} years</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-gray-600 font-medium">Annual Volume:</span>
+                      <span className="text-gray-600 font-medium">Contract Period:</span>
                       <span className="text-gray-900 font-semibold">
-                        {formData.type === 'wholesale' 
-                          ? `${formData.annualVolume.toLocaleString()} MW (${getAnnualMWh().toLocaleString()} MWh)`
-                          : `${formData.annualVolume.toLocaleString()} MWh`
-                        }
+                        {formData.startDate} to {formData.endDate}
                       </span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-gray-600 font-medium">Volume Shape:</span>
-                      <span className="text-gray-900 font-semibold capitalize">{formData.volumeShape}</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-gray-600 font-medium">Unit:</span>
-                      <span className="text-gray-900 font-semibold">{formData.unit}</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-gray-600 font-medium">Pricing Type:</span>
-                      <span className="text-gray-900 font-semibold capitalize">
-                        {formData.pricingType === 'custom_time_of_day' ? 'Time-of-Day' : formData.pricingType}
+                      <span className="text-gray-600 font-medium">Contract Tenor:</span>
+                      <span className="text-gray-900 font-semibold">
+                        {formData.tenor?.value} {formData.tenor?.unit}
                       </span>
                     </div>
-                    {formData.pricingType === 'escalation' && (
-                      <div className="flex justify-between items-center">
-                        <span className="text-gray-600 font-medium">Escalation Rate:</span>
-                        <span className="text-gray-900 font-semibold">{formData.escalationRate}% per year</span>
-                      </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-600 font-medium">Volume Data Source:</span>
+                      <span className="text-gray-900 font-semibold">
+                        {VolumeUtils.hasMonthlyData(formData) ? 'Monthly Time Series' : 'Percentage Shape'}
+                      </span>
+                    </div>
+                    {VolumeUtils.hasMonthlyData(formData) ? (
+                      <>
+                        <div className="flex justify-between items-center">
+                          <span className="text-gray-600 font-medium">Total Volume:</span>
+                          <span className="text-gray-900 font-semibold">
+                            {formData.totalVolume?.toLocaleString()} MWh
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-gray-600 font-medium">Monthly Data Points:</span>
+                          <span className="text-gray-900 font-semibold">
+                            {formData.timeSeriesData?.length} periods
+                          </span>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="flex justify-between items-center">
+                          <span className="text-gray-600 font-medium">Annual Volume:</span>
+                          <span className="text-gray-900 font-semibold">
+                            {formData.annualVolume?.toLocaleString()} MWh
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-gray-600 font-medium">Volume Shape:</span>
+                          <span className="text-gray-900 font-semibold capitalize">{formData.volumeShape}</span>
+                        </div>
+                      </>
                     )}
-                    {formData.customVolumeData && (
-                      <div className="flex justify-between items-center">
-                        <span className="text-gray-600 font-medium">Custom Volume Data:</span>
-                        <span className="text-gray-900 font-semibold">
-                          {formData.customVolumeData.data.length} {formData.customVolumeData.interval} points
-                        </span>
-                      </div>
-                    )}
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-600 font-medium">Strike Price:</span>
+                      <span className="text-gray-900 font-semibold">${formData.strikePrice}/MWh</span>
+                    </div>
                   </div>
 
-                  {/* Volume Distribution */}
-                  {formData.annualVolume > 0 && !formData.customVolumeData && (
+                  {/* Volume Preview */}
+                  {showPercentagePreview && formData.annualVolume > 0 && (
                     <div>
-                      <h4 className="text-md font-semibold text-gray-800 mb-4">📈 Monthly Volume Distribution</h4>
+                      <h4 className="text-md font-semibold text-gray-800 mb-4">📈 Monthly Volume Distribution (Percentage-Based)</h4>
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                         {months.map((month, index) => {
-                          const volumeProfile = volumeShapes[formData.volumeShape] || volumeShapes.flat;
-                          const annualMWh = getAnnualMWh();
-                          const monthlyVolume = annualMWh * volumeProfile[index] / 100;
-                          const percentage = volumeProfile[index];
+                          const monthlyVolumes = VolumeUtils.calculateFromPercentages(formData);
+                          const monthlyVolume = monthlyVolumes[index];
+                          const percentage = volumeShapes[formData.volumeShape]?.[index] || 8.33;
                           
                           return (
                             <div key={month} className="bg-white border border-gray-200 rounded-lg p-3 text-center hover:bg-gray-50 transition-colors">
@@ -942,78 +781,26 @@ export default function ContractInputs({
                     </div>
                   )}
 
-                  {/* Time-of-Day Pricing Preview */}
-                  {formData.pricingType === 'custom_time_of_day' && formData.timeBasedPricing && (
+                  {/* Monthly Time Series Preview */}
+                  {VolumeUtils.hasMonthlyData(formData) && volumeDataPreview.length > 0 && (
                     <div>
-                      <h4 className="text-md font-semibold text-gray-800 mb-4">⏰ Time-of-Day Pricing Summary</h4>
-                      <div className="space-y-2">
-                        {formData.timeBasedPricing.periods.map((period) => (
-                          <div key={period.id} className="bg-white border border-gray-200 rounded p-3">
-                            <div className="flex justify-between items-center mb-1">
-                              <span className="font-medium text-sm">{period.name}</span>
-                              <span className="font-semibold text-blue-600">${period.price.toFixed(2)}/MWh</span>
-                            </div>
-                            <div className="text-xs text-gray-600">
-                              {period.startTime} - {period.endTime} • {dayNames.filter((_, i) => period.daysOfWeek[i]).join(', ')}
-                            </div>
+                      <h4 className="text-md font-semibold text-gray-800 mb-4">📈 Monthly Volume Time Series (Preview)</h4>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                        {volumeDataPreview.map((data, index) => (
+                          <div key={index} className="bg-white border border-gray-200 rounded-lg p-3 text-center hover:bg-gray-50 transition-colors">
+                            <div className="font-semibold text-gray-800 text-sm">{data.period}</div>
+                            <div className="text-green-600 font-medium text-sm">{data.volume.toFixed(0)} MWh</div>
                           </div>
                         ))}
-                        <div className="bg-gray-100 border border-gray-200 rounded p-3">
-                          <div className="flex justify-between items-center">
-                            <span className="font-medium text-sm">Default (other times)</span>
-                            <span className="font-semibold text-gray-600">${formData.timeBasedPricing.defaultPrice.toFixed(2)}/MWh</span>
-                          </div>
-                        </div>
                       </div>
+                      {formData.timeSeriesData && formData.timeSeriesData.length > 12 && (
+                        <p className="text-center text-gray-500 text-sm mt-3">
+                          ... and {formData.timeSeriesData.length - 12} more periods
+                        </p>
+                      )}
                     </div>
                   )}
 
-                  {/* Price Schedule */}
-                  {formData.pricingType !== 'fixed' && formData.pricingType !== 'custom_time_of_day' && 
-                   formData.priceTimeSeries && formData.priceTimeSeries.length > 0 && (
-                    <div>
-                      <h4 className="text-md font-semibold text-gray-800 mb-4">💵 Price Schedule</h4>
-                      <div className="max-h-60 overflow-y-auto">
-                        {formData.pricingType === 'timeseries' ? (
-                          <div className="grid grid-cols-1 gap-2">
-                            {formData.priceTimeSeries.map((price, index) => (
-                              <div key={index} className="flex items-center gap-3 bg-white border border-gray-200 rounded p-3">
-                                <span className="text-sm font-medium text-gray-600 w-20">
-                                  {formData.priceInterval === 'monthly' ? `Month ${index + 1}` :
-                                   formData.priceInterval === 'quarterly' ? `Q${index + 1}` :
-                                   `Year ${index + 1}`}:
-                                </span>
-                                <input
-                                  type="number"
-                                  value={price}
-                                  onChange={(e) => handlePriceTimeSeriesChange(index, parseFloat(e.target.value) || 0)}
-                                  className="flex-1 px-3 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-                                  step="0.01"
-                                  min="0"
-                                />
-                                <span className="text-sm text-gray-500">$/MWh</span>
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <div className="grid grid-cols-1 gap-2">
-                            {formData.priceTimeSeries.map((price, index) => (
-                              <div key={index} className="flex justify-between items-center bg-white border border-gray-200 rounded p-3">
-                                <span className="text-sm font-medium text-gray-600">
-                                  {formData.priceInterval === 'monthly' ? `Month ${index + 1}` :
-                                   formData.priceInterval === 'quarterly' ? `Q${index + 1}` :
-                                   `Year ${index + 1}`}:
-                                </span>
-                                <span className="text-sm font-semibold text-gray-900">
-                                  ${price.toFixed(2)}/MWh
-                                </span>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
                 </div>
               ) : (
                 <div className="text-center py-12 text-gray-500">

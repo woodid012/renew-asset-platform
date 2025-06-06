@@ -12,7 +12,7 @@ const Line = dynamic(
   }
 );
 
-// Register Chart.js components
+// Register Chart.js components INCLUDING Filler
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -22,6 +22,7 @@ import {
   Title,
   Tooltip,
   Legend,
+  Filler, // ADD THIS
 } from 'chart.js';
 
 if (typeof window !== 'undefined') {
@@ -32,7 +33,8 @@ if (typeof window !== 'undefined') {
     LineElement,
     Title,
     Tooltip,
-    Legend
+    Legend,
+    Filler // ADD THIS
   );
 }
 

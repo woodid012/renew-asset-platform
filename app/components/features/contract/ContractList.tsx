@@ -41,6 +41,18 @@ interface Contract {
     data: number[]; // MWh values
     startDate: string;
   };
+  // Enhanced volume fields
+  timeSeriesData?: Array<{
+    period: string;
+    volume: number;
+  }>;
+  tenor?: {
+    value: number;
+    unit: 'months' | 'years';
+  };
+  dataSource?: 'manual' | 'csv_import' | 'api_import';
+  yearsCovered?: number[];
+  totalVolume?: number;
 }
 
 interface ContractListProps {
@@ -84,6 +96,15 @@ export default function ContractList({
     }
   };
 
+  const getDataSourceIcon = (contract: Contract) => {
+    switch (contract.dataSource) {
+      case 'csv_import': return '📊';
+      case 'api_import': return '🔗';
+      case 'manual': 
+      default: return '✏️';
+    }
+  };
+
   const handleDeleteClick = async (contract: Contract) => {
     if (!contract._id && !contract.id) return;
     
@@ -100,6 +121,28 @@ export default function ContractList({
 
   const handleRowClick = (contract: Contract) => {
     onSelectContract(contract);
+  };
+
+  // Generate unique key for each contract
+  const getContractKey = (contract: Contract, index: number) => {
+    // Priority: _id > id > name-index as fallback
+    if (contract._id) return `contract-${contract._id}`;
+    if (contract.id) return `contract-id-${contract.id}`;
+    return `contract-${contract.name}-${index}`;
+  };
+
+  // Check if contract is selected
+  const isSelected = (contract: Contract) => {
+    if (!selectedContract) return false;
+    
+    // Check by _id first, then id, then name as fallback
+    if (contract._id && selectedContract._id) {
+      return contract._id === selectedContract._id;
+    }
+    if (contract.id && selectedContract.id) {
+      return contract.id === selectedContract.id;
+    }
+    return contract.name === selectedContract.name;
   };
 
   return (
@@ -131,21 +174,22 @@ export default function ContractList({
                 <th className="text-left p-4 font-semibold text-gray-700">Category</th>
                 <th className="text-left p-4 font-semibold text-gray-700">State</th>
                 <th className="text-left p-4 font-semibold text-gray-700">Counterparty</th>
-                <th className="text-left p-4 font-semibold text-gray-700">Annual Volume</th>
-                <th className="text-left p-4 font-semibold text-gray-700">Unit</th>                 
+                <th className="text-left p-4 font-semibold text-gray-700">Volume</th>
+                <th className="text-left p-4 font-semibold text-gray-700">Type</th>                 
                 <th className="text-left p-4 font-semibold text-gray-700">Pricing</th>
                 <th className="text-left p-4 font-semibold text-gray-700">Period</th>
                 <th className="text-left p-4 font-semibold text-gray-700">Status</th>
+                <th className="text-left p-4 font-semibold text-gray-700">Source</th>
                 <th className="text-left p-4 font-semibold text-gray-700">Actions</th>
               </tr>
             </thead>
             <tbody>
               {contracts.map((contract, index) => (
                 <tr
-                  key={contract._id || contract.id || index}
+                  key={getContractKey(contract, index)}
                   onClick={() => handleRowClick(contract)}
                   className={`border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors ${
-                    selectedContract && (selectedContract._id === contract._id || selectedContract.id === contract.id)
+                    isSelected(contract)
                       ? 'bg-blue-50 border-l-4 border-l-blue-500'
                       : ''
                   }`}
@@ -165,12 +209,27 @@ export default function ContractList({
                   <td className="p-4 text-gray-700">{contract.state}</td>
                   <td className="p-4 text-gray-700">{contract.counterparty}</td>
                   <td className="p-4 text-gray-700">
-                    {contract.type === 'wholesale' 
-                      ? `${contract.annualVolume.toLocaleString()} MW`
-                      : `${contract.annualVolume.toLocaleString()} MWh`
-                    }
+                    <div className="flex flex-col">
+                      <span className="font-medium">
+                        {contract.type === 'wholesale' 
+                          ? `${contract.annualVolume.toLocaleString()} MW`
+                          : `${contract.annualVolume.toLocaleString()} MWh`
+                        }
+                      </span>
+                      {contract.timeSeriesData && contract.timeSeriesData.length > 0 && (
+                        <span className="text-xs text-blue-600">
+                          {contract.timeSeriesData.length} periods
+                        </span>
+                      )}
+                    </div>
                   </td>
-                  <td className="p-4 text-gray-700">{contract.unit}</td>
+                  <td className="p-4">
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                      contract.unit === 'Green' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'
+                    }`}>
+                      {contract.unit}
+                    </span>
+                  </td>
                   <td className="p-4">
                     <div className="flex flex-col">
                       <span className="text-gray-900 font-medium">
@@ -184,11 +243,25 @@ export default function ContractList({
                   <td className="p-4 text-xs">
                     <div>{contract.startDate}</div>
                     <div>to {contract.endDate}</div>
+                    {contract.tenor && (
+                      <div className="text-blue-600 mt-1">
+                        {contract.tenor.value} {contract.tenor.unit}
+                      </div>
+                    )}
                   </td>
                   <td className="p-4">
                     <span className={`px-2 py-1 rounded-full text-xs font-medium capitalize ${getStatusColor(contract.status)}`}>
                       {contract.status}
                     </span>
+                  </td>
+                  <td className="p-4">
+                    <div className="flex items-center gap-1">
+                      <span className="text-lg">{getDataSourceIcon(contract)}</span>
+                      <span className="text-xs text-gray-500 capitalize">
+                        {contract.dataSource === 'csv_import' ? 'CSV' :
+                         contract.dataSource === 'api_import' ? 'API' : 'Manual'}
+                      </span>
+                    </div>
                   </td>
                   <td className="p-4">
                     <div className="flex gap-2">

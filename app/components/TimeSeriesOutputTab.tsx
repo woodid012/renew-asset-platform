@@ -2,6 +2,12 @@
 
 import { useState } from 'react';
 
+interface TimeSeriesDataPoint {
+  period: string; // YYYY-MM format
+  volume: number; // MWh
+  date?: Date;
+}
+
 interface Contract {
   _id?: string;
   id?: number;
@@ -19,7 +25,18 @@ interface Contract {
   status: 'active' | 'pending';
   indexation: string;
   referenceDate: string;
-  // New fields for pricing
+  
+  // Enhanced volume fields
+  timeSeriesData?: TimeSeriesDataPoint[];
+  tenor?: {
+    value: number;
+    unit: 'months' | 'years';
+  };
+  dataSource?: 'manual' | 'csv_import' | 'api_import';
+  yearsCovered?: number[];
+  totalVolume?: number;
+  
+  // Pricing fields
   pricingType?: 'fixed' | 'escalation' | 'timeseries';
   escalationRate?: number;
   priceTimeSeries?: number[];
@@ -47,7 +64,7 @@ interface TimeSeriesRow {
   net_mtm: number;
 }
 
-interface TimeSeriesOutputTabProps {
+interface EnhancedTimeSeriesOutputTabProps {
   contracts: Contract[];
   timeSeriesData: TimeSeriesRow[];
   setTimeSeriesData: (data: TimeSeriesRow[]) => void;
@@ -57,7 +74,95 @@ interface TimeSeriesOutputTabProps {
   volumeShapes: { [key: string]: number[] };
 }
 
-export default function TimeSeriesOutputTab({
+// Volume calculation utilities
+const VolumeUtils = {
+  hasMonthlyData: (contract: Contract): boolean => {
+    return !!(contract.timeSeriesData && contract.timeSeriesData.length > 0);
+  },
+
+  getMonthlyVolumes: (contract: Contract, year: number): number[] => {
+    if (!contract.timeSeriesData) {
+      return VolumeUtils.calculateFromPercentages(contract);
+    }
+
+    const monthlyVolumes = new Array(12).fill(0);
+    
+    contract.timeSeriesData.forEach(data => {
+      const [dataYear, dataMonth] = data.period.split('-').map(Number);
+      
+      if (dataYear === year && dataMonth >= 1 && dataMonth <= 12) {
+        monthlyVolumes[dataMonth - 1] = data.volume;
+      }
+    });
+
+    return monthlyVolumes;
+  },
+
+  calculateFromPercentages: (contract: Contract): number[] => {
+    const volumeShapes = {
+      flat: [8.33, 8.33, 8.33, 8.33, 8.33, 8.33, 8.33, 8.33, 8.33, 8.33, 8.33, 8.33],
+      solar: [6.5, 7.2, 8.8, 9.5, 10.2, 8.9, 9.1, 9.8, 8.6, 7.4, 6.8, 7.2],
+      wind: [11.2, 10.8, 9.2, 7.8, 6.5, 5.9, 6.2, 7.1, 8.4, 9.6, 10.8, 11.5],
+      custom: [5.0, 6.0, 7.5, 9.0, 11.0, 12.5, 13.0, 12.0, 10.5, 8.5, 7.0, 6.0]
+    };
+
+    const percentages = volumeShapes[contract.volumeShape] || volumeShapes.flat;
+    return percentages.map(pct => (contract.annualVolume * pct) / 100);
+  },
+
+  getVolumeForPeriod: (contract: Contract, year: number, month: number): { volume: number; percentage: number } => {
+    if (VolumeUtils.hasMonthlyData(contract)) {
+      // Use actual monthly data
+      const targetPeriod = `${year}-${month.toString().padStart(2, '0')}`;
+      const dataPoint = contract.timeSeriesData?.find(d => d.period === targetPeriod);
+      
+      if (dataPoint) {
+        // Calculate percentage based on total volume for that year
+        const yearlyVolumes = VolumeUtils.getMonthlyVolumes(contract, year);
+        const yearTotal = yearlyVolumes.reduce((sum, vol) => sum + vol, 0);
+        const percentage = yearTotal > 0 ? (dataPoint.volume / yearTotal) * 100 : 0;
+        
+        return {
+          volume: dataPoint.volume,
+          percentage: percentage
+        };
+      }
+      
+      return { volume: 0, percentage: 0 };
+    } else {
+      // Use percentage-based calculation
+      const monthlyVolumes = VolumeUtils.calculateFromPercentages(contract);
+      const volumeShapes = {
+        flat: [8.33, 8.33, 8.33, 8.33, 8.33, 8.33, 8.33, 8.33, 8.33, 8.33, 8.33, 8.33],
+        solar: [6.5, 7.2, 8.8, 9.5, 10.2, 8.9, 9.1, 9.8, 8.6, 7.4, 6.8, 7.2],
+        wind: [11.2, 10.8, 9.2, 7.8, 6.5, 5.9, 6.2, 7.1, 8.4, 9.6, 10.8, 11.5],
+        custom: [5.0, 6.0, 7.5, 9.0, 11.0, 12.5, 13.0, 12.0, 10.5, 8.5, 7.0, 6.0]
+      };
+      const percentages = volumeShapes[contract.volumeShape] || volumeShapes.flat;
+      
+      return {
+        volume: monthlyVolumes[month - 1] || 0,
+        percentage: percentages[month - 1] || 8.33
+      };
+    }
+  },
+
+  getYearsCovered: (timeSeriesData: TimeSeriesDataPoint[]): number[] => {
+    if (!timeSeriesData) return [];
+    
+    const years = new Set<number>();
+    timeSeriesData.forEach(data => {
+      const year = parseInt(data.period.split('-')[0]);
+      if (!isNaN(year)) {
+        years.add(year);
+      }
+    });
+    
+    return Array.from(years).sort();
+  }
+};
+
+export default function EnhancedTimeSeriesOutputTab({
   contracts,
   timeSeriesData,
   setTimeSeriesData,
@@ -65,7 +170,7 @@ export default function TimeSeriesOutputTab({
   setIsLoading,
   marketPrices,
   volumeShapes,
-}: TimeSeriesOutputTabProps) {
+}: EnhancedTimeSeriesOutputTabProps) {
   const [year, setYear] = useState('all');
   const [interval, setInterval] = useState('M');
   const [scenario, setScenario] = useState('Central');
@@ -77,30 +182,34 @@ export default function TimeSeriesOutputTab({
     const years = new Set<number>();
     
     contracts.forEach(contract => {
-      if (contract.startDate && contract.endDate) {
-        const startDate = new Date(contract.startDate);
-        const endDate = new Date(contract.endDate);
-        
-        let currentDate = new Date(startDate);
-        while (currentDate <= endDate) {
-          let yearToAdd: number;
+      if (VolumeUtils.hasMonthlyData(contract)) {
+        // Use years from time series data
+        const timeSeriesYears = VolumeUtils.getYearsCovered(contract.timeSeriesData!);
+        timeSeriesYears.forEach(year => years.add(year));
+      } else {
+        // Use contract start/end dates
+        if (contract.startDate && contract.endDate) {
+          const startDate = new Date(contract.startDate);
+          const endDate = new Date(contract.endDate);
           
-          if (yearType === 'FY') {
-            // Financial Year (July 1 - June 30)
-            // If month is July-December, use current year. If Jan-June, use previous year + 1
-            const month = currentDate.getMonth() + 1; // 1-12
-            if (month >= 7) {
-              yearToAdd = currentDate.getFullYear() + 1; // FY starts in July, so FY2025 starts July 2024
+          let currentDate = new Date(startDate);
+          while (currentDate <= endDate) {
+            let yearToAdd: number;
+            
+            if (yearType === 'FY') {
+              const month = currentDate.getMonth() + 1;
+              if (month >= 7) {
+                yearToAdd = currentDate.getFullYear() + 1;
+              } else {
+                yearToAdd = currentDate.getFullYear();
+              }
             } else {
               yearToAdd = currentDate.getFullYear();
             }
-          } else {
-            // Calendar Year
-            yearToAdd = currentDate.getFullYear();
+            
+            years.add(yearToAdd);
+            currentDate.setFullYear(currentDate.getFullYear() + 1);
           }
-          
-          years.add(yearToAdd);
-          currentDate.setFullYear(currentDate.getFullYear() + 1);
         }
       }
     });
@@ -108,61 +217,23 @@ export default function TimeSeriesOutputTab({
     return Array.from(years).sort((a, b) => a - b);
   };
 
-  // Helper function to determine if a contract is active in a given year
-  const isContractActiveInYear = (contract: Contract, targetYear: number): boolean => {
-    if (!contract.startDate || !contract.endDate) return false;
-    
-    const startDate = new Date(contract.startDate);
-    const endDate = new Date(contract.endDate);
-    
-    let yearStart: Date, yearEnd: Date;
-    
-    if (yearType === 'FY') {
-      // Financial Year: July 1 (targetYear-1) to June 30 (targetYear)
-      yearStart = new Date(targetYear - 1, 6, 1); // July 1
-      yearEnd = new Date(targetYear, 5, 30); // June 30
-    } else {
-      // Calendar Year: January 1 to December 31
-      yearStart = new Date(targetYear, 0, 1); // January 1
-      yearEnd = new Date(targetYear, 11, 31); // December 31
-    }
-    
-    // Check if contract period overlaps with the target year period
-    return startDate <= yearEnd && endDate >= yearStart;
-  };
-
   // Helper function to get market price with fallback
   const getMarketPrice = (state: string, monthIndex: number): number => {
-    // Try to get the price for the specific state
     if (marketPrices[state] && marketPrices[state][monthIndex] !== undefined) {
       return marketPrices[state][monthIndex];
     }
     
-    // Fallback to NSW if available
     if (marketPrices['NSW'] && marketPrices['NSW'][monthIndex] !== undefined) {
       console.warn(`No market price data for state ${state}, using NSW as fallback`);
       return marketPrices['NSW'][monthIndex];
     }
     
-    // Final fallback to a default price
     console.warn(`No market price data for state ${state} or NSW, using default price`);
-    return 80.0; // Default price of $80/MWh
-  };
-
-  // Helper function to get volume profile with fallback
-  const getVolumeProfile = (volumeShape: string): number[] => {
-    if (volumeShapes[volumeShape]) {
-      return volumeShapes[volumeShape];
-    }
-    
-    // Fallback to flat profile if the specified shape doesn't exist
-    console.warn(`Volume shape ${volumeShape} not found, using flat profile`);
-    return volumeShapes['flat'] || [8.33, 8.33, 8.33, 8.33, 8.33, 8.33, 8.33, 8.33, 8.33, 8.33, 8.33, 8.33];
+    return 80.0;
   };
 
   // Helper function to get strike price for a given period
   const getStrikePrice = (contract: Contract, monthIndex: number, year: number): number => {
-    // If using time series pricing
     if (contract.pricingType === 'timeseries' && contract.priceTimeSeries && contract.priceTimeSeries.length > 0) {
       if (contract.priceInterval === 'monthly') {
         return contract.priceTimeSeries[monthIndex] || contract.strikePrice;
@@ -174,7 +245,6 @@ export default function TimeSeriesOutputTab({
       }
     }
     
-    // If using escalation pricing
     if (contract.pricingType === 'escalation' && contract.escalationRate && contract.referenceDate) {
       const refYear = new Date(contract.referenceDate).getFullYear();
       const yearsDiff = year - refYear;
@@ -182,7 +252,6 @@ export default function TimeSeriesOutputTab({
       return contract.strikePrice * escalationFactor;
     }
     
-    // Default to fixed pricing
     return contract.strikePrice;
   };
 
@@ -217,26 +286,35 @@ export default function TimeSeriesOutputTab({
 
       // Process each year
       yearsToProcess.forEach(selectedYear => {
-        // Filter contracts that are active in this year
-        const activeContractsForYear = contractsToProcess.filter(contract => 
-          isContractActiveInYear(contract, selectedYear)
-        );
-
-        activeContractsForYear.forEach(contract => {
-          // Validate contract data
-          if (!contract.name || !contract.state || !contract.annualVolume || !contract.strikePrice) {
-            console.warn(`Skipping contract ${contract.name || 'Unknown'} due to missing required data`);
-            return;
+        contractsToProcess.forEach(contract => {
+          // Skip contracts with no data for this year
+          if (VolumeUtils.hasMonthlyData(contract)) {
+            const hasDataForYear = contract.timeSeriesData?.some(data => {
+              const dataYear = parseInt(data.period.split('-')[0]);
+              return dataYear === selectedYear;
+            });
+            
+            if (!hasDataForYear) {
+              console.log(`Skipping contract ${contract.name} - no data for year ${selectedYear}`);
+              return;
+            }
           }
 
-          const volumeProfile = getVolumeProfile(contract.volumeShape);
-          
           if (interval === 'M') {
             // Monthly data generation
             months.forEach((month, index) => {
               const buySell = contract.type === 'retail' ? 'Sell' : 'Buy';
-              const volumePct = volumeProfile[index];
-              const actualVolume = contract.annualVolume * volumePct / 100;
+              
+              // Get volume data (either from time series or percentage)
+              const volumeData = VolumeUtils.getVolumeForPeriod(contract, selectedYear, index + 1);
+              const actualVolume = volumeData.volume;
+              const volumePct = volumeData.percentage;
+              
+              // Skip if no volume for this period
+              if (actualVolume === 0) {
+                return;
+              }
+              
               const marketPrice = getMarketPrice(contract.state, index);
               const strikePrice = getStrikePrice(contract, index, selectedYear);
               
@@ -255,7 +333,6 @@ export default function TimeSeriesOutputTab({
               if (yearType === 'FY') {
                 recordFY = selectedYear;
               } else {
-                // For CY, convert to FY (CY 2025 would be FY 2026 for most months)
                 recordFY = selectedYear + (index >= 6 ? 1 : 0); // July onwards is next FY
               }
               
@@ -281,29 +358,46 @@ export default function TimeSeriesOutputTab({
             });
           } else if (interval === 'Y') {
             // Yearly data generation
-            const totalVolume = contract.annualVolume;
-            
-            // Calculate average market price for the year
+            let totalVolume = 0;
             let totalMarketValue = 0;
+            let totalStrikeValue = 0;
             let totalVolumeWeighted = 0;
             
-            volumeProfile.forEach((volumePct, monthIndex) => {
-              const monthVolume = totalVolume * volumePct / 100;
-              const monthMarketPrice = getMarketPrice(contract.state, monthIndex);
-              totalMarketValue += monthVolume * monthMarketPrice;
-              totalVolumeWeighted += monthVolume;
-            });
+            if (VolumeUtils.hasMonthlyData(contract)) {
+              // Sum actual monthly data for the year
+              contract.timeSeriesData?.forEach(data => {
+                const dataYear = parseInt(data.period.split('-')[0]);
+                if (dataYear === selectedYear) {
+                  const monthIndex = parseInt(data.period.split('-')[1]) - 1;
+                  const monthMarketPrice = getMarketPrice(contract.state, monthIndex);
+                  const monthStrikePrice = getStrikePrice(contract, monthIndex, selectedYear);
+                  
+                  totalVolume += data.volume;
+                  totalMarketValue += data.volume * monthMarketPrice;
+                  totalStrikeValue += data.volume * monthStrikePrice;
+                  totalVolumeWeighted += data.volume;
+                }
+              });
+            } else {
+              // Use percentage-based calculation
+              totalVolume = contract.annualVolume;
+              
+              const monthlyVolumes = VolumeUtils.calculateFromPercentages(contract);
+              monthlyVolumes.forEach((monthVolume, monthIndex) => {
+                const monthMarketPrice = getMarketPrice(contract.state, monthIndex);
+                const monthStrikePrice = getStrikePrice(contract, monthIndex, selectedYear);
+                
+                totalMarketValue += monthVolume * monthMarketPrice;
+                totalStrikeValue += monthVolume * monthStrikePrice;
+                totalVolumeWeighted += monthVolume;
+              });
+            }
+            
+            if (totalVolume === 0) {
+              return; // Skip if no volume for this year
+            }
             
             const avgMarketPrice = totalVolumeWeighted > 0 ? totalMarketValue / totalVolumeWeighted : getMarketPrice(contract.state, 0);
-            
-            // Use average strike price for the year (for escalation contracts)
-            let totalStrikeValue = 0;
-            volumeProfile.forEach((volumePct, monthIndex) => {
-              const monthVolume = totalVolume * volumePct / 100;
-              const monthStrikePrice = getStrikePrice(contract, monthIndex, selectedYear);
-              totalStrikeValue += monthVolume * monthStrikePrice;
-            });
-            
             const avgStrikePrice = totalVolumeWeighted > 0 ? totalStrikeValue / totalVolumeWeighted : contract.strikePrice;
             
             const strikePriceXVolume = totalVolume * avgStrikePrice;
@@ -323,7 +417,7 @@ export default function TimeSeriesOutputTab({
               type: contract.category,
               month_start: 1,
               year: selectedYear,
-              fy: yearType === 'FY' ? selectedYear : selectedYear + 1, // Approximate FY conversion for CY
+              fy: yearType === 'FY' ? selectedYear : selectedYear + 1,
               unit: contract.unit,
               scenario: scenario,
               sub_type: contract.category,
@@ -428,51 +522,64 @@ export default function TimeSeriesOutputTab({
     uniqueStates: new Set(timeSeriesData.map(row => row.state)).size,
   };
 
-  // Get available market price states for validation
-  const availableStates = Object.keys(marketPrices);
-  const contractStates = [...new Set(contracts.map(c => c.state))];
-  const missingStates = contractStates.filter(state => !availableStates.includes(state));
+  // Get contracts with monthly data vs percentage-based
+  const contractsWithMonthlyData = contracts.filter(VolumeUtils.hasMonthlyData);
+  const contractsWithPercentageData = contracts.filter(c => !VolumeUtils.hasMonthlyData(c));
 
   return (
     <div className="space-y-8">
       {/* Generation Controls */}
       <div className="bg-white rounded-xl p-6 shadow-md border border-gray-200">
         <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-3">
-          🔧 Time Series Generation Controls
+          🔧 Enhanced Time Series Generation Controls
         </h2>
         
         <div className="space-y-6">
-          {/* Validation Warnings */}
-          {missingStates.length > 0 && (
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-              <div className="flex items-center gap-2 text-yellow-800">
-                <span>⚠️</span>
-                <strong>Missing Market Data:</strong>
-              </div>
-              <p className="text-yellow-700 mt-1">
-                No market price data found for states: {missingStates.join(', ')}. 
-                These will use NSW prices as fallback or default to $80/MWh.
-              </p>
-            </div>
-          )}
-
-          {/* Contract Summary */}
+          {/* Contract Data Summary */}
           <div>
-            <h3 className="text-lg font-semibold text-gray-800 mb-4">Contract Selection</h3>
-            <div className="bg-blue-50 rounded-lg p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="text-lg font-semibold text-blue-800">
-                    {contracts.filter(c => c.status === 'active').length} active contracts of {contracts.length} total
-                  </div>
-                  <div className="text-sm text-blue-600">
-                    Time series will be generated for active contracts in {year === 'all' ? 'all available years' : `${yearType} ${year}`}
-                  </div>
-                  <div className="text-xs text-blue-600 mt-1">
-                    States: {contractStates.join(', ')} | Available {yearType} years: {availableYears.join(', ') || 'None'}
-                  </div>
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">📊 Contract Data Overview</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="bg-blue-50 rounded-lg p-4">
+                <div className="flex items-center gap-2 text-blue-800 mb-2">
+                  <span>📈</span>
+                  <strong>Monthly Time Series Data</strong>
                 </div>
-                <div className="text-4xl">📊</div>
+                <p className="text-blue-700">
+                  {contractsWithMonthlyData.length} contracts with actual monthly volume data
+                </p>
+                {contractsWithMonthlyData.length > 0 && (
+                  <div className="text-xs text-blue-600 mt-1">
+                    {contractsWithMonthlyData.map(c => c.name).join(', ')}
+                  </div>
+                )}
+              </div>
+              
+              <div className="bg-green-50 rounded-lg p-4">
+                <div className="flex items-center gap-2 text-green-800 mb-2">
+                  <span>📊</span>
+                  <strong>Percentage-Based Volume</strong>
+                </div>
+                <p className="text-green-700">
+                  {contractsWithPercentageData.length} contracts using volume shape percentages
+                </p>
+                {contractsWithPercentageData.length > 0 && (
+                  <div className="text-xs text-green-600 mt-1">
+                    Using: {[...new Set(contractsWithPercentageData.map(c => c.volumeShape))].join(', ')} shapes
+                  </div>
+                )}
+              </div>
+
+              <div className="bg-purple-50 rounded-lg p-4">
+                <div className="flex items-center gap-2 text-purple-800 mb-2">
+                  <span>🎯</span>
+                  <strong>Active Contracts</strong>
+                </div>
+                <p className="text-purple-700">
+                  {contracts.filter(c => c.status === 'active').length} of {contracts.length} contracts active
+                </p>
+                <div className="text-xs text-purple-600 mt-1">
+                  Available years: {availableYears.join(', ') || 'None'}
+                </div>
               </div>
             </div>
           </div>
@@ -490,7 +597,7 @@ export default function TimeSeriesOutputTab({
                   value={yearType} 
                   onChange={(e) => {
                     setYearType(e.target.value as 'FY' | 'CY');
-                    setYear('all'); // Reset year selection when type changes
+                    setYear('all');
                   }}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
@@ -528,9 +635,6 @@ export default function TimeSeriesOutputTab({
                 >
                   <option value="M">Monthly</option>
                   <option value="Y">Yearly</option>
-                  <option value="D" disabled>Daily (Coming Soon)</option>
-                  <option value="5M" disabled>5-Minute (Coming Soon)</option>
-                  <option value="30M" disabled>30-Minute (Coming Soon)</option>
                 </select>
               </div>
               
@@ -547,9 +651,6 @@ export default function TimeSeriesOutputTab({
                   title="Scenario selection currently disabled - uses Central scenario"
                 >
                   <option value="Central">Central (Locked)</option>
-                  <option value="High" disabled>High (Coming Soon)</option>
-                  <option value="Low" disabled>Low (Coming Soon)</option>
-                  <option value="Stress" disabled>Stress Test (Coming Soon)</option>
                 </select>
               </div>
               
@@ -581,7 +682,6 @@ export default function TimeSeriesOutputTab({
                 >
                   <option value="csv">CSV</option>
                   <option value="json">JSON</option>
-                  <option value="excel" disabled>Excel (Coming Soon)</option>
                 </select>
               </div>
               
@@ -640,7 +740,7 @@ export default function TimeSeriesOutputTab({
       <div className="bg-white rounded-xl p-6 shadow-md border border-gray-200">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-3">
-            📈 Time Series Output
+            📈 Enhanced Time Series Output
           </h2>
           {timeSeriesData.length > 0 && (
             <div className="flex gap-2">
@@ -672,21 +772,18 @@ export default function TimeSeriesOutputTab({
                 <th className="text-left p-3 font-semibold text-gray-700">Year</th>
                 <th className="text-left p-3 font-semibold text-gray-700">FY</th>
                 <th className="text-left p-3 font-semibold text-gray-700">Unit</th>
-                <th className="text-left p-3 font-semibold text-gray-700">Scenario</th>
-                <th className="text-left p-3 font-semibold text-gray-700">Sub Type</th>
                 <th className="text-left p-3 font-semibold text-gray-700">Volume %</th>
                 <th className="text-left p-3 font-semibold text-gray-700">Volume (MWh)</th>
                 <th className="text-left p-3 font-semibold text-gray-700">Strike Price</th>
-                <th className="text-left p-3 font-semibold text-gray-700">Strike Price × Volume</th>
                 <th className="text-left p-3 font-semibold text-gray-700">Market Price</th>
-                <th className="text-left p-3 font-semibold text-gray-700">Market Price × Volume</th>
                 <th className="text-left p-3 font-semibold text-gray-700">Net MtM</th>
+                <th className="text-left p-3 font-semibold text-gray-700">Data Source</th>
               </tr>
             </thead>
             <tbody>
               {timeSeriesData.length === 0 ? (
                 <tr>
-                  <td colSpan={17} className="text-center py-12 text-gray-500">
+                  <td colSpan={14} className="text-center py-12 text-gray-500">
                     <div className="space-y-2">
                       <div className="text-4xl">📊</div>
                       <div>Click "Generate Time Series" to see output data</div>
@@ -694,43 +791,52 @@ export default function TimeSeriesOutputTab({
                         {contracts.filter(c => c.status === 'active').length === 0 ? 
                           'No active contracts found - add contracts in the Contract Input tab' : 
                           availableYears.length === 0 ?
-                          'No valid years found for contracts - check contract dates' :
-                          `Ready to generate data for ${contracts.filter(c => c.status === 'active').length} active contracts across ${year === 'all' ? availableYears.length + ' years' : '1 year'}`
+                          'No valid years found for contracts - check contract dates or upload volume data' :
+                          `Ready to generate data for ${contracts.filter(c => c.status === 'active').length} active contracts`
                         }
                       </div>
                     </div>
                   </td>
                 </tr>
               ) : (
-                timeSeriesData.map((row, index) => (
-                  <tr key={index} className="border-b border-gray-100 hover:bg-gray-50">
-                    <td className="p-3">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        row.buysell === 'Buy' ? 'bg-blue-100 text-blue-800' : 'bg-orange-100 text-orange-800'
-                      }`}>
-                        {row.buysell}
-                      </span>
-                    </td>
-                    <td className="p-3 font-medium text-gray-900">{row.deal_name}</td>
-                    <td className="p-3">{row.state}</td>
-                    <td className="p-3">{row.type}</td>
-                    <td className="p-3">{row.month_start}</td>
-                    <td className="p-3">{row.year}</td>
-                    <td className="p-3">{row.fy}</td>
-                    <td className="p-3">{row.unit}</td>
-                    <td className="p-3">{row.scenario}</td>
-                    <td className="p-3">{row.sub_type}</td>
-                    <td className="p-3">{row.volume_pct.toFixed(1)}%</td>
-                    <td className="p-3 font-medium">{parseFloat(row.volume_mwh).toLocaleString()}</td>
-                    <td className="p-3">${row.strike_price.toFixed(2)}</td>
-                    <td className="p-3">${row.strike_price_x_volume.toLocaleString()}</td>
-                    <td className="p-3">${row.market_price.toFixed(2)}</td>
-                    <td className="p-3">${row.market_price_x_volume.toLocaleString()}</td>
-                    <td className={`p-3 font-semibold ${row.net_mtm >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                      ${row.net_mtm.toLocaleString()}
-                    </td>
-                  </tr>
-                ))
+                timeSeriesData.map((row, index) => {
+                  // Determine data source for this row
+                  const contract = contracts.find(c => c.name === row.deal_name);
+                  const dataSource = VolumeUtils.hasMonthlyData(contract!) ? 'Monthly Data' : 'Percentage Shape';
+                  
+                  return (
+                    <tr key={index} className="border-b border-gray-100 hover:bg-gray-50">
+                      <td className="p-3">
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          row.buysell === 'Buy' ? 'bg-blue-100 text-blue-800' : 'bg-orange-100 text-orange-800'
+                        }`}>
+                          {row.buysell}
+                        </span>
+                      </td>
+                      <td className="p-3 font-medium text-gray-900">{row.deal_name}</td>
+                      <td className="p-3">{row.state}</td>
+                      <td className="p-3">{row.type}</td>
+                      <td className="p-3">{row.month_start}</td>
+                      <td className="p-3">{row.year}</td>
+                      <td className="p-3">{row.fy}</td>
+                      <td className="p-3">{row.unit}</td>
+                      <td className="p-3">{row.volume_pct.toFixed(1)}%</td>
+                      <td className="p-3 font-medium">{parseFloat(row.volume_mwh).toLocaleString()}</td>
+                      <td className="p-3">${row.strike_price.toFixed(2)}</td>
+                      <td className="p-3">${row.market_price.toFixed(2)}</td>
+                      <td className={`p-3 font-semibold ${row.net_mtm >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        ${row.net_mtm.toLocaleString()}
+                      </td>
+                      <td className="p-3">
+                        <span className={`px-2 py-1 rounded-full text-xs ${
+                          dataSource === 'Monthly Data' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'
+                        }`}>
+                          {dataSource}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>

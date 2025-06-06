@@ -20,105 +20,12 @@ async function connectToDatabase() {
   return { client, db };
 }
 
-// Sample contract data to populate database
-const sampleContracts = [
-  {
-    name: "NSW Solar Farm Offtake",
-    type: "offtake",
-    category: "Solar Farm",
-    state: "NSW",
-    counterparty: "Sunpower Energy",
-    startDate: "2026-01-01",
-    endDate: "2035-12-31",
-    annualVolume: 250000,
-    strikePrice: 65.50,
-    unit: "Energy",
-    volumeShape: "solar",
-    status: "active",
-    indexation: "CPI",
-    referenceDate: "2026-01-01"
-  },
-  {
-    name: "VIC Wind Farm PPA",
-    type: "offtake",
-    category: "Wind Farm",
-    state: "VIC",
-    counterparty: "WindGen Australia",
-    startDate: "2026-06-01",
-    endDate: "2040-05-31",
-    annualVolume: 400000,
-    strikePrice: 58.75,
-    unit: "Energy",
-    volumeShape: "wind",
-    status: "active",
-    indexation: "Fixed",
-    referenceDate: "2026-06-01"
-  },
-  {
-    name: "SA Government Retail Contract",
-    type: "retail",
-    category: "Retail Customer",
-    state: "SA",
-    counterparty: "SA Government",
-    startDate: "2026-07-01",
-    endDate: "2029-06-30",
-    annualVolume: 180000,
-    strikePrice: 95.20,
-    unit: "Energy",
-    volumeShape: "flat",
-    status: "active",
-    indexation: "CPI + 1%",
-    referenceDate: "2026-07-01"
-  },
-  {
-    name: "NSW Baseload Swap",
-    type: "wholesale",
-    category: "Swap",
-    state: "NSW",
-    counterparty: "Energy Trader Co",
-    startDate: "2026-01-01",
-    endDate: "2026-12-31",
-    annualVolume: 500000,
-    strikePrice: 72.30,
-    unit: "Energy",
-    volumeShape: "flat",
-    status: "pending",
-    indexation: "Fixed",
-    referenceDate: "2026-01-01"
-  },
-  {
-    name: "QLD Industrial Customer",
-    type: "retail",
-    category: "Retail Customer",
-    state: "QLD",
-    counterparty: "Mining Corp Ltd",
-    startDate: "2026-03-01",
-    endDate: "2031-02-28",
-    annualVolume: 320000,
-    strikePrice: 89.50,
-    unit: "Energy",
-    volumeShape: "custom",
-    status: "active",
-    indexation: "CPI + 0.5%",
-    referenceDate: "2026-03-01"
-  }
-];
-
 export async function GET() {
   try {
     const { db } = await connectToDatabase();
     const collection = db.collection('contracts');
 
-    // Check if contracts exist, if not, populate with sample data
-    const contractCount = await collection.countDocuments();
-    
-    if (contractCount === 0) {
-      console.log('No contracts found, inserting sample data...');
-      const result = await collection.insertMany(sampleContracts);
-      console.log(`Inserted ${result.insertedCount} sample contracts`);
-    }
-
-    // Fetch all contracts
+    // REMOVED: No more sample data insertion - just fetch existing contracts
     const contracts = await collection.find({}).toArray();
     return NextResponse.json(contracts);
   } catch (error) {
@@ -134,7 +41,7 @@ export async function POST(request: NextRequest) {
     const contractData = await request.json();
     
     // Validate required fields
-    const requiredFields = ['name', 'type', 'category', 'state', 'counterparty', 'annualVolume', 'strikePrice'];
+    const requiredFields = ['name', 'type', 'category', 'state', 'counterparty'];
     const missingFields = requiredFields.filter(field => !contractData[field]);
     
     if (missingFields.length > 0) {
@@ -144,12 +51,60 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // Set default values
+    // Set default values and process enhanced fields
     contractData.status = contractData.status || 'active';
     contractData.unit = contractData.unit || 'Energy';
     contractData.volumeShape = contractData.volumeShape || 'flat';
+    contractData.pricingType = contractData.pricingType || 'fixed';
+    contractData.dataSource = contractData.dataSource || 'manual';
     contractData.createdAt = new Date();
     contractData.updatedAt = new Date();
+
+    // Handle volume data - calculate derived fields
+    if (contractData.timeSeriesData && Array.isArray(contractData.timeSeriesData)) {
+      // Calculate total volume from time series
+      contractData.totalVolume = contractData.timeSeriesData.reduce((sum: number, data: any) => sum + (data.volume || 0), 0);
+      
+      // Extract years covered
+      const years = new Set<number>();
+      contractData.timeSeriesData.forEach((data: any) => {
+        if (data.period) {
+          const year = parseInt(data.period.split('-')[0]);
+          if (!isNaN(year)) years.add(year);
+        }
+      });
+      contractData.yearsCovered = Array.from(years).sort();
+      
+      // Update annual volume to match total if using time series
+      if (contractData.totalVolume > 0) {
+        contractData.annualVolume = contractData.totalVolume;
+      }
+    }
+
+    // Handle tenor - ensure it's properly structured
+    if (contractData.tenor && typeof contractData.tenor === 'object') {
+      contractData.tenor = {
+        value: Number(contractData.tenor.value) || 1,
+        unit: contractData.tenor.unit || 'years'
+      };
+    }
+
+    // Handle time-based pricing
+    if (contractData.timeBasedPricing && typeof contractData.timeBasedPricing === 'object') {
+      // Ensure periods array exists
+      contractData.timeBasedPricing.periods = contractData.timeBasedPricing.periods || [];
+      contractData.timeBasedPricing.defaultPrice = Number(contractData.timeBasedPricing.defaultPrice) || 0;
+    }
+
+    // Handle price time series
+    if (contractData.priceTimeSeries && Array.isArray(contractData.priceTimeSeries)) {
+      contractData.priceTimeSeries = contractData.priceTimeSeries.map((price: any) => Number(price) || 0);
+    }
+
+    // Ensure numeric fields are numbers
+    contractData.annualVolume = Number(contractData.annualVolume) || 0;
+    contractData.strikePrice = Number(contractData.strikePrice) || 0;
+    contractData.escalationRate = contractData.escalationRate ? Number(contractData.escalationRate) : undefined;
 
     const result = await collection.insertOne(contractData);
     
@@ -161,7 +116,10 @@ export async function POST(request: NextRequest) {
     }
   } catch (error) {
     console.error('Error creating contract:', error);
-    return NextResponse.json({ error: 'Failed to create contract' }, { status: 500 });
+    return NextResponse.json({ 
+      error: 'Failed to create contract', 
+      details: error instanceof Error ? error.message : String(error) 
+    }, { status: 500 });
   }
 }
 
@@ -169,16 +127,79 @@ export async function PUT(request: NextRequest) {
   try {
     const { db } = await connectToDatabase();
     const collection = db.collection('contracts');
-    const { id, ...updateData } = await request.json();
+    const { id, _id, ...updateData } = await request.json();
     
-    if (!id) {
+    // Use either id or _id
+    const contractId = id || _id;
+    
+    if (!contractId) {
       return NextResponse.json({ error: 'Contract ID is required' }, { status: 400 });
     }
 
+    // Process enhanced fields before update
     updateData.updatedAt = new Date();
 
+    // Handle volume data - calculate derived fields
+    if (updateData.timeSeriesData && Array.isArray(updateData.timeSeriesData)) {
+      // Calculate total volume from time series
+      updateData.totalVolume = updateData.timeSeriesData.reduce((sum: number, data: any) => sum + (data.volume || 0), 0);
+      
+      // Extract years covered
+      const years = new Set<number>();
+      updateData.timeSeriesData.forEach((data: any) => {
+        if (data.period) {
+          const year = parseInt(data.period.split('-')[0]);
+          if (!isNaN(year)) years.add(year);
+        }
+      });
+      updateData.yearsCovered = Array.from(years).sort();
+      
+      // Update annual volume to match total if using time series
+      if (updateData.totalVolume > 0) {
+        updateData.annualVolume = updateData.totalVolume;
+      }
+    }
+
+    // Handle tenor - ensure it's properly structured
+    if (updateData.tenor && typeof updateData.tenor === 'object') {
+      updateData.tenor = {
+        value: Number(updateData.tenor.value) || 1,
+        unit: updateData.tenor.unit || 'years'
+      };
+    }
+
+    // Handle time-based pricing
+    if (updateData.timeBasedPricing && typeof updateData.timeBasedPricing === 'object') {
+      // Ensure periods array exists
+      updateData.timeBasedPricing.periods = updateData.timeBasedPricing.periods || [];
+      updateData.timeBasedPricing.defaultPrice = Number(updateData.timeBasedPricing.defaultPrice) || 0;
+    }
+
+    // Handle price time series
+    if (updateData.priceTimeSeries && Array.isArray(updateData.priceTimeSeries)) {
+      updateData.priceTimeSeries = updateData.priceTimeSeries.map((price: any) => Number(price) || 0);
+    }
+
+    // Ensure numeric fields are numbers
+    if (updateData.annualVolume !== undefined) {
+      updateData.annualVolume = Number(updateData.annualVolume) || 0;
+    }
+    if (updateData.strikePrice !== undefined) {
+      updateData.strikePrice = Number(updateData.strikePrice) || 0;
+    }
+    if (updateData.escalationRate !== undefined) {
+      updateData.escalationRate = updateData.escalationRate ? Number(updateData.escalationRate) : undefined;
+    }
+
+    // Remove undefined values to avoid overwriting with undefined
+    Object.keys(updateData).forEach(key => {
+      if (updateData[key] === undefined) {
+        delete updateData[key];
+      }
+    });
+
     const result = await collection.updateOne(
-      { _id: new ObjectId(id) },
+      { _id: new ObjectId(contractId) },
       { $set: updateData }
     );
 
@@ -186,11 +207,14 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'Contract not found' }, { status: 404 });
     }
 
-    const updatedContract = await collection.findOne({ _id: new ObjectId(id) });
+    const updatedContract = await collection.findOne({ _id: new ObjectId(contractId) });
     return NextResponse.json(updatedContract);
   } catch (error) {
     console.error('Error updating contract:', error);
-    return NextResponse.json({ error: 'Failed to update contract' }, { status: 500 });
+    return NextResponse.json({ 
+      error: 'Failed to update contract', 
+      details: error instanceof Error ? error.message : String(error) 
+    }, { status: 500 });
   }
 }
 
@@ -214,6 +238,9 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ message: 'Contract deleted successfully' });
   } catch (error) {
     console.error('Error deleting contract:', error);
-    return NextResponse.json({ error: 'Failed to delete contract' }, { status: 500 });
+    return NextResponse.json({ 
+      error: 'Failed to delete contract', 
+      details: error instanceof Error ? error.message : String(error) 
+    }, { status: 500 });
   }
 }

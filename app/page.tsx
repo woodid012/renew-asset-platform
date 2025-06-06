@@ -211,7 +211,7 @@ export default function EnergyContractManagement() {
     }
   };
 
-  const updateContract = async (updatedContract: Contract) => {
+const updateContract = async (updatedContract: Contract) => {
     try {
       const response = await fetch('/api/contracts', {
         method: 'PUT',
@@ -223,26 +223,41 @@ export default function EnergyContractManagement() {
 
       if (response.ok) {
         const updated = await response.json();
+        
+        // FIXED: Proper state update to replace the contract in the array
         setContracts(prev => 
-          prev.map(contract => 
-            (contract._id === updated._id || contract.id === updated.id) 
-              ? updated 
-              : contract
-          )
+          prev.map(contract => {
+            // Match by _id first, then id as fallback
+            const isMatch = (contract._id && updated._id && contract._id === updated._id) ||
+                          (contract.id && updated.id && contract.id === updated.id) ||
+                          (contract.name === updated.name); // fallback to name
+            
+            return isMatch ? updated : contract;
+          })
         );
-        if (selectedContract && (selectedContract._id === updated._id || selectedContract.id === updated.id)) {
-          setSelectedContract(updated);
+        
+        // Update selected contract if it matches
+        if (selectedContract) {
+          const isSelectedMatch = (selectedContract._id && updated._id && selectedContract._id === updated._id) ||
+                                (selectedContract.id && updated.id && selectedContract.id === updated.id) ||
+                                (selectedContract.name === updated.name);
+          
+          if (isSelectedMatch) {
+            setSelectedContract(updated);
+          }
         }
+        
         return updated;
       } else {
-        throw new Error('Failed to update contract');
+        const errorData = await response.json();
+        console.error('API Error:', errorData);
+        throw new Error(`Failed to update contract: ${errorData.error || 'Unknown error'}`);
       }
     } catch (error) {
       console.error('Error updating contract:', error);
       throw error;
     }
   };
-
   const deleteContract = async (contractId: string) => {
     try {
       const response = await fetch(`/api/contracts?id=${contractId}`, {
