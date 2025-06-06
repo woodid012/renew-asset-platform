@@ -13,6 +13,7 @@ interface Contract {
   annualVolume: number;
   strikePrice: number;
   unit: string;
+  contractType?: string; // New Type field
   volumeShape: 'flat' | 'solar' | 'wind' | 'custom';
   status: 'active' | 'pending';
   indexation: string;
@@ -225,9 +226,9 @@ export default function ContractList({
                   </td>
                   <td className="p-4">
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      contract.unit === 'Green' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'
+                      contract.contractType === 'Green' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'
                     }`}>
-                      {contract.unit}
+                      {contract.contractType || contract.unit || 'Energy'}
                     </span>
                   </td>
                   <td className="p-4">
