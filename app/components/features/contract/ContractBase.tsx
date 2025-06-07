@@ -27,7 +27,7 @@ interface Contract {
   status: 'active' | 'pending';
   indexation: string;
   referenceDate: string;
-  pricingType?: 'fixed' | 'escalation' | 'timeseries' | 'custom_time_of_day';
+  pricingType?: 'fixed' | 'timeseries' | 'custom_time_of_day';
   escalationRate?: number;
   priceTimeSeries?: number[];
   priceInterval?: 'monthly' | 'quarterly' | 'yearly';
@@ -480,12 +480,7 @@ export default function ContractBase({
                   <span className="text-gray-600">Base Price:</span>
                   <span className="font-medium">${formData.strikePrice || 0}/MWh</span>
                 </div>
-                {formData.pricingType === 'escalation' && formData.escalationRate && (
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Escalation:</span>
-                    <span className="font-medium">{formData.escalationRate}% p.a.</span>
-                  </div>
-                )}
+
                 {formData.pricingType === 'timeseries' && formData.priceTimeSeries?.length && (
                   <div className="flex justify-between">
                     <span className="text-gray-600">Price Series:</span>
