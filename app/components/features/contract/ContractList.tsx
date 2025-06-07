@@ -1,5 +1,7 @@
 'use client';
 
+import { useState, useMemo } from 'react';
+
 interface Contract {
   _id?: string;
   id?: number;
@@ -18,7 +20,7 @@ interface Contract {
   status: 'active' | 'pending';
   indexation: string;
   referenceDate: string;
-  // New fields
+  // Enhanced pricing fields
   pricingType?: 'fixed' | 'escalation' | 'timeseries' | 'custom_time_of_day';
   escalationRate?: number;
   priceTimeSeries?: number[];
@@ -30,17 +32,11 @@ interface Contract {
       id: string;
       name: string;
       price: number;
-      startTime: string; // "07:00"
-      endTime: string;   // "22:00"
-      daysOfWeek: boolean[]; // [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+      startTime: string;
+      endTime: string;
+      daysOfWeek: boolean[];
     }>;
     defaultPrice: number;
-  };
-  // Custom volume data (time series at hourly/daily level)
-  customVolumeData?: {
-    interval: 'hourly' | 'daily' | 'monthly';
-    data: number[]; // MWh values
-    startDate: string;
   };
   // Enhanced volume fields
   timeSeriesData?: Array<{
@@ -61,7 +57,7 @@ interface ContractListProps {
   selectedContract: Contract | null;
   onSelectContract: (contract: Contract | null) => void;
   onEditContract: (contract: Contract) => void;
-  onDeleteContract: (contractId: string) => Promise<void>; // FIXED: Changed signature to expect string ID
+  onDeleteContract: (contractId: string) => Promise<void>;
 }
 
 export default function ContractList({
@@ -71,6 +67,74 @@ export default function ContractList({
   onEditContract,
   onDeleteContract,
 }: ContractListProps) {
+  
+  // Filter states
+  const [filters, setFilters] = useState({
+    search: '',
+    type: 'all',
+    state: 'all',
+    status: 'all',
+    pricingType: 'all',
+    contractType: 'all'
+  });
+  const [showFilters, setShowFilters] = useState(false);
+
+  // Get unique values for filter dropdowns
+  const filterOptions = useMemo(() => {
+    const uniqueStates = [...new Set(contracts.map(c => c.state))].sort();
+    const uniqueContractTypes = [...new Set(contracts.map(c => c.unit || 'Energy'))].sort();
+    const uniquePricingTypes = [...new Set(contracts.map(c => c.pricingType || 'fixed'))].sort();
+    
+    return {
+      states: uniqueStates,
+      contractTypes: uniqueContractTypes,
+      pricingTypes: uniquePricingTypes
+    };
+  }, [contracts]);
+
+  // Filter contracts based on current filters
+  const filteredContracts = useMemo(() => {
+    return contracts.filter(contract => {
+      // Search filter (name, counterparty, category)
+      if (filters.search) {
+        const searchTerm = filters.search.toLowerCase();
+        const searchableText = `${contract.name} ${contract.counterparty} ${contract.category}`.toLowerCase();
+        if (!searchableText.includes(searchTerm)) return false;
+      }
+
+      // Type filter
+      if (filters.type !== 'all' && contract.type !== filters.type) return false;
+
+      // State filter
+      if (filters.state !== 'all' && contract.state !== filters.state) return false;
+
+      // Status filter
+      if (filters.status !== 'all' && contract.status !== filters.status) return false;
+
+      // Pricing type filter
+      if (filters.pricingType !== 'all' && (contract.pricingType || 'fixed') !== filters.pricingType) return false;
+
+      // Contract type filter (unit field)
+      if (filters.contractType !== 'all' && (contract.unit || 'Energy') !== filters.contractType) return false;
+
+      return true;
+    });
+  }, [contracts, filters]);
+
+  // Clear all filters
+  const clearFilters = () => {
+    setFilters({
+      search: '',
+      type: 'all',
+      state: 'all',
+      status: 'all',
+      pricingType: 'all',
+      contractType: 'all'
+    });
+  };
+
+  // Check if any filters are active
+  const hasActiveFilters = Object.values(filters).some(value => value !== '' && value !== 'all');
   
   const getContractTypeColor = (type: string) => {
     switch (type) {
@@ -97,6 +161,58 @@ export default function ContractList({
     }
   };
 
+  const getPricingTypeColor = (pricingType?: string) => {
+    switch (pricingType) {
+      case 'fixed': return 'bg-blue-100 text-blue-800';
+      case 'escalation': return 'bg-green-100 text-green-800';
+      case 'timeseries': return 'bg-purple-100 text-purple-800';
+      case 'custom_time_of_day': return 'bg-orange-100 text-orange-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getPricingDetails = (contract: Contract) => {
+    const details: string[] = [];
+    
+    switch (contract.pricingType) {
+      case 'escalation':
+        if (contract.escalationRate) {
+          details.push(`${contract.escalationRate}% p.a.`);
+        }
+        break;
+      case 'timeseries':
+        if (contract.priceTimeSeries?.length) {
+          const min = Math.min(...contract.priceTimeSeries);
+          const max = Math.max(...contract.priceTimeSeries);
+          const avg = contract.priceTimeSeries.reduce((a, b) => a + b, 0) / contract.priceTimeSeries.length;
+          details.push(`${contract.priceTimeSeries.length} periods`);
+          details.push(`Avg: $${avg.toFixed(0)}`);
+          if (min !== max) {
+            details.push(`Range: $${min.toFixed(0)}-$${max.toFixed(0)}`);
+          }
+        }
+        break;
+      case 'custom_time_of_day':
+        if (contract.timeBasedPricing?.periods?.length) {
+          details.push(`${contract.timeBasedPricing.periods.length} periods`);
+          const prices = contract.timeBasedPricing.periods.map(p => p.price);
+          if (prices.length > 0) {
+            const min = Math.min(...prices);
+            const max = Math.max(...prices);
+            if (min !== max) {
+              details.push(`$${min.toFixed(0)}-$${max.toFixed(0)}`);
+            }
+          }
+        }
+        break;
+      default:
+        // Fixed pricing - just show the strike price
+        break;
+    }
+    
+    return details;
+  };
+
   const getDataSourceIcon = (contract: Contract) => {
     switch (contract.dataSource) {
       case 'csv_import': return '📊';
@@ -106,8 +222,34 @@ export default function ContractList({
     }
   };
 
+  const getVolumeDetails = (contract: Contract) => {
+    const details: string[] = [];
+    
+    // Primary volume display
+    const primaryVolume = contract.timeSeriesData?.length 
+      ? contract.totalVolume || 0
+      : contract.annualVolume || 0;
+    
+    const volumeLabel = contract.type === 'wholesale' 
+      ? `${primaryVolume.toLocaleString()} MW`
+      : `${primaryVolume.toLocaleString()} MWh`;
+    
+    details.push(volumeLabel);
+    
+    // Additional details
+    if (contract.timeSeriesData?.length) {
+      details.push(`${contract.timeSeriesData.length} periods`);
+      if (contract.yearsCovered?.length) {
+        details.push(`${contract.yearsCovered.length} years`);
+      }
+    } else {
+      details.push(contract.volumeShape);
+    }
+    
+    return details;
+  };
+
   const handleDeleteClick = async (contract: Contract) => {
-    // FIXED: Extract the contract ID properly
     const contractId = contract._id || contract.id?.toString();
     
     if (!contractId) {
@@ -120,7 +262,6 @@ export default function ContractList({
     if (!confirmed) return;
 
     try {
-      // FIXED: Pass the contract ID string instead of the entire contract object
       await onDeleteContract(contractId);
     } catch (error) {
       console.error('Error deleting contract:', error);
@@ -134,7 +275,6 @@ export default function ContractList({
 
   // Generate unique key for each contract
   const getContractKey = (contract: Contract, index: number) => {
-    // Priority: _id > id > name-index as fallback
     if (contract._id) return `contract-${contract._id}`;
     if (contract.id) return `contract-id-${contract.id}`;
     return `contract-${contract.name}-${index}`;
@@ -144,7 +284,6 @@ export default function ContractList({
   const isSelected = (contract: Contract) => {
     if (!selectedContract) return false;
     
-    // Check by _id first, then id, then name as fallback
     if (contract._id && selectedContract._id) {
       return contract._id === selectedContract._id;
     }
@@ -160,17 +299,245 @@ export default function ContractList({
         <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-3">
           📋 Contract Portfolio
         </h2>
-        <div className="text-sm text-gray-600">
-          {contracts.length} contract{contracts.length !== 1 ? 's' : ''} total
+        <div className="flex items-center gap-4">
+          <div className="text-sm text-gray-600">
+            {filteredContracts.length} of {contracts.length} contract{contracts.length !== 1 ? 's' : ''}
+            {hasActiveFilters && ' (filtered)'}
+          </div>
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-colors ${
+              showFilters 
+                ? 'bg-blue-50 border-blue-300 text-blue-700' 
+                : 'bg-gray-50 border-gray-300 text-gray-700 hover:bg-gray-100'
+            }`}
+          >
+            🔍 Filters
+            {hasActiveFilters && (
+              <span className="bg-blue-500 text-white text-xs px-2 py-1 rounded-full">
+                {Object.values(filters).filter(v => v !== '' && v !== 'all').length}
+              </span>
+            )}
+          </button>
         </div>
       </div>
+
+      {/* Filter Panel */}
+      {showFilters && (
+        <div className="bg-gray-50 rounded-lg p-4 mb-6 border border-gray-200">
+          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-4">
+            
+            {/* Search */}
+            <div className="md:col-span-2">
+              <label className="block text-xs font-medium text-gray-700 mb-1">Search</label>
+              <input
+                type="text"
+                placeholder="Name, counterparty, category..."
+                value={filters.search}
+                onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
+            {/* Contract Type */}
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Type</label>
+              <select
+                value={filters.type}
+                onChange={(e) => setFilters(prev => ({ ...prev, type: e.target.value }))}
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="all">All Types</option>
+                <option value="retail">Retail</option>
+                <option value="wholesale">Wholesale</option>
+                <option value="offtake">Offtake</option>
+              </select>
+            </div>
+
+            {/* State */}
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">State</label>
+              <select
+                value={filters.state}
+                onChange={(e) => setFilters(prev => ({ ...prev, state: e.target.value }))}
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="all">All States</option>
+                {filterOptions.states.map(state => (
+                  <option key={state} value={state}>{state}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Status */}
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Status</label>
+              <select
+                value={filters.status}
+                onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="all">All Status</option>
+                <option value="active">Active</option>
+                <option value="pending">Pending</option>
+              </select>
+            </div>
+
+            {/* Pricing Type */}
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Pricing</label>
+              <select
+                value={filters.pricingType}
+                onChange={(e) => setFilters(prev => ({ ...prev, pricingType: e.target.value }))}
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="all">All Pricing</option>
+                {filterOptions.pricingTypes.map(type => (
+                  <option key={type} value={type}>
+                    {type === 'fixed' ? 'Fixed' : 
+                     type === 'escalation' ? 'Escalation' :
+                     type === 'timeseries' ? 'Time Series' :
+                     type === 'custom_time_of_day' ? 'Time-of-Day' : type}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-4">
+            {/* Contract Type (Unit) */}
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Contract Type</label>
+              <select
+                value={filters.contractType}
+                onChange={(e) => setFilters(prev => ({ ...prev, contractType: e.target.value }))}
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="all">All Types</option>
+                {filterOptions.contractTypes.map(type => (
+                  <option key={type} value={type}>{type}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Spacer columns */}
+            <div className="md:col-span-2 lg:col-span-3"></div>
+
+            {/* Filter Actions */}
+            <div className="md:col-span-3 lg:col-span-2 flex gap-2 items-end">
+              <button
+                onClick={clearFilters}
+                disabled={!hasActiveFilters}
+                className="flex-1 px-3 py-2 text-sm bg-gray-100 text-gray-700 rounded hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                Clear All
+              </button>
+              <button
+                onClick={() => setShowFilters(false)}
+                className="flex-1 px-3 py-2 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+
+          {/* Quick Filter Chips */}
+          {hasActiveFilters && (
+            <div className="border-t border-gray-200 pt-3">
+              <div className="flex flex-wrap gap-2">
+                <span className="text-xs text-gray-600 font-medium">Active Filters:</span>
+                {filters.search && (
+                  <span className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
+                    Search: "{filters.search}"
+                    <button
+                      onClick={() => setFilters(prev => ({ ...prev, search: '' }))}
+                      className="hover:bg-blue-200 rounded-full w-4 h-4 flex items-center justify-center"
+                    >
+                      ×
+                    </button>
+                  </span>
+                )}
+                {filters.type !== 'all' && (
+                  <span className="inline-flex items-center gap-1 px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded-full">
+                    Type: {filters.type}
+                    <button
+                      onClick={() => setFilters(prev => ({ ...prev, type: 'all' }))}
+                      className="hover:bg-purple-200 rounded-full w-4 h-4 flex items-center justify-center"
+                    >
+                      ×
+                    </button>
+                  </span>
+                )}
+                {filters.state !== 'all' && (
+                  <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
+                    State: {filters.state}
+                    <button
+                      onClick={() => setFilters(prev => ({ ...prev, state: 'all' }))}
+                      className="hover:bg-green-200 rounded-full w-4 h-4 flex items-center justify-center"
+                    >
+                      ×
+                    </button>
+                  </span>
+                )}
+                {filters.status !== 'all' && (
+                  <span className="inline-flex items-center gap-1 px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded-full">
+                    Status: {filters.status}
+                    <button
+                      onClick={() => setFilters(prev => ({ ...prev, status: 'all' }))}
+                      className="hover:bg-yellow-200 rounded-full w-4 h-4 flex items-center justify-center"
+                    >
+                      ×
+                    </button>
+                  </span>
+                )}
+                {filters.pricingType !== 'all' && (
+                  <span className="inline-flex items-center gap-1 px-2 py-1 bg-orange-100 text-orange-800 text-xs rounded-full">
+                    Pricing: {filters.pricingType}
+                    <button
+                      onClick={() => setFilters(prev => ({ ...prev, pricingType: 'all' }))}
+                      className="hover:bg-orange-200 rounded-full w-4 h-4 flex items-center justify-center"
+                    >
+                      ×
+                    </button>
+                  </span>
+                )}
+                {filters.contractType !== 'all' && (
+                  <span className="inline-flex items-center gap-1 px-2 py-1 bg-pink-100 text-pink-800 text-xs rounded-full">
+                    Contract Type: {filters.contractType}
+                    <button
+                      onClick={() => setFilters(prev => ({ ...prev, contractType: 'all' }))}
+                      className="hover:bg-pink-200 rounded-full w-4 h-4 flex items-center justify-center"
+                    >
+                      ×
+                    </button>
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
       
-      {contracts.length === 0 ? (
+      {filteredContracts.length === 0 ? (
         <div className="text-center py-12 text-gray-500">
           <div className="mb-4">
-            <div className="text-6xl mb-4">📄</div>
-            <p className="text-lg">No contracts found</p>
-            <p className="text-sm">Get started by adding your first contract</p>
+            <div className="text-6xl mb-4">
+              {hasActiveFilters ? '🔍' : '📄'}
+            </div>
+            <p className="text-lg">
+              {hasActiveFilters ? 'No contracts match your filters' : 'No contracts found'}
+            </p>
+            <p className="text-sm">
+              {hasActiveFilters ? 'Try adjusting your filter criteria' : 'Get started by adding your first contract'}
+            </p>
+            {hasActiveFilters && (
+              <button
+                onClick={clearFilters}
+                className="mt-3 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+              >
+                Clear Filters
+              </button>
+            )}
           </div>
         </div>
       ) : (
@@ -184,7 +551,7 @@ export default function ContractList({
                 <th className="text-left p-4 font-semibold text-gray-700">State</th>
                 <th className="text-left p-4 font-semibold text-gray-700">Counterparty</th>
                 <th className="text-left p-4 font-semibold text-gray-700">Volume</th>
-                <th className="text-left p-4 font-semibold text-gray-700">Type</th>                 
+                <th className="text-left p-4 font-semibold text-gray-700">Contract Type</th>                 
                 <th className="text-left p-4 font-semibold text-gray-700">Pricing</th>
                 <th className="text-left p-4 font-semibold text-gray-700">Period</th>
                 <th className="text-left p-4 font-semibold text-gray-700">Status</th>
@@ -193,109 +560,112 @@ export default function ContractList({
               </tr>
             </thead>
             <tbody>
-              {contracts.map((contract, index) => (
-                <tr
-                  key={getContractKey(contract, index)}
-                  onClick={() => handleRowClick(contract)}
-                  className={`border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors ${
-                    isSelected(contract)
-                      ? 'bg-blue-50 border-l-4 border-l-blue-500'
-                      : ''
-                  }`}
-                >
-                  <td className="p-4">
-                    <div className="flex items-center gap-2">
-                      <div className={`w-2 h-2 rounded-full ${contract.status === 'active' ? 'bg-green-500' : 'bg-yellow-500'}`}></div>
-                      <span className="font-medium text-gray-900">{contract.name}</span>
-                    </div>
-                  </td>
-                  <td className="p-4">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium uppercase ${getContractTypeColor(contract.type)}`}>
-                      {contract.type}
-                    </span>
-                  </td>
-                  <td className="p-4 text-gray-700">{contract.category}</td>
-                  <td className="p-4 text-gray-700">{contract.state}</td>
-                  <td className="p-4 text-gray-700">{contract.counterparty}</td>
-                  <td className="p-4 text-gray-700">
-                    <div className="flex flex-col">
-                      <span className="font-medium">
-                        {contract.type === 'wholesale' 
-                          ? `${contract.annualVolume.toLocaleString()} MW`
-                          : `${contract.annualVolume.toLocaleString()} MWh`
-                        }
-                      </span>
-                      {contract.timeSeriesData && contract.timeSeriesData.length > 0 && (
-                        <span className="text-xs text-blue-600">
-                          {contract.timeSeriesData.length} periods
-                        </span>
-                      )}
-                    </div>
-                  </td>
-                  <td className="p-4">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      contract.contractType === 'Green' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'
-                    }`}>
-                      {contract.contractType || contract.unit || 'Energy'}
-                    </span>
-                  </td>
-                  <td className="p-4">
-                    <div className="flex flex-col">
-                      <span className="text-gray-900 font-medium">
-                        ${contract.strikePrice}/MWh
-                      </span>
-                      <span className="text-xs text-gray-500">
-                        {getPricingTypeLabel(contract)}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="p-4 text-xs">
-                    <div>{contract.startDate}</div>
-                    <div>to {contract.endDate}</div>
-                    {contract.tenor && (
-                      <div className="text-blue-600 mt-1">
-                        {contract.tenor.value} {contract.tenor.unit}
+              {filteredContracts.map((contract, index) => {
+                const volumeDetails = getVolumeDetails(contract);
+                const pricingDetails = getPricingDetails(contract);
+                
+                return (
+                  <tr
+                    key={getContractKey(contract, index)}
+                    onClick={() => handleRowClick(contract)}
+                    className={`border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors ${
+                      isSelected(contract)
+                        ? 'bg-blue-50 border-l-4 border-l-blue-500'
+                        : ''
+                    }`}
+                  >
+                    <td className="p-4">
+                      <div className="flex items-center gap-2">
+                        <div className={`w-2 h-2 rounded-full ${contract.status === 'active' ? 'bg-green-500' : 'bg-yellow-500'}`}></div>
+                        <span className="font-medium text-gray-900">{contract.name}</span>
                       </div>
-                    )}
-                  </td>
-                  <td className="p-4">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium capitalize ${getStatusColor(contract.status)}`}>
-                      {contract.status}
-                    </span>
-                  </td>
-                  <td className="p-4">
-                    <div className="flex items-center gap-1">
-                      <span className="text-lg">{getDataSourceIcon(contract)}</span>
-                      <span className="text-xs text-gray-500 capitalize">
-                        {contract.dataSource === 'csv_import' ? 'CSV' :
-                         contract.dataSource === 'api_import' ? 'API' : 'Manual'}
+                    </td>
+                    <td className="p-4">
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium uppercase ${getContractTypeColor(contract.type)}`}>
+                        {contract.type}
                       </span>
-                    </div>
-                  </td>
-                  <td className="p-4">
-                    <div className="flex gap-2">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onEditContract(contract);
-                        }}
-                        className="bg-blue-500 text-white px-3 py-1 rounded text-xs font-medium hover:bg-blue-600 transition-colors"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDeleteClick(contract);
-                        }}
-                        className="bg-red-500 text-white px-3 py-1 rounded text-xs font-medium hover:bg-red-600 transition-colors"
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                    <td className="p-4 text-gray-700">{contract.category}</td>
+                    <td className="p-4 text-gray-700">{contract.state}</td>
+                    <td className="p-4 text-gray-700">{contract.counterparty}</td>
+                    <td className="p-4 text-gray-700">
+                      <div className="flex flex-col">
+                        <span className="font-medium">{volumeDetails[0]}</span>
+                        {volumeDetails.slice(1).map((detail, idx) => (
+                          <span key={idx} className="text-xs text-blue-600">{detail}</span>
+                        ))}
+                      </div>
+                    </td>
+                    <td className="p-4">
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        contract.unit === 'Green' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'
+                      }`}>
+                        {contract.unit || 'Energy'}
+                      </span>
+                    </td>
+                    <td className="p-4">
+                      <div className="flex flex-col">
+                        <span className="text-gray-900 font-medium">
+                          ${contract.strikePrice}/MWh
+                        </span>
+                        <div className="flex items-center gap-1 mt-1">
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPricingTypeColor(contract.pricingType)}`}>
+                            {getPricingTypeLabel(contract)}
+                          </span>
+                        </div>
+                        {pricingDetails.map((detail, idx) => (
+                          <span key={idx} className="text-xs text-gray-500 mt-1">{detail}</span>
+                        ))}
+                      </div>
+                    </td>
+                    <td className="p-4 text-xs">
+                      <div>{contract.startDate}</div>
+                      <div>to {contract.endDate}</div>
+                      {contract.tenor && (
+                        <div className="text-blue-600 mt-1">
+                          {contract.tenor.value} {contract.tenor.unit}
+                        </div>
+                      )}
+                    </td>
+                    <td className="p-4">
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium capitalize ${getStatusColor(contract.status)}`}>
+                        {contract.status}
+                      </span>
+                    </td>
+                    <td className="p-4">
+                      <div className="flex items-center gap-1">
+                        <span className="text-lg">{getDataSourceIcon(contract)}</span>
+                        <span className="text-xs text-gray-500 capitalize">
+                          {contract.dataSource === 'csv_import' ? 'CSV' :
+                           contract.dataSource === 'api_import' ? 'API' : 'Manual'}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="p-4">
+                      <div className="flex gap-2">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onEditContract(contract);
+                          }}
+                          className="bg-blue-500 text-white px-3 py-1 rounded text-xs font-medium hover:bg-blue-600 transition-colors"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteClick(contract);
+                          }}
+                          className="bg-red-500 text-white px-3 py-1 rounded text-xs font-medium hover:bg-red-600 transition-colors"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
