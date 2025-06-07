@@ -334,23 +334,7 @@ export default function ContractInputTab({
     setShowForm(false);
   };
 
-  // Create a wrapper function to handle the contract deletion
-  const handleDeleteContract = async (contract: Contract) => {
-    const contractId = contract._id || contract.id?.toString();
-    
-    if (!contractId) {
-      console.error('No contract ID found for deletion');
-      alert('Cannot delete contract: No ID found');
-      return;
-    }
-    
-    try {
-      await deleteContract(contractId);
-    } catch (error) {
-      console.error('Error deleting contract:', error);
-      throw error; // Re-throw so ContractList can handle the error display
-    }
-  };
+  // REMOVED the redundant 'handleDeleteContract' wrapper function
 
   return (
     <div className="space-y-8">
@@ -407,7 +391,7 @@ export default function ContractInputTab({
         selectedContract={selectedContract}
         onSelectContract={setSelectedContract}
         onEditContract={handleEditContract}
-        onDeleteContract={handleDeleteContract}
+        onDeleteContract={deleteContract} // FIXED: Pass the 'deleteContract' prop directly
       />
 
       {/* Contract Form Modal */}
