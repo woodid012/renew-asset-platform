@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import ContractList from './features/contract/ContractList';
-import ContractInputs from './features/contract/ContractInputs';
+import ContractBase from './features/contract/ContractBase';
 
 interface Contract {
   _id?: string;
@@ -39,12 +39,18 @@ interface Contract {
     }>;
     defaultPrice: number;
   };
-  // Custom volume data
-  customVolumeData?: {
-    interval: 'hourly' | 'daily' | 'monthly';
-    data: number[];
-    startDate: string;
+  // Enhanced volume fields
+  timeSeriesData?: Array<{
+    period: string;
+    volume: number;
+  }>;
+  tenor?: {
+    value: number;
+    unit: 'months' | 'years';
   };
+  dataSource?: 'manual' | 'csv_import' | 'api_import';
+  yearsCovered?: number[];
+  totalVolume?: number;
 }
 
 interface SettingsData {
@@ -67,7 +73,7 @@ interface ContractInputTabProps {
   setSelectedContract: (contract: Contract | null) => void;
   addContract: (contract: Omit<Contract, '_id'>) => Promise<Contract>;
   updateContract: (contract: Contract) => Promise<Contract>;
-  deleteContract: (contractId: string) => Promise<void>; // FIXED: Updated signature to match
+  deleteContract: (contractId: string) => Promise<void>;
   volumeShapes: { [key: string]: number[] };
   settings?: SettingsData;
 }
@@ -96,6 +102,11 @@ const defaultContract: Omit<Contract, '_id'> = {
     periods: [],
     defaultPrice: 0
   },
+  tenor: {
+    value: 1,
+    unit: 'years'
+  },
+  dataSource: 'manual'
 };
 
 const defaultSettings: SettingsData = {
@@ -230,6 +241,10 @@ export default function ContractInputTab({
       timeBasedPricing: {
         periods: [],
         defaultPrice: 0
+      },
+      tenor: {
+        value: 1,
+        unit: 'years'
       }
     });
     setIsEditing(false);
@@ -247,6 +262,19 @@ export default function ContractInputTab({
         periods: [],
         defaultPrice: contractData.strikePrice || 0
       };
+    }
+
+    // Ensure tenor is properly initialized
+    if (!contractData.tenor) {
+      contractData.tenor = {
+        value: 1,
+        unit: 'years'
+      };
+    }
+
+    // Ensure pricing type is set
+    if (!contractData.pricingType) {
+      contractData.pricingType = 'fixed';
     }
     
     setFormData(contractData);
@@ -279,6 +307,11 @@ export default function ContractInputTab({
         delete cleanFormData.priceInterval;
       }
 
+      // Ensure data source is set
+      if (!cleanFormData.dataSource) {
+        cleanFormData.dataSource = 'manual';
+      }
+
       if (isEditing && selectedContract) {
         await updateContract({ ...cleanFormData, _id: selectedContract._id, id: selectedContract.id });
       } else {
@@ -301,7 +334,7 @@ export default function ContractInputTab({
     setShowForm(false);
   };
 
-  // FIXED: Create a wrapper function to handle the contract deletion
+  // Create a wrapper function to handle the contract deletion
   const handleDeleteContract = async (contract: Contract) => {
     const contractId = contract._id || contract.id?.toString();
     
@@ -321,14 +354,51 @@ export default function ContractInputTab({
 
   return (
     <div className="space-y-8">
-      {/* Add New Contract Button */}
-      <div className="flex justify-end">
-        <button
-          onClick={handleAddNew}
-          className="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-6 py-3 rounded-lg font-medium hover:from-blue-600 hover:to-purple-700 transition-all duration-200 flex items-center gap-2"
-        >
-          ➕ Add New Contract
-        </button>
+      {/* Header with Add Button */}
+      <div className="bg-white rounded-xl p-6 shadow-md border border-gray-200">
+        <div className="flex justify-between items-center">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-3">
+              📝 Contract Management
+            </h2>
+            <p className="text-gray-600 mt-2">
+              Create, edit, and manage your energy contracts with advanced volume and pricing configurations
+            </p>
+          </div>
+          
+          <button
+            onClick={handleAddNew}
+            className="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-6 py-3 rounded-lg font-medium hover:from-blue-600 hover:to-purple-700 transition-all duration-200 flex items-center gap-2"
+          >
+            ➕ Add New Contract
+          </button>
+        </div>
+
+        {/* Quick Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-6">
+          <div className="bg-blue-50 rounded-lg p-4">
+            <div className="text-2xl font-bold text-blue-600">{contracts.length}</div>
+            <div className="text-sm text-gray-600">Total Contracts</div>
+          </div>
+          <div className="bg-green-50 rounded-lg p-4">
+            <div className="text-2xl font-bold text-green-600">
+              {contracts.filter(c => c.status === 'active').length}
+            </div>
+            <div className="text-sm text-gray-600">Active Contracts</div>
+          </div>
+          <div className="bg-orange-50 rounded-lg p-4">
+            <div className="text-2xl font-bold text-orange-600">
+              {contracts.filter(c => c.timeSeriesData?.length).length}
+            </div>
+            <div className="text-sm text-gray-600">With Time Series</div>
+          </div>
+          <div className="bg-purple-50 rounded-lg p-4">
+            <div className="text-2xl font-bold text-purple-600">
+              {new Set(contracts.map(c => c.state)).size}
+            </div>
+            <div className="text-sm text-gray-600">States Covered</div>
+          </div>
+        </div>
       </div>
 
       {/* Contract List */}
@@ -337,12 +407,12 @@ export default function ContractInputTab({
         selectedContract={selectedContract}
         onSelectContract={setSelectedContract}
         onEditContract={handleEditContract}
-        onDeleteContract={handleDeleteContract} // FIXED: Pass the wrapper function
+        onDeleteContract={handleDeleteContract}
       />
 
       {/* Contract Form Modal */}
       {showForm && formData && (
-        <ContractInputs
+        <ContractBase
           formData={formData}
           isEditing={isEditing}
           errors={errors}
