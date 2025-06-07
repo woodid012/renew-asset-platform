@@ -1,8 +1,14 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import ContractList from './features/contract/ContractList';
 import ContractBase from './features/contract/ContractBase';
+
+interface TimeSeriesDataPoint {
+  period: string; // YYYY-MM format
+  volume: number; // MWh
+  date?: Date;
+}
 
 interface Contract {
   _id?: string;
@@ -21,13 +27,23 @@ interface Contract {
   status: 'active' | 'pending';
   indexation: string;
   referenceDate: string;
-  // New fields
-  pricingType?: 'fixed' | 'escalation' | 'timeseries' | 'custom_time_of_day';
+  pricingType?: 'fixed' | 'timeseries' | 'custom_time_of_day'; // "escalation" was removed
   escalationRate?: number;
   priceTimeSeries?: number[];
   priceInterval?: 'monthly' | 'quarterly' | 'yearly';
   productDetail?: 'CY' | 'FY' | 'Q1' | 'Q2' | 'Q3' | 'Q4';
-  // Custom time-based pricing
+  
+  // Enhanced volume fields
+  timeSeriesData?: TimeSeriesDataPoint[];
+  tenor?: {
+    value: number;
+    unit: 'months' | 'years';
+  };
+  dataSource?: 'manual' | 'csv_import' | 'api_import';
+  yearsCovered?: number[];
+  totalVolume?: number;
+  
+  // Time-based pricing
   timeBasedPricing?: {
     periods: Array<{
       id: string;
@@ -39,19 +55,8 @@ interface Contract {
     }>;
     defaultPrice: number;
   };
-  // Enhanced volume fields
-  timeSeriesData?: Array<{
-    period: string;
-    volume: number;
-  }>;
-  tenor?: {
-    value: number;
-    unit: 'months' | 'years';
-  };
-  dataSource?: 'manual' | 'csv_import' | 'api_import';
-  yearsCovered?: number[];
-  totalVolume?: number;
 }
+
 
 interface SettingsData {
   contractTypes: {
@@ -59,352 +64,321 @@ interface SettingsData {
     wholesale: string[];
     offtake: string[];
   };
-  volumeShapes: {
-    [key: string]: number[];
-  };
+  volumeShapes: { [key: string]: number[] };
   states: string[];
   indexationTypes: string[];
   unitTypes: string[];
 }
 
-interface ContractInputTabProps {
-  contracts: Contract[];
-  selectedContract: Contract | null;
-  setSelectedContract: (contract: Contract | null) => void;
-  addContract: (contract: Omit<Contract, '_id'>) => Promise<Contract>;
-  updateContract: (contract: Contract) => Promise<Contract>;
-  deleteContract: (contractId: string) => Promise<void>;
-  volumeShapes: { [key: string]: number[] };
-  settings?: SettingsData;
+interface PriceCurve {
+  name: string;
+  type: 'forward' | 'historical';
+  data: Array<{ date: string; price: number }>;
 }
 
-const defaultContract: Omit<Contract, '_id'> = {
+const initialFormData: Omit<Contract, '_id'> = {
   name: '',
-  type: 'offtake',
+  type: 'retail',
   category: '',
   state: 'NSW',
   counterparty: '',
-  startDate: '',
+  startDate: new Date().toISOString().split('T')[0],
   endDate: '',
-  annualVolume: 0,
-  strikePrice: 0,
+  annualVolume: 1000,
+  strikePrice: 70,
   unit: 'Energy',
   volumeShape: 'flat',
   status: 'active',
-  indexation: 'Fixed',
+  indexation: 'None',
   referenceDate: '',
   pricingType: 'fixed',
-  escalationRate: 0,
+  escalationRate: undefined,
   priceTimeSeries: [],
-  priceInterval: 'monthly',
+  priceInterval: 'quarterly',
   productDetail: 'CY',
+  timeSeriesData: [],
+  tenor: { value: 1, unit: 'years' },
+  dataSource: 'manual',
+  yearsCovered: [],
+  totalVolume: 1000,
   timeBasedPricing: {
     periods: [],
-    defaultPrice: 0
+    defaultPrice: 70,
   },
-  tenor: {
-    value: 1,
-    unit: 'years'
-  },
-  dataSource: 'manual'
 };
 
-const defaultSettings: SettingsData = {
-  contractTypes: {
-    retail: [
-      'Retail Customer',
-      'Industrial Customer',
-      'Government Customer',
-      'Small Business',
-      'Residential'
-    ],
-    wholesale: [
-      'Swap',
-      'Cap',
-      'Floor',
-      'Forward',
-      'Option'
-    ],
-    offtake: [
-      'Solar Farm',
-      'Wind Farm',
-      'Battery Storage',
-      'Hydro',
-      'Gas Peaker'
-    ]
-  },
-  volumeShapes: {
-    flat: [8.33, 8.33, 8.33, 8.33, 8.33, 8.33, 8.33, 8.33, 8.33, 8.33, 8.33, 8.33],
-    solar: [6.5, 7.2, 8.8, 9.5, 10.2, 8.9, 9.1, 9.8, 8.6, 7.4, 6.8, 7.2],
-    wind: [11.2, 10.8, 9.2, 7.8, 6.5, 5.9, 6.2, 7.1, 8.4, 9.6, 10.8, 11.5],
-    custom: [5.0, 6.0, 7.5, 9.0, 11.0, 12.5, 13.0, 12.0, 10.5, 8.5, 7.0, 6.0]
-  },
-  states: ['NSW', 'VIC', 'QLD', 'SA', 'WA', 'TAS', 'NT', 'ACT'],
-  indexationTypes: [
-    'Fixed',
-    'CPI',
-    'CPI + 1%',
-    'CPI + 0.5%',
-    'CPI + 2%',
-    'Escalation 2%',
-    'Escalation 3%'
-  ],
-  unitTypes: ['Energy', 'Green']
-};
-
-export default function ContractInputTab({
-  contracts,
-  selectedContract,
-  setSelectedContract,
-  addContract,
-  updateContract,
-  deleteContract,
-  volumeShapes,
-  settings = defaultSettings,
-}: ContractInputTabProps) {
-  const [formData, setFormData] = useState<Omit<Contract, '_id'> | null>(null);
-  const [isEditing, setIsEditing] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  const [errors, setErrors] = useState<Record<string, string>>({});
+export default function ContractInputTab() {
+  const [contracts, setContracts] = useState<Contract[]>([]);
+  const [filteredContracts, setFilteredContracts] = useState<Contract[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [formData, setFormData] = useState<Omit<Contract, '_id'>>(initialFormData);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Search and filter states
+  const [searchTerm, setSearchTerm] = useState('');
+  const [activeFilters, setActiveFilters] = useState({
+    type: '',
+    state: '',
+    status: ''
+  });
+
+  const [settings, setSettings] = useState<SettingsData>({
+    contractTypes: {
+      retail: ['Commercial', 'Industrial', 'SME'],
+      wholesale: ['PPA', 'ISDA', 'EFET'],
+      offtake: ['Corporate PPA', 'Utility PPA']
+    },
+    volumeShapes: {
+      flat: [], // Will be dynamically generated
+      solar: [0.1, 0.2, 0.5, 0.8, 1, 1.2, 1.2, 1, 0.8, 0.5, 0.2, 0.1],
+      wind: [0.8, 0.9, 1, 1.1, 1, 0.9, 0.8, 0.7, 0.8, 0.9, 1, 0.9],
+      custom: []
+    },
+    states: ['NSW', 'VIC', 'QLD', 'SA', 'WA', 'TAS'],
+    indexationTypes: ['None', 'CPI', 'WPI', 'Custom'],
+    unitTypes: ['Energy', 'Capacity', 'Renewable Energy Certificate'],
+  });
+
+  const [priceCurves, setPriceCurves] = useState<PriceCurve[]>([]);
+
+  // Fetch contracts from API
+  const fetchContracts = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const response = await fetch('/api/contracts');
+      if (!response.ok) {
+        throw new Error('Failed to fetch contracts');
+      }
+      const data = await response.json();
+      setContracts(data);
+      setFilteredContracts(data); // Initially, all contracts are shown
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An unknown error occurred');
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchContracts();
+  }, [fetchContracts]);
+
+  // Apply filters when contracts or filter criteria change
+  useEffect(() => {
+    let result = contracts;
+
+    // Search term filter
+    if (searchTerm) {
+      result = result.filter(c =>
+        c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        c.counterparty.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+
+    // Dropdown filters
+    if (activeFilters.type) {
+      result = result.filter(c => c.type === activeFilters.type);
+    }
+    if (activeFilters.state) {
+      result = result.filter(c => c.state === activeFilters.state);
+    }
+    if (activeFilters.status) {
+      result = result.filter(c => c.status === activeFilters.status);
+    }
+
+    setFilteredContracts(result);
+  }, [searchTerm, activeFilters, contracts]);
+
+  const handleInputChange = (field: keyof Omit<Contract, '_id'>, value: any) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+    // Clear validation error for the field when user starts typing
+    if (errors[field]) {
+      setErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[field as keyof typeof errors];
+        return newErrors;
+      });
+    }
+  };
 
   const validateForm = (): boolean => {
-    if (!formData) return false;
-    
     const newErrors: Record<string, string> = {};
-
-    if (!formData.name.trim()) newErrors.name = 'Contract name is required';
-    if (!formData.category.trim()) newErrors.category = 'Category is required';
-    if (!formData.counterparty.trim()) newErrors.counterparty = 'Counterparty is required';
-    if (!formData.startDate) newErrors.startDate = 'Start date is required';
-    if (!formData.endDate) newErrors.endDate = 'End date is required';
-    if (formData.annualVolume <= 0) newErrors.annualVolume = 'Annual volume must be greater than 0';
-    if (formData.strikePrice <= 0) newErrors.strikePrice = 'Strike price must be greater than 0';
-    
-    if (formData.startDate && formData.endDate && formData.startDate >= formData.endDate) {
-      newErrors.endDate = 'End date must be after start date';
+    if (!formData.name.trim()) newErrors.name = 'Contract name is required.';
+    if (!formData.category) newErrors.category = 'Category is required.';
+    if (!formData.counterparty.trim()) newErrors.counterparty = 'Counterparty is required.';
+    if (!formData.startDate) newErrors.startDate = 'Start date is required.';
+    if (!formData.endDate) newErrors.endDate = 'End date is required.';
+    if (formData.endDate && formData.startDate && formData.endDate < formData.startDate) {
+      newErrors.endDate = 'End date cannot be before start date.';
     }
-
-    if (formData.pricingType === 'escalation' && !formData.referenceDate) {
-      newErrors.referenceDate = 'Reference date is required for escalation pricing';
-    }
-
-    // Validate time-based pricing
-    if (formData.pricingType === 'custom_time_of_day') {
-      if (!formData.timeBasedPricing || formData.timeBasedPricing.periods.length === 0) {
-        newErrors.timeBasedPricing = 'At least one pricing period is required for time-of-day pricing';
-      } else {
-        // Check for overlapping periods
-        const periods = formData.timeBasedPricing.periods;
-        for (let i = 0; i < periods.length; i++) {
-          for (let j = i + 1; j < periods.length; j++) {
-            const period1 = periods[i];
-            const period2 = periods[j];
-            
-            // Check if they share any days
-            const sharedDays = period1.daysOfWeek.some((day, index) => day && period2.daysOfWeek[index]);
-            
-            if (sharedDays) {
-              // Check for time overlap
-              const start1 = period1.startTime;
-              const end1 = period1.endTime;
-              const start2 = period2.startTime;
-              const end2 = period2.endTime;
-              
-              if ((start1 <= start2 && start2 < end1) || (start2 <= start1 && start1 < end2)) {
-                newErrors.timeBasedPricing = `Time periods "${period1.name}" and "${period2.name}" overlap`;
-                break;
-              }
-            }
-          }
-          if (newErrors.timeBasedPricing) break;
-        }
-      }
-    }
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleInputChange = (field: keyof Omit<Contract, '_id'>, value: any) => {
-    if (!formData) return;
-    
-    setFormData(prev => prev ? { ...prev, [field]: value } : null);
-    if (errors[field as string]) {
-      setErrors(prev => ({ ...prev, [field as string]: '' }));
+  const handleSave = async () => {
+    if (!validateForm()) {
+      return;
     }
-  };
-
-  const handleAddNew = () => {
-    setFormData({ 
-      ...defaultContract,
-      timeBasedPricing: {
-        periods: [],
-        defaultPrice: 0
-      },
-      tenor: {
-        value: 1,
-        unit: 'years'
-      }
-    });
-    setIsEditing(false);
-    setSelectedContract(null);
-    setErrors({});
-    setShowForm(true);
-  };
-
-  const handleEditContract = (contract: Contract) => {
-    const { _id, ...contractData } = contract;
-    
-    // Ensure timeBasedPricing is properly initialized
-    if (!contractData.timeBasedPricing && contractData.pricingType === 'custom_time_of_day') {
-      contractData.timeBasedPricing = {
-        periods: [],
-        defaultPrice: contractData.strikePrice || 0
-      };
-    }
-
-    // Ensure tenor is properly initialized
-    if (!contractData.tenor) {
-      contractData.tenor = {
-        value: 1,
-        unit: 'years'
-      };
-    }
-
-    // Ensure pricing type is set
-    if (!contractData.pricingType) {
-      contractData.pricingType = 'fixed';
-    }
-    
-    setFormData(contractData);
-    setIsEditing(true);
-    setSelectedContract(contract);
-    setErrors({});
-    setShowForm(true);
-  };
-
-  const handleSaveContract = async () => {
-    if (!validateForm() || !formData) return;
 
     setIsSaving(true);
+    const method = isEditing ? 'PUT' : 'POST';
+    const url = '/api/contracts';
+    const body = isEditing ? JSON.stringify({ ...formData, id: (formData as Contract)._id }) : JSON.stringify(formData);
+    
     try {
-      // Clean up formData before saving
-      const cleanFormData = { ...formData };
-      
-      // If not using time-based pricing, remove the field
-      if (cleanFormData.pricingType !== 'custom_time_of_day') {
-        delete cleanFormData.timeBasedPricing;
-      }
-      
-      // If not using escalation or timeseries, remove related fields
-      if (cleanFormData.pricingType !== 'escalation') {
-        delete cleanFormData.escalationRate;
-      }
-      
-      if (cleanFormData.pricingType !== 'escalation' && cleanFormData.pricingType !== 'timeseries') {
-        delete cleanFormData.priceTimeSeries;
-        delete cleanFormData.priceInterval;
+      const response = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to save contract');
       }
 
-      // Ensure data source is set
-      if (!cleanFormData.dataSource) {
-        cleanFormData.dataSource = 'manual';
-      }
-
-      if (isEditing && selectedContract) {
-        await updateContract({ ...cleanFormData, _id: selectedContract._id, id: selectedContract.id });
-      } else {
-        await addContract(cleanFormData);
-      }
-      handleCancelEdit();
-    } catch (error) {
-      console.error('Error saving contract:', error);
-      alert('Failed to save contract. Please try again.');
+      await fetchContracts(); // Refresh list
+      setShowForm(false);
+      setIsEditing(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An unknown error occurred');
     } finally {
       setIsSaving(false);
     }
   };
 
-  const handleCancelEdit = () => {
-    setFormData(null);
+  const handleAddNew = () => {
     setIsEditing(false);
-    setSelectedContract(null);
+    setFormData(initialFormData);
     setErrors({});
-    setShowForm(false);
+    setShowForm(true);
   };
 
-  // REMOVED the redundant 'handleDeleteContract' wrapper function
+  const handleEdit = (contract: Contract) => {
+    setIsEditing(true);
+    setFormData(contract); // The full contract object including _id
+    setErrors({});
+    setShowForm(true);
+  };
+
+  const handleDelete = async (id: string) => {
+    if (window.confirm('Are you sure you want to delete this contract?')) {
+      try {
+        const response = await fetch(`/api/contracts?id=${id}`, {
+          method: 'DELETE',
+        });
+        if (!response.ok) {
+          throw new Error('Failed to delete contract');
+        }
+        await fetchContracts(); // Refresh list
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'An unknown error occurred');
+      }
+    }
+  };
+
+  const handleCancel = () => {
+    setShowForm(false);
+    setIsEditing(false);
+    setErrors({});
+  };
 
   return (
-    <div className="space-y-8">
-      {/* Header with Add Button */}
-      <div className="bg-white rounded-xl p-6 shadow-md border border-gray-200">
-        <div className="flex justify-between items-center">
-          <div>
-            <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-3">
-              📝 Contract Management
-            </h2>
-            <p className="text-gray-600 mt-2">
-              Create, edit, and manage your energy contracts with advanced volume and pricing configurations
-            </p>
+    <div className="p-4 sm:p-6 md:p-8 bg-gray-50 min-h-screen">
+      <header className="mb-8">
+        <h1 className="text-3xl font-bold text-gray-800">Contract Management</h1>
+        <p className="text-gray-600 mt-1">
+          Add, edit, and manage all your energy contracts from one place.
+        </p>
+      </header>
+
+      {!showForm && (
+        <>
+          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+            <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+              <div className="w-full md:w-1/3">
+                <input
+                  type="text"
+                  placeholder="🔍 Search by name or counterparty..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 w-full md:w-auto">
+                <select 
+                  value={activeFilters.type}
+                  onChange={(e) => setActiveFilters(prev => ({ ...prev, type: e.target.value }))}
+                  className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">All Types</option>
+                  <option value="retail">Retail</option>
+                  <option value="wholesale">Wholesale</option>
+                  <option value="offtake">Offtake</option>
+                </select>
+                <select 
+                  value={activeFilters.state}
+                  onChange={(e) => setActiveFilters(prev => ({ ...prev, state: e.target.value }))}
+                  className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">All States</option>
+                  {settings.states.map(state => <option key={state} value={state}>{state}</option>)}
+                </select>
+                <select 
+                  value={activeFilters.status}
+                  onChange={(e) => setActiveFilters(prev => ({ ...prev, status: e.target.value }))}
+                  className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">All Statuses</option>
+                  <option value="active">Active</option>
+                  <option value="pending">Pending</option>
+                </select>
+              </div>
+
+              <button
+                onClick={handleAddNew}
+                className="w-full md:w-auto bg-blue-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+              >
+                <span>➕</span> Add New Contract
+              </button>
+            </div>
           </div>
           
-          <button
-            onClick={handleAddNew}
-            className="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-6 py-3 rounded-lg font-medium hover:from-blue-600 hover:to-purple-700 transition-all duration-200 flex items-center gap-2"
-          >
-            ➕ Add New Contract
-          </button>
-        </div>
+          <div className="mt-6">
+            {isLoading ? (
+              <div className="text-center py-10">
+                <p>Loading contracts...</p>
+              </div>
+            ) : error ? (
+              <div className="text-center py-10 text-red-600">
+                <p>Error: {error}</p>
+              </div>
+            ) : (
+              <ContractList
+                contracts={filteredContracts}
+                onEdit={handleEdit}
+                onDelete={handleDelete}
+              />
+            )}
+          </div>
+        </>
+      )}
 
-        {/* Quick Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-6">
-          <div className="bg-blue-50 rounded-lg p-4">
-            <div className="text-2xl font-bold text-blue-600">{contracts.length}</div>
-            <div className="text-sm text-gray-600">Total Contracts</div>
-          </div>
-          <div className="bg-green-50 rounded-lg p-4">
-            <div className="text-2xl font-bold text-green-600">
-              {contracts.filter(c => c.status === 'active').length}
-            </div>
-            <div className="text-sm text-gray-600">Active Contracts</div>
-          </div>
-          <div className="bg-orange-50 rounded-lg p-4">
-            <div className="text-2xl font-bold text-orange-600">
-              {contracts.filter(c => c.timeSeriesData?.length).length}
-            </div>
-            <div className="text-sm text-gray-600">With Time Series</div>
-          </div>
-          <div className="bg-purple-50 rounded-lg p-4">
-            <div className="text-2xl font-bold text-purple-600">
-              {new Set(contracts.map(c => c.state)).size}
-            </div>
-            <div className="text-sm text-gray-600">States Covered</div>
-          </div>
-        </div>
-      </div>
-
-      {/* Contract List */}
-      <ContractList
-        contracts={contracts}
-        selectedContract={selectedContract}
-        onSelectContract={setSelectedContract}
-        onEditContract={handleEditContract}
-        onDeleteContract={deleteContract} // FIXED: Pass the 'deleteContract' prop directly
-      />
-
-      {/* Contract Form Modal */}
       {showForm && formData && (
         <ContractBase
           formData={formData}
           isEditing={isEditing}
           errors={errors}
           settings={settings}
-          volumeShapes={volumeShapes}
+          volumeShapes={settings.volumeShapes}
           onInputChange={handleInputChange}
-          onSave={handleSaveContract}
-          onCancel={handleCancelEdit}
+          onSave={handleSave}
+          onCancel={handleCancel}
           isSaving={isSaving}
         />
       )}
