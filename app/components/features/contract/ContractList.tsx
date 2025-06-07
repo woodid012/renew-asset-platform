@@ -61,7 +61,7 @@ interface ContractListProps {
   selectedContract: Contract | null;
   onSelectContract: (contract: Contract | null) => void;
   onEditContract: (contract: Contract) => void;
-  onDeleteContract: (contract: Contract) => void;
+  onDeleteContract: (contractId: string) => Promise<void>; // FIXED: Changed signature to expect string ID
 }
 
 export default function ContractList({
@@ -107,13 +107,21 @@ export default function ContractList({
   };
 
   const handleDeleteClick = async (contract: Contract) => {
-    if (!contract._id && !contract.id) return;
+    // FIXED: Extract the contract ID properly
+    const contractId = contract._id || contract.id?.toString();
+    
+    if (!contractId) {
+      console.error('No contract ID found for deletion');
+      alert('Cannot delete contract: No ID found');
+      return;
+    }
     
     const confirmed = window.confirm(`Are you sure you want to delete "${contract.name}"?`);
     if (!confirmed) return;
 
     try {
-      await onDeleteContract(contract);
+      // FIXED: Pass the contract ID string instead of the entire contract object
+      await onDeleteContract(contractId);
     } catch (error) {
       console.error('Error deleting contract:', error);
       alert('Failed to delete contract. Please try again.');

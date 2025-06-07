@@ -67,7 +67,7 @@ interface ContractInputTabProps {
   setSelectedContract: (contract: Contract | null) => void;
   addContract: (contract: Omit<Contract, '_id'>) => Promise<Contract>;
   updateContract: (contract: Contract) => Promise<Contract>;
-  deleteContract: (contractId: string) => Promise<void>;
+  deleteContract: (contractId: string) => Promise<void>; // FIXED: Updated signature to match
   volumeShapes: { [key: string]: number[] };
   settings?: SettingsData;
 }
@@ -301,6 +301,24 @@ export default function ContractInputTab({
     setShowForm(false);
   };
 
+  // FIXED: Create a wrapper function to handle the contract deletion
+  const handleDeleteContract = async (contract: Contract) => {
+    const contractId = contract._id || contract.id?.toString();
+    
+    if (!contractId) {
+      console.error('No contract ID found for deletion');
+      alert('Cannot delete contract: No ID found');
+      return;
+    }
+    
+    try {
+      await deleteContract(contractId);
+    } catch (error) {
+      console.error('Error deleting contract:', error);
+      throw error; // Re-throw so ContractList can handle the error display
+    }
+  };
+
   return (
     <div className="space-y-8">
       {/* Add New Contract Button */}
@@ -319,7 +337,7 @@ export default function ContractInputTab({
         selectedContract={selectedContract}
         onSelectContract={setSelectedContract}
         onEditContract={handleEditContract}
-        onDeleteContract={deleteContract}
+        onDeleteContract={handleDeleteContract} // FIXED: Pass the wrapper function
       />
 
       {/* Contract Form Modal */}
