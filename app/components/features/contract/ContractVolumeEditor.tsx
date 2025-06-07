@@ -48,11 +48,11 @@ const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', '
 
 // Volume calculation utilities
 const VolumeUtils = {
-  hasMonthlyData: (contract: Contract): boolean => {
+  hasMonthlyData: (contract: Omit<Contract, '_id'>): boolean => {
     return !!(contract.timeSeriesData && contract.timeSeriesData.length > 0);
   },
 
-  calculateFromPercentages: (contract: Contract, volumeShapes: { [key: string]: number[] }): number[] => {
+  calculateFromPercentages: (contract: Omit<Contract, '_id'>, volumeShapes: { [key: string]: number[] }): number[] => {
     const percentages = volumeShapes[contract.volumeShape] || volumeShapes.flat;
     return percentages.map(pct => (contract.annualVolume * pct) / 100);
   },
@@ -118,7 +118,7 @@ export default function ContractVolumeEditor({
   const [volumeSource, setVolumeSource] = useState<'percentage' | 'monthly'>(
     VolumeUtils.hasMonthlyData(formData) ? 'monthly' : 'percentage'
   );
-  const [showVolumePreview, setShowVolumePreview] = useState(false));
+  const [showVolumePreview, setShowVolumePreview] = useState(false); // FIXED: Removed extra parenthesis
 
   // Handle CSV volume data upload
   const handleVolumeDataUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -130,7 +130,7 @@ export default function ContractVolumeEditor({
     try {
       const text = await file.text();
       const lines = text.split('\n').filter(line => line.trim());
-      const headers = lines[0].toLowerCase().split(',');
+      const headers = lines[0].toLowerCase().split(',').map(h => h.trim());
       
       // Find period and volume columns
       const periodIndex = headers.findIndex(h => h.includes('period') || h.includes('date') || h.includes('month'));
@@ -266,7 +266,7 @@ export default function ContractVolumeEditor({
               {/* Percentage-Based / Generate Option */}
               <div 
                 className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${
-                  volumeSource === 'percentage' || volumeSource === 'generate'
+                  volumeSource === 'percentage'
                     ? 'border-blue-500 bg-blue-50' 
                     : 'border-gray-200 hover:border-gray-300'
                 }`}
@@ -276,7 +276,7 @@ export default function ContractVolumeEditor({
                   <input
                     type="radio"
                     name="volumeSource"
-                    checked={volumeSource === 'percentage' || volumeSource === 'generate'}
+                    checked={volumeSource === 'percentage'}
                     onChange={() => handleVolumeSourceChange('percentage')}
                     className="mr-2"
                   />
@@ -317,7 +317,7 @@ export default function ContractVolumeEditor({
           <div className="space-y-6">
             
             {/* Combined Percentage-Based/Generate Configuration */}
-            {(volumeSource === 'percentage' || volumeSource === 'generate') && (
+            {(volumeSource === 'percentage') && (
               <div className="border border-gray-200 rounded-lg p-6">
                 <h4 className="text-lg font-semibold text-gray-800 mb-4">📊 Generate Volume Time Series</h4>
                 
@@ -341,7 +341,7 @@ export default function ContractVolumeEditor({
                             const start = new Date(formData.startDate);
                             const end = new Date(formData.endDate);
                             const months = (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth()) + 1;
-                            return months;
+                            return months > 0 ? months : 0;
                           })()}
                         </div>
                       </div>
@@ -401,7 +401,7 @@ export default function ContractVolumeEditor({
                           <div key={month} className="bg-white border border-gray-200 rounded-lg p-3 text-center hover:bg-gray-50 transition-colors">
                             <div className="font-semibold text-gray-800 text-sm">{month}</div>
                             <div className="text-blue-600 font-medium text-sm">{percentage.toFixed(1)}%</div>
-                            <div className="text-gray-600 text-xs">{monthlyVolume.toLocaleString()} MWh</div>
+                            <div className="text-gray-600 text-xs">{monthlyVolume.toLocaleString(undefined, {maximumFractionDigits: 0})} MWh</div>
                           </div>
                         );
                       })}

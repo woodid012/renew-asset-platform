@@ -258,25 +258,28 @@ const updateContract = async (updatedContract: Contract) => {
       throw error;
     }
   };
-  const deleteContract = async (contractId: string) => {
+ const deleteContract = async (contractId: string): Promise<void> => {
     try {
-      const response = await fetch(`/api/contracts?id=${contractId}`, {
+      const res = await fetch(`/api/contracts/${contractId}`, {
         method: 'DELETE',
       });
 
-      if (response.ok) {
-        setContracts(prev => prev.filter(contract => contract._id !== contractId && contract.id?.toString() !== contractId));
-        if (selectedContract && (selectedContract._id === contractId || selectedContract.id?.toString() === contractId)) {
-          setSelectedContract(null);
-        }
-      } else {
+      if (!res.ok) {
         throw new Error('Failed to delete contract');
       }
+
+      setContracts(prev => prev.filter(c => c._id !== contractId));
+
+      // Add this check to clear the selection if the deleted contract was selected
+      if (selectedContract && selectedContract._id === contractId) {
+        setSelectedContract(null);
+      }
     } catch (error) {
-      console.error('Error deleting contract:', error);
-      throw error;
+      console.error('Failed to delete contract', error);
+      // Optionally show an error to the user
     }
   };
+
 
   const updateMarketPrices = (newPrices: PriceCurveData) => {
     setMarketPrices(newPrices);
