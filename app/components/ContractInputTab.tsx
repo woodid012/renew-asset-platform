@@ -1,11 +1,20 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
+import { Contract, SettingsData } from '@/app/types'; // Using the central types file
 import ContractList from './features/contract/ContractList';
 import ContractBase from './features/contract/ContractBase';
-import { Contract, SettingsData, TimeSeriesDataPoint, PriceCurve } from '@/app/types';
 
+// 1. Define the props the component will accept from app/page.tsx
+interface ContractInputTabProps {
+  contracts: Contract[];
+  settings: SettingsData;
+  addContract: (newContract: Omit<Contract, '_id'>) => Promise<any>;
+  updateContract: (updatedContract: Contract) => Promise<any>;
+  deleteContract: (contractId: string) => Promise<void>;
+}
 
+// An empty contract for the "Add New" form
 const initialFormData: Omit<Contract, '_id'> = {
   name: '',
   type: 'retail',
@@ -37,19 +46,24 @@ const initialFormData: Omit<Contract, '_id'> = {
   },
 };
 
-export default function ContractInputTab() {
-  const [contracts, setContracts] = useState<Contract[]>([]);
+// 2. Update the component to receive props
+export default function ContractInputTab({
+  contracts,
+  settings,
+  addContract,
+  updateContract,
+  deleteContract,
+}: ContractInputTabProps) {
+  // 3. Remove state and data fetching that are now handled by the parent
   const [filteredContracts, setFilteredContracts] = useState<Contract[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState<Omit<Contract, '_id'>>(initialFormData);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSaving, setIsSaving] = useState(false);
-  const [selectedContract, setSelectedContract] = useState<Contract | null>(null);
 
-  // Search and filter states
+  // Search and filter states remain local to this component
   const [searchTerm, setSearchTerm] = useState('');
   const [activeFilters, setActiveFilters] = useState({
     type: '',
@@ -57,77 +71,26 @@ export default function ContractInputTab() {
     status: ''
   });
 
-  const [settings, setSettings] = useState<SettingsData>({
-    contractTypes: {
-      retail: ['Commercial', 'Industrial', 'SME'],
-      wholesale: ['PPA', 'ISDA', 'EFET'],
-      offtake: ['Corporate PPA', 'Utility PPA']
-    },
-    volumeShapes: {
-      flat: [], // Will be dynamically generated
-      solar: [0.1, 0.2, 0.5, 0.8, 1, 1.2, 1.2, 1, 0.8, 0.5, 0.2, 0.1],
-      wind: [0.8, 0.9, 1, 1.1, 1, 0.9, 0.8, 0.7, 0.8, 0.9, 1, 0.9],
-      custom: []
-    },
-    states: ['NSW', 'VIC', 'QLD', 'SA', 'WA', 'TAS'],
-    indexationTypes: ['None', 'CPI', 'WPI', 'Custom'],
-    unitTypes: ['Energy', 'Capacity', 'Renewable Energy Certificate'],
-  });
-
-  const [priceCurves, setPriceCurves] = useState<PriceCurve[]>([]);
-
-  // Fetch contracts from API
-  const fetchContracts = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const response = await fetch('/api/contracts');
-      if (!response.ok) {
-        throw new Error('Failed to fetch contracts');
-      }
-      const data = await response.json();
-      setContracts(data);
-      setFilteredContracts(data); // Initially, all contracts are shown
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An unknown error occurred');
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchContracts();
-  }, [fetchContracts]);
-
-  // Apply filters when contracts or filter criteria change
+  // 4. Use the `contracts` prop from the parent for filtering
   useEffect(() => {
     let result = contracts;
 
-    // Search term filter
     if (searchTerm) {
       result = result.filter(c =>
         c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         c.counterparty.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
-
-    // Dropdown filters
-    if (activeFilters.type) {
-      result = result.filter(c => c.type === activeFilters.type);
-    }
-    if (activeFilters.state) {
-      result = result.filter(c => c.state === activeFilters.state);
-    }
-    if (activeFilters.status) {
-      result = result.filter(c => c.status === activeFilters.status);
-    }
+    if (activeFilters.type) result = result.filter(c => c.type === activeFilters.type);
+    if (activeFilters.state) result = result.filter(c => c.state === activeFilters.state);
+    if (activeFilters.status) result = result.filter(c => c.status === activeFilters.status);
 
     setFilteredContracts(result);
   }, [searchTerm, activeFilters, contracts]);
 
   const handleInputChange = (field: keyof Omit<Contract, '_id'>, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
-    // Clear validation error for the field when user starts typing
-    if (errors[field]) {
+    if (errors[field as keyof typeof errors]) {
       setErrors(prev => {
         const newErrors = { ...prev };
         delete newErrors[field as keyof typeof errors];
@@ -150,29 +113,18 @@ export default function ContractInputTab() {
     return Object.keys(newErrors).length === 0;
   };
 
+  // 5. Update handlers to call functions from props
   const handleSave = async () => {
-    if (!validateForm()) {
-      return;
-    }
+    if (!validateForm()) return;
 
     setIsSaving(true);
-    const method = isEditing ? 'PUT' : 'POST';
-    const url = '/api/contracts';
-    const body = isEditing ? JSON.stringify({ ...formData, id: (formData as Contract)._id }) : JSON.stringify(formData);
-    
     try {
-      const response = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body,
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to save contract');
+      if (isEditing) {
+        // The form data needs to be cast to a full Contract to be updated
+        await updateContract(formData as Contract);
+      } else {
+        await addContract(formData);
       }
-
-      await fetchContracts(); // Refresh list
       setShowForm(false);
       setIsEditing(false);
     } catch (err) {
@@ -191,7 +143,7 @@ export default function ContractInputTab() {
 
   const handleEdit = (contract: Contract) => {
     setIsEditing(true);
-    setFormData(contract); // The full contract object including _id
+    setFormData(contract);
     setErrors({});
     setShowForm(true);
   };
@@ -199,13 +151,7 @@ export default function ContractInputTab() {
   const handleDelete = async (id: string) => {
     if (window.confirm('Are you sure you want to delete this contract?')) {
       try {
-        const response = await fetch(`/api/contracts?id=${id}`, {
-          method: 'DELETE',
-        });
-        if (!response.ok) {
-          throw new Error('Failed to delete contract');
-        }
-        await fetchContracts(); // Refresh list
+        await deleteContract(id);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'An unknown error occurred');
       }
@@ -217,6 +163,9 @@ export default function ContractInputTab() {
     setIsEditing(false);
     setErrors({});
   };
+  
+  // A local state for the selected contract for highlighting in the list
+  const [selectedContract, setSelectedContract] = useState<Contract | null>(null);
 
   return (
     <div className="p-4 sm:p-6 md:p-8 bg-gray-50 min-h-screen">
@@ -281,11 +230,7 @@ export default function ContractInputTab() {
           </div>
           
           <div className="mt-6">
-            {isLoading ? (
-              <div className="text-center py-10">
-                <p>Loading contracts...</p>
-              </div>
-            ) : error ? (
+            {error ? (
               <div className="text-center py-10 text-red-600">
                 <p>Error: {error}</p>
               </div>
