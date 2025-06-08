@@ -318,33 +318,100 @@ export default function ContractBase({
               </div>
             </div>
 
-            {/* Right Column - Quick Summary */}
+            {/* Right Column - Contract Summary */}
             <div>
               <h3 className="text-lg font-semibold text-gray-800 mb-4">📊 Contract Summary</h3>
               
               {(formData.annualVolume > 0 || formData.timeSeriesData?.length) && formData.strikePrice > 0 ? (
-                <div className="bg-gray-50 rounded-lg p-4 space-y-3">
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-600 font-medium">Contract Period:</span>
-                    <span className="text-gray-900 font-semibold">
-                      {formData.startDate} to {formData.endDate}
-                    </span>
+                <div className="space-y-6">
+                  {/* Basic Contract Info */}
+                  <div className="bg-gray-50 rounded-lg p-4 space-y-3">
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-600 font-medium">Contract Period:</span>
+                      <span className="text-gray-900 font-semibold">
+                        {formData.startDate} to {formData.endDate}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-600 font-medium">Contract Tenor:</span>
+                      <span className="text-gray-900 font-semibold">
+                        {formData.tenor?.value} {formData.tenor?.unit}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-600 font-medium">Average Strike Price:</span>
+                      <span className="text-gray-900 font-semibold">
+                        ${(() => {
+                          if (formData.pricingType === 'timeseries' && formData.priceTimeSeries?.length) {
+                            const avgPrice = formData.priceTimeSeries.reduce((sum, price) => sum + price, 0) / formData.priceTimeSeries.length;
+                            return avgPrice.toFixed(2);
+                          }
+                          return formData.strikePrice?.toFixed(2) || '0.00';
+                        })()} / Year
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-600 font-medium">Annual Volume (avg.):</span>
+                      <span className="text-gray-900 font-semibold">
+                        {(() => {
+                          if (formData.timeSeriesData?.length && formData.yearsCovered?.length) {
+                            const avgVolume = (formData.totalVolume || formData.annualVolume) / formData.yearsCovered.length;
+                            return avgVolume.toLocaleString(undefined, { maximumFractionDigits: 0 });
+                          }
+                          return formData.annualVolume?.toLocaleString() || '0';
+                        })()} MWh / Year
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-600 font-medium">Contract Tenor:</span>
-                    <span className="text-gray-900 font-semibold">
-                      {formData.tenor?.value} {formData.tenor?.unit}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-600 font-medium">Strike Price:</span>
-                    <span className="text-gray-900 font-semibold">${formData.strikePrice}/MWh</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-600 font-medium">Annual Volume:</span>
-                    <span className="text-gray-900 font-semibold">
-                      {formData.annualVolume?.toLocaleString()} MWh
-                    </span>
+
+                  {/* Monthly Grid */}
+                  <div>
+                    <h4 className="text-md font-semibold text-gray-800 mb-3">Monthly Breakdown</h4>
+                    <div className="grid grid-cols-4 gap-2 text-xs">
+                      {['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'].map((month, index) => {
+                        // Calculate monthly volume
+                        let monthlyVolume = 0;
+                        if (formData.timeSeriesData?.length) {
+                          // Use actual data if available - take average across years for this month
+                          const monthData = formData.timeSeriesData.filter(data => {
+                            const monthIndex = parseInt(data.period.split('-')[1]) - 1;
+                            return monthIndex === index;
+                          });
+                          if (monthData.length > 0) {
+                            monthlyVolume = monthData.reduce((sum, data) => sum + data.volume, 0) / monthData.length;
+                          }
+                        } else {
+                          // Use percentage-based calculation
+                          const volumeShapes = {
+                            flat: [8.33, 8.33, 8.33, 8.33, 8.33, 8.33, 8.33, 8.33, 8.33, 8.33, 8.33, 8.33],
+                            solar: [6.5, 7.2, 8.8, 9.5, 10.2, 8.9, 9.1, 9.8, 8.6, 7.4, 6.8, 7.2],
+                            wind: [11.2, 10.8, 9.2, 7.8, 6.5, 5.9, 6.2, 7.1, 8.4, 9.6, 10.8, 11.5],
+                            custom: [5.0, 6.0, 7.5, 9.0, 11.0, 12.5, 13.0, 12.0, 10.5, 8.5, 7.0, 6.0]
+                          };
+                          const percentages = volumeShapes[formData.volumeShape] || volumeShapes.flat;
+                          monthlyVolume = (formData.annualVolume * percentages[index]) / 100;
+                        }
+
+                        // Calculate monthly price
+                        let monthlyPrice = formData.strikePrice;
+                        if (formData.pricingType === 'timeseries' && formData.priceTimeSeries?.length) {
+                          if (formData.priceInterval === 'monthly') {
+                            monthlyPrice = formData.priceTimeSeries[index] || formData.strikePrice;
+                          } else if (formData.priceInterval === 'quarterly') {
+                            const quarterIndex = Math.floor(index / 3);
+                            monthlyPrice = formData.priceTimeSeries[quarterIndex] || formData.strikePrice;
+                          }
+                        }
+
+                        return (
+                          <div key={month} className="bg-white border border-gray-200 rounded p-2 text-center">
+                            <div className="font-semibold text-gray-800 mb-1">{month}</div>
+                            <div className="text-blue-600 font-medium">${monthlyPrice.toFixed(0)}</div>
+                            <div className="text-gray-600">{monthlyVolume.toLocaleString(undefined, { maximumFractionDigits: 0 })} MWh</div>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
               ) : (
@@ -381,11 +448,11 @@ export default function ContractBase({
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Volume:</span>
+                  <span className="text-gray-600">Data Points:</span>
                   <span className="font-medium">
                     {formData.timeSeriesData?.length 
-                      ? `${formData.totalVolume?.toLocaleString() || 0} MWh (${formData.timeSeriesData.length} periods)`
-                      : `${formData.annualVolume?.toLocaleString() || 0} MWh (${formData.volumeShape})`
+                      ? `${formData.timeSeriesData.length} periods`
+                      : '12 months (shape-based)'
                     }
                   </span>
                 </div>
@@ -409,28 +476,25 @@ export default function ContractBase({
               
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Pricing Type:</span>
+                  <span className="text-gray-600">Data Source:</span>
                   <span className="font-medium capitalize">
                     {formData.pricingType || 'Fixed'}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Base Price:</span>
-                  <span className="font-medium">${formData.strikePrice || 0}/MWh</span>
+                  <span className="text-gray-600">Data Points:</span>
+                  <span className="font-medium">
+                    {(() => {
+                      if (formData.pricingType === 'timeseries' && formData.priceTimeSeries?.length) {
+                        return `${formData.priceTimeSeries.length} periods`;
+                      } else if (formData.pricingType === 'custom_time_of_day' && formData.timeBasedPricing?.periods?.length) {
+                        return `${formData.timeBasedPricing.periods.length} time periods`;
+                      } else {
+                        return '1 (fixed price)';
+                      }
+                    })()}
+                  </span>
                 </div>
-
-                {formData.pricingType === 'timeseries' && formData.priceTimeSeries?.length && (
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Price Series:</span>
-                    <span className="font-medium">{formData.priceTimeSeries.length} periods</span>
-                  </div>
-                )}
-                {formData.pricingType === 'custom_time_of_day' && formData.timeBasedPricing?.periods?.length && (
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Time Periods:</span>
-                    <span className="font-medium">{formData.timeBasedPricing.periods.length} periods</span>
-                  </div>
-                )}
               </div>
             </div>
           </div>
