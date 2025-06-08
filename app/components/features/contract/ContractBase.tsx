@@ -10,6 +10,7 @@ interface TimeSeriesDataPoint {
   date?: Date;
 }
 
+// PASTE THIS NEW version into ContractBase.tsx
 interface Contract {
   _id?: string;
   id?: number;
@@ -23,16 +24,17 @@ interface Contract {
   annualVolume: number;
   strikePrice: number;
   unit: string;
+  contractType?: string;
   volumeShape: 'flat' | 'solar' | 'wind' | 'custom';
   status: 'active' | 'pending';
   indexation: string;
   referenceDate: string;
-  pricingType?: 'fixed' | 'timeseries' | 'custom_time_of_day';
+  pricingType?: 'fixed' | 'escalation' | 'timeseries' | 'custom_time_of_day';
   escalationRate?: number;
   priceTimeSeries?: number[];
   priceInterval?: 'monthly' | 'quarterly' | 'yearly';
   productDetail?: 'CY' | 'FY' | 'Q1' | 'Q2' | 'Q3' | 'Q4';
-  
+
   // Enhanced volume fields
   timeSeriesData?: TimeSeriesDataPoint[];
   tenor?: {
@@ -42,7 +44,7 @@ interface Contract {
   dataSource?: 'manual' | 'csv_import' | 'api_import';
   yearsCovered?: number[];
   totalVolume?: number;
-  
+
   // Time-based pricing
   timeBasedPricing?: {
     periods: Array<{
