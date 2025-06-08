@@ -1,56 +1,8 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import { Contract, SettingsData, TimeSeriesDataPoint, PriceCurve } from '@/app/types';
 
-interface Contract {
-  _id?: string;
-  id?: number;
-  name: string;
-  type: 'retail' | 'wholesale' | 'offtake';
-  category: string;
-  state: string;
-  counterparty: string;
-  startDate: string;
-  endDate: string;
-  annualVolume: number;
-  strikePrice: number;
-  unit: string;
-  contractType?: string; // New Type field
-  volumeShape: 'flat' | 'solar' | 'wind' | 'custom';
-  status: 'active' | 'pending';
-  indexation: string;
-  referenceDate: string;
-  // Enhanced pricing fields
-  pricingType?: 'fixed' | 'escalation' | 'timeseries' | 'custom_time_of_day';
-  escalationRate?: number;
-  priceTimeSeries?: number[];
-  priceInterval?: 'monthly' | 'quarterly' | 'yearly';
-  productDetail?: 'CY' | 'FY' | 'Q1' | 'Q2' | 'Q3' | 'Q4';
-  // Custom time-based pricing
-  timeBasedPricing?: {
-    periods: Array<{
-      id: string;
-      name: string;
-      price: number;
-      startTime: string;
-      endTime: string;
-      daysOfWeek: boolean[];
-    }>;
-    defaultPrice: number;
-  };
-  // Enhanced volume fields
-  timeSeriesData?: Array<{
-    period: string;
-    volume: number;
-  }>;
-  tenor?: {
-    value: number;
-    unit: 'months' | 'years';
-  };
-  dataSource?: 'manual' | 'csv_import' | 'api_import';
-  yearsCovered?: number[];
-  totalVolume?: number;
-}
 
 interface ContractListProps {
   contracts: Contract[];

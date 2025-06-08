@@ -1,54 +1,8 @@
 'use client';
 
 import { useState } from 'react';
+import { Contract, SettingsData, TimeSeriesDataPoint, PriceCurve } from '@/app/types';
 
-interface Contract {
-  _id?: string;
-  id?: number;
-  name: string;
-  type: 'retail' | 'wholesale' | 'offtake';
-  category: string;
-  state: string;
-  counterparty: string;
-  startDate: string;
-  endDate: string;
-  annualVolume: number;
-  strikePrice: number;
-  unit: string;
-  volumeShape: 'flat' | 'solar' | 'wind' | 'custom';
-  status: 'active' | 'pending';
-  indexation: string;
-  referenceDate: string;
-  pricingType?: 'fixed' | 'timeseries' | 'custom_time_of_day';
-  escalationRate?: number;
-  priceTimeSeries?: number[];
-  priceInterval?: 'monthly' | 'quarterly' | 'yearly';
-  
-  // Time-based pricing
-  timeBasedPricing?: {
-    periods: Array<{
-      id: string;
-      name: string;
-      price: number;
-      startTime: string;
-      endTime: string;
-      daysOfWeek: boolean[];
-    }>;
-    defaultPrice: number;
-  };
-}
-
-interface SettingsData {
-  contractTypes: {
-    retail: string[];
-    wholesale: string[];
-    offtake: string[];
-  };
-  volumeShapes: { [key: string]: number[] };
-  states: string[];
-  indexationTypes: string[];
-  unitTypes: string[];
-}
 
 interface ContractPriceEditorProps {
   formData: Omit<Contract, '_id'>;
