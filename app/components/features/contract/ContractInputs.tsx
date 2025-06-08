@@ -21,6 +21,7 @@ interface Contract {
   annualVolume: number;
   strikePrice: number;
   unit: string;
+  contractType?: string; // New Type field
   volumeShape: 'flat' | 'solar' | 'wind' | 'custom';
   status: 'active' | 'pending';
   indexation: string;
@@ -424,7 +425,7 @@ export default function EnhancedContractInputs({
                   {errors.startDate && <p className="mt-1 text-sm text-red-600">{errors.startDate}</p>}
                 </div>
 
-                {/* Tenor Input - NEW */}
+                {/* Tenor Input */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Contract Tenor *
@@ -466,20 +467,19 @@ export default function EnhancedContractInputs({
                   />
                 </div>
 
-                {/* Type (was Unit) */}
+                {/* Type (NEW - replacing Unit in this section) */}
                 <div>
-                  <label htmlFor="unit" className="block text-sm font-medium text-gray-700 mb-2">
+                  <label htmlFor="contractType" className="block text-sm font-medium text-gray-700 mb-2">
                     Type
                   </label>
                   <select
-                    id="unit"
-                    value={formData.unit}
-                    onChange={(e) => onInputChange('unit', e.target.value)}
+                    id="contractType"
+                    value={formData.contractType || 'Energy'}
+                    onChange={(e) => onInputChange('contractType', e.target.value)}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 hover:border-gray-400"
                   >
-                    {settings.unitTypes.map(unit => (
-                      <option key={unit} value={unit}>{unit}</option>
-                    ))}
+                    <option value="Energy">Energy</option>
+                    <option value="Green">Green</option>
                   </select>
                 </div>
 
@@ -716,6 +716,14 @@ export default function EnhancedContractInputs({
                       <span className="text-gray-600 font-medium">Contract Tenor:</span>
                       <span className="text-gray-900 font-semibold">
                         {formData.tenor?.value} {formData.tenor?.unit}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-600 font-medium">Type:</span>
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        formData.contractType === 'Green' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'
+                      }`}>
+                        {formData.contractType || 'Energy'}
                       </span>
                     </div>
                     <div className="flex justify-between items-center">

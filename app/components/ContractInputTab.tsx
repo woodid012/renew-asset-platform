@@ -10,6 +10,7 @@ interface TimeSeriesDataPoint {
   date?: Date;
 }
 
+// PASTE THIS NEW version into ContractInputTab.tsx
 interface Contract {
   _id?: string;
   id?: number;
@@ -23,16 +24,17 @@ interface Contract {
   annualVolume: number;
   strikePrice: number;
   unit: string;
+  contractType?: string;
   volumeShape: 'flat' | 'solar' | 'wind' | 'custom';
   status: 'active' | 'pending';
   indexation: string;
   referenceDate: string;
-  pricingType?: 'fixed' | 'timeseries' | 'custom_time_of_day'; // "escalation" was removed
+  pricingType?: 'fixed' | 'escalation' | 'timeseries' | 'custom_time_of_day';
   escalationRate?: number;
   priceTimeSeries?: number[];
   priceInterval?: 'monthly' | 'quarterly' | 'yearly';
   productDetail?: 'CY' | 'FY' | 'Q1' | 'Q2' | 'Q3' | 'Q4';
-  
+
   // Enhanced volume fields
   timeSeriesData?: TimeSeriesDataPoint[];
   tenor?: {
@@ -42,7 +44,7 @@ interface Contract {
   dataSource?: 'manual' | 'csv_import' | 'api_import';
   yearsCovered?: number[];
   totalVolume?: number;
-  
+
   // Time-based pricing
   timeBasedPricing?: {
     periods: Array<{
@@ -117,6 +119,7 @@ export default function ContractInputTab() {
   const [formData, setFormData] = useState<Omit<Contract, '_id'>>(initialFormData);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSaving, setIsSaving] = useState(false);
+  const [selectedContract, setSelectedContract] = useState<Contract | null>(null);
 
   // Search and filter states
   const [searchTerm, setSearchTerm] = useState('');
@@ -361,8 +364,10 @@ export default function ContractInputTab() {
             ) : (
               <ContractList
                 contracts={filteredContracts}
-                onEdit={handleEdit}
-                onDelete={handleDelete}
+                selectedContract={selectedContract}
+                onSelectContract={setSelectedContract}
+                onEditContract={handleEdit}
+                onDeleteContract={handleDelete}
               />
             )}
           </div>
