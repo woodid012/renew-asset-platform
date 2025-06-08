@@ -221,6 +221,49 @@ export default function ContractPriceEditor({
     return preview;
   };
 
+// Add this new function to handle price interval changes
+  const handleIntervalChange = (newInterval: 'monthly' | 'quarterly' | 'yearly') => {
+    const oldInterval = formData.priceInterval || 'quarterly';
+    const oldPrices = formData.priceTimeSeries || [];
+
+    // Do nothing if the interval hasn't changed or there's no data to convert
+    if (newInterval === oldInterval || oldPrices.length === 0) {
+      onInputChange('priceInterval', newInterval);
+      return;
+    }
+
+    const newPeriods = calculateContractPeriods(newInterval);
+    let newPrices = Array(newPeriods).fill(formData.strikePrice || 70); // Default fallback
+
+    // --- Conversion Logic ---
+
+    // Case 1: Convert from Quarterly prices to Monthly
+    if (oldInterval === 'quarterly' && newInterval === 'monthly') {
+      newPrices = newPrices.map((_, monthIndex) => {
+        const quarterIndex = Math.floor(monthIndex / 3);
+        // Find the price from the corresponding quarter, cycling through the pattern
+        return oldPrices[quarterIndex % oldPrices.length];
+      });
+    }
+    // Case 2: Convert from Monthly prices to Quarterly
+    else if (oldInterval === 'monthly' && newInterval === 'quarterly') {
+      newPrices = newPrices.map((_, quarterIndex) => {
+        const startMonth = quarterIndex * 3;
+        const endMonth = startMonth + 3;
+        const monthsInQuarter = oldPrices.slice(startMonth, endMonth);
+
+        if (monthsInQuarter.length === 0) return formData.strikePrice || 70;
+
+        // Take the average of the months within that quarter
+        return monthsInQuarter.reduce((sum, price) => sum + price, 0) / monthsInQuarter.length;
+      });
+    }
+
+    // (Other conversion paths like to/from 'yearly' could be added here)
+
+    onInputChange('priceInterval', newInterval);
+    onInputChange('priceTimeSeries', newPrices);
+  };
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-xl max-w-6xl w-full max-h-[90vh] overflow-y-auto">
@@ -389,23 +432,16 @@ export default function ContractPriceEditor({
                       <label className="block text-sm font-medium text-gray-700">
                         Price Interval
                       </label>
-                      <select
-                        value={formData.priceInterval || 'quarterly'}
-                        onChange={(e) => {
-                          const interval = e.target.value as 'monthly' | 'quarterly' | 'yearly';
-                          onInputChange('priceInterval', interval);
-                          
-                          // Create array based on contract duration
-                          const periods = calculateContractPeriods(interval);
-                          const defaultPrice = formData.strikePrice || 70;
-                          onInputChange('priceTimeSeries', Array(periods).fill(defaultPrice));
-                        }}
-                        className="px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
-                      >
-                        <option value="quarterly">Quarterly</option>
-                        <option value="monthly">Monthly</option>
-                        <option value="yearly">Yearly</option>
-                      </select>
+                      
+                  <select
+                    value={formData.priceInterval || 'quarterly'}
+                    onChange={(e) => handleIntervalChange(e.target.value as 'monthly' | 'quarterly' | 'yearly')}
+                    className="px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  >
+                    <option value="quarterly">Quarterly</option>
+                    <option value="monthly">Monthly</option>
+                    <option value="yearly">Yearly</option>
+                  </select>
                     </div>
                   </div>
 
