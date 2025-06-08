@@ -19,7 +19,30 @@ export default function ContractList({
   onEditContract,
   onDeleteContract,
 }: ContractListProps) {
-  
+ 
+  const getDisplayPrice = (contract: Contract) => {
+  switch (contract.pricingType) {
+    case 'timeseries':
+      if (contract.priceTimeSeries?.length) {
+        const average = contract.priceTimeSeries.reduce((sum, price) => sum + price, 0) / contract.priceTimeSeries.length;
+        return average;
+      }
+      return contract.strikePrice;
+    case 'escalation':
+      // For escalation, could show the current year price, but for now show base
+      return contract.strikePrice;
+    case 'custom_time_of_day':
+      if (contract.timeBasedPricing?.periods?.length) {
+        // Calculate volume-weighted average if we had volume data, otherwise simple average
+        const prices = contract.timeBasedPricing.periods.map(p => p.price);
+        const average = prices.reduce((sum, price) => sum + price, 0) / prices.length;
+        return average;
+      }
+      return contract.timeBasedPricing?.defaultPrice || contract.strikePrice;
+    default:
+      return contract.strikePrice;
+  }
+};
   // Filter states
   const [filters, setFilters] = useState({
     search: '',
@@ -67,7 +90,7 @@ export default function ContractList({
       if (filters.pricingType !== 'all' && (contract.pricingType || 'fixed') !== filters.pricingType) return false;
 
       // Contract type filter (unit field)
-      if (filters.contractType !== 'all' && (contract.unit || 'Energy') !== filters.contractType) return false;
+      if (filters.contractType !== 'all' && (contract.contractType || 'Energy') !== filters.contractType) return false;
 
       return true;
     });
@@ -177,14 +200,22 @@ export default function ContractList({
   const getVolumeDetails = (contract: Contract) => {
     const details: string[] = [];
     
-    // Primary volume display
-    const primaryVolume = contract.timeSeriesData?.length 
-      ? contract.totalVolume || 0
-      : contract.annualVolume || 0;
+    // Calculate average annual volume
+    let averageAnnualVolume = 0;
+    
+    if (contract.timeSeriesData?.length && contract.yearsCovered?.length) {
+      // If we have time series data, calculate average across years
+      const totalVolume = contract.totalVolume || 0;
+      const yearsCount = contract.yearsCovered.length;
+      averageAnnualVolume = yearsCount > 0 ? totalVolume / yearsCount : totalVolume;
+    } else {
+      // Fall back to annual volume
+      averageAnnualVolume = contract.annualVolume || 0;
+    }
     
     const volumeLabel = contract.type === 'wholesale' 
-      ? `${primaryVolume.toLocaleString()} MW`
-      : `${primaryVolume.toLocaleString()} MWh`;
+      ? `${Math.round(averageAnnualVolume).toLocaleString()} MW`
+      : `${Math.round(averageAnnualVolume).toLocaleString()} MWh`;
     
     details.push(volumeLabel);
     
@@ -502,13 +533,12 @@ export default function ContractList({
                 <th className="text-left p-4 font-semibold text-gray-700">Category</th>
                 <th className="text-left p-4 font-semibold text-gray-700">State</th>
                 <th className="text-left p-4 font-semibold text-gray-700">Counterparty</th>
-                <th className="text-left p-4 font-semibold text-gray-700">Volume</th>
-                <th className="text-left p-4 font-semibold text-gray-700">Contract Type</th>                 
-                <th className="text-left p-4 font-semibold text-gray-700">Pricing</th>
+                <th className="text-left p-4 font-semibold text-gray-700">Contract Type</th>   
+                <th className="text-left p-4 font-semibold text-gray-700">Ave. Annual Volume</th>              
+                <th className="text-left p-4 font-semibold text-gray-700">Ave. Pricing</th>
                 <th className="text-left p-4 font-semibold text-gray-700">Period</th>
                 <th className="text-left p-4 font-semibold text-gray-700">Status</th>
-                <th className="text-left p-4 font-semibold text-gray-700">Source</th>
-                <th className="text-left p-4 font-semibold text-gray-700">Actions</th>
+                <th className="text-left p-4 font-semibold text-gray-700 w-20">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -540,6 +570,13 @@ export default function ContractList({
                     <td className="p-4 text-gray-700">{contract.category}</td>
                     <td className="p-4 text-gray-700">{contract.state}</td>
                     <td className="p-4 text-gray-700">{contract.counterparty}</td>
+                                        <td className="p-4">
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        contract.contractType === 'Green' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'
+                      }`}>
+                        {contract.contractType || 'Energy'}
+                      </span>
+                    </td>
                     <td className="p-4 text-gray-700">
                       <div className="flex flex-col">
                         <span className="font-medium">{volumeDetails[0]}</span>
@@ -548,17 +585,11 @@ export default function ContractList({
                         ))}
                       </div>
                     </td>
-                    <td className="p-4">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        contract.unit === 'Green' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'
-                      }`}>
-                        {contract.unit || 'Energy'}
-                      </span>
-                    </td>
+
                     <td className="p-4">
                       <div className="flex flex-col">
                         <span className="text-gray-900 font-medium">
-                          ${contract.strikePrice}/MWh
+                          ${getDisplayPrice(contract).toFixed(2)}/MWh
                         </span>
                         <div className="flex items-center gap-1 mt-1">
                           <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPricingTypeColor(contract.pricingType)}`}>
@@ -585,22 +616,13 @@ export default function ContractList({
                       </span>
                     </td>
                     <td className="p-4">
-                      <div className="flex items-center gap-1">
-                        <span className="text-lg">{getDataSourceIcon(contract)}</span>
-                        <span className="text-xs text-gray-500 capitalize">
-                          {contract.dataSource === 'csv_import' ? 'CSV' :
-                           contract.dataSource === 'api_import' ? 'API' : 'Manual'}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="p-4">
-                      <div className="flex gap-2">
+                      <div className="flex flex-col gap-1">
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
                             onEditContract(contract);
                           }}
-                          className="bg-blue-500 text-white px-3 py-1 rounded text-xs font-medium hover:bg-blue-600 transition-colors"
+                          className="bg-blue-500 text-white px-2 py-1 rounded text-xs font-medium hover:bg-blue-600 transition-colors"
                         >
                           Edit
                         </button>
@@ -609,7 +631,7 @@ export default function ContractList({
                             e.stopPropagation();
                             handleDeleteClick(contract);
                           }}
-                          className="bg-red-500 text-white px-3 py-1 rounded text-xs font-medium hover:bg-red-600 transition-colors"
+                          className="bg-red-500 text-white px-2 py-1 rounded text-xs font-medium hover:bg-red-600 transition-colors"
                         >
                           Delete
                         </button>
