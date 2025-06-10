@@ -1,27 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-
-interface Contract {
-  _id?: string;
-  id?: number;
-  name: string;
-  type: 'retail' | 'wholesale' | 'offtake';
-  category: string;
-  state: string;
-  counterparty: string;
-  startDate: string;
-  endDate: string;
-  annualVolume: number;
-  strikePrice: number;
-  unit: string;
-  contractType?: string; // New field for Energy/Green
-  direction: 'buy' | 'sell'; // NEW: Buy/Sell direction
-  volumeShape: 'flat' | 'solar' | 'wind' | 'custom';
-  status: 'active' | 'pending';
-  indexation: string;
-  referenceDate: string;
-}
+import { Contract, SettingsData } from '@/app/types';
 
 interface ContractSummaryTabProps {
   contracts: Contract[];
