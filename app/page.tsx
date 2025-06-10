@@ -14,7 +14,25 @@ import TimeSeriesOutputTab from './components/TimeSeriesOutputTab';
 import SettingsTab from './components/SettingsTab';
 
 
-
+interface TimeSeriesRow {
+  buysell: string;
+  deal_name: string;
+  state: string;
+  type: string;
+  month_start: number;
+  year: number;
+  fy: number;
+  unit: string;
+  scenario: string;
+  sub_type: string;
+  volume_pct: number;
+  volume_mwh: string;
+  strike_price: number;
+  strike_price_x_volume: number;
+  market_price: number;
+  market_price_x_volume: number;
+  net_mtm: number;
+}
 
 interface PriceCurveData {
   [key: string]: number[];
