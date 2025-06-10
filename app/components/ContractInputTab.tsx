@@ -26,6 +26,7 @@ const initialFormData: Omit<Contract, '_id'> = {
   annualVolume: 1000,
   strikePrice: 70,
   unit: 'Energy',
+  direction: 'sell', // ✅ ADDED: Set default trade direction to 'sell'
   volumeShape: 'flat',
   status: 'active',
   indexation: 'None',
