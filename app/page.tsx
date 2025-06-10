@@ -44,11 +44,11 @@ interface VolumeShapeData {
 
 // ADD Variables Creation as a new tab (keeping MtM):
 const tabs = [
-  { id: 'summary', label: 'Contract Summary' },
+  //{ id: 'summary', label: 'Contract Summary' },
   { id: 'input', label: 'Contract Input' },
   { id: 'price-curve', label: 'Price Curves' },
-  { id: 'variables', label: 'Variables Creation' }, // NEW tab
   { id: 'mark-to-market', label: 'Mark to Market' }, // KEEP existing MtM tab
+  //{ id: 'variables', label: 'Variables Creation' }, // NEW tab
   { id: 'time-series', label: 'Time Series Output' },
   { id: 'settings', label: 'Settings' },
 ];
@@ -343,13 +343,6 @@ const updateContract = async (updatedContract: Contract) => {
           {activeTab === 'summary' && <ContractSummaryTab {...commonProps} />}
           {activeTab === 'input' && <ContractInputTab {...commonProps} />}
           {activeTab === 'price-curve' && <PriceCurveTab {...commonProps} />}
-          {activeTab === 'variables' && (
-              <VariablesCreationTab 
-                contracts={contracts}
-                marketPrices={marketPrices}
-                settings={settings}
-              />
-            )}
           {activeTab === 'mark-to-market' && <MarkToMarketTab {...commonProps} />}
           {activeTab === 'time-series' && <TimeSeriesOutputTab {...commonProps} />}
           {activeTab === 'settings' && (
