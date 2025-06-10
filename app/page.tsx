@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import Head from 'next/head';
 
 // Import tab components
+import { Contract, SettingsData, TimeSeriesRow } from './types'; 
+
 import ContractSummaryTab from './components/ContractSummaryTab';
 import ContractInputTab from './components/ContractInputTab';
 import PriceCurveTab from './components/PriceCurveTab';
@@ -11,44 +13,8 @@ import MarkToMarketTab from './components/MarkToMarketTab';
 import TimeSeriesOutputTab from './components/TimeSeriesOutputTab';
 import SettingsTab from './components/SettingsTab';
 
-interface Contract {
-  _id?: string;
-  id?: number;
-  name: string;
-  type: 'retail' | 'wholesale' | 'offtake';
-  category: string;
-  state: string;
-  counterparty: string;
-  startDate: string;
-  endDate: string;
-  annualVolume: number;
-  strikePrice: number;
-  unit: string;
-  volumeShape: 'flat' | 'solar' | 'wind' | 'custom';
-  status: 'active' | 'pending';
-  indexation: string;
-  referenceDate: string;
-}
 
-interface TimeSeriesRow {
-  buysell: string;
-  deal_name: string;
-  state: string;
-  type: string;
-  month_start: number;
-  year: number;
-  fy: number;
-  unit: string;
-  scenario: string;
-  sub_type: string;
-  volume_pct: number;
-  volume_mwh: string;
-  strike_price: number;
-  strike_price_x_volume: number;
-  market_price: number;
-  market_price_x_volume: number;
-  net_mtm: number;
-}
+
 
 interface PriceCurveData {
   [key: string]: number[];
