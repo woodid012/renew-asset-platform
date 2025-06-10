@@ -24,6 +24,16 @@ export interface PriceCurve {
   data: Array<{ date: string; price: number }>;
 }
 
+export interface ContractRequirement {
+  id: string;
+  label: string;
+  details: string;
+  dueDate: string;
+  completed: boolean;
+  priority: 'low' | 'medium' | 'high';
+  category: string;
+}
+
 export interface Contract {
   _id?: string;
   id?: number;
@@ -70,4 +80,7 @@ export interface Contract {
     }>;
     defaultPrice: number;
   };
+
+  // Contract requirements
+  contractRequirements?: ContractRequirement[];
 }

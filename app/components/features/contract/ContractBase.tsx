@@ -3,9 +3,8 @@
 import { useState, useEffect } from 'react';
 import ContractVolumeEditor from './ContractVolumeEditor';
 import ContractPriceEditor from './ContractPriceEditor';
+import ContractRequirementsEditor from './ContractRequirementsEditor';
 import { Contract, SettingsData, TimeSeriesDataPoint, PriceCurve } from '@/app/types';
-
-
 
 interface ContractBaseProps {
   formData: Omit<Contract, '_id'> | null;
@@ -78,6 +77,7 @@ export default function ContractBase({
 }: ContractBaseProps) {
   const [showVolumeEditor, setShowVolumeEditor] = useState(false);
   const [showPriceEditor, setShowPriceEditor] = useState(false);
+  const [showRequirementsEditor, setShowRequirementsEditor] = useState(false);
 
   if (!formData) return null;
 
@@ -115,6 +115,21 @@ export default function ContractBase({
     }
     return [];
   };
+
+  // Get requirements statistics
+  const getRequirementsStats = () => {
+    const requirements = formData.contractRequirements || [];
+    const total = requirements.length;
+    const completed = requirements.filter(req => req.completed).length;
+    const pending = total - completed;
+    const overdue = requirements.filter(req => 
+      !req.completed && new Date(req.dueDate) < new Date()
+    ).length;
+
+    return { total, completed, pending, overdue };
+  };
+
+  const requirementsStats = getRequirementsStats();
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -422,8 +437,8 @@ export default function ContractBase({
             </div>
           </div>
 
-          {/* Volume and Price Editor Buttons */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          {/* Configuration Editor Buttons */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             
             {/* Volume Configuration */}
             <div className="border border-gray-200 rounded-lg p-6">
@@ -497,6 +512,38 @@ export default function ContractBase({
                 </div>
               </div>
             </div>
+
+            {/* Contract Requirements Configuration */}
+            <div className="border border-gray-200 rounded-lg p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h4 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                  📋 Contract Requirements
+                </h4>
+                <button
+                  type="button"
+                  onClick={() => setShowRequirementsEditor(true)}
+                  className="bg-purple-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-purple-600 transition-colors"
+                >
+                  Manage Requirements
+                </button>
+              </div>
+              
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Total Requirements:</span>
+                  <span className="font-medium">{requirementsStats.total}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Status:</span>
+                  <span className="font-medium">
+                    {requirementsStats.completed}/{requirementsStats.total} completed
+                    {requirementsStats.overdue > 0 && (
+                      <span className="text-red-600 ml-1">({requirementsStats.overdue} overdue)</span>
+                    )}
+                  </span>
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Form Actions */}
@@ -536,6 +583,17 @@ export default function ContractBase({
             settings={settings}
             onInputChange={onInputChange}
             onClose={() => setShowPriceEditor(false)}
+          />
+        )}
+
+        {/* Requirements Editor Modal */}
+        {showRequirementsEditor && (
+          <ContractRequirementsEditor
+            formData={formData}
+            errors={errors}
+            settings={settings}
+            onInputChange={onInputChange}
+            onClose={() => setShowRequirementsEditor(false)}
           />
         )}
       </div>
