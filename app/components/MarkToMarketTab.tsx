@@ -18,7 +18,7 @@ export default function MarkToMarketTab({
   selectedContract,
   setSelectedContract,
   settings,
-  priceCurves,
+
 }: MarkToMarketTabProps) {
 
   // Your future component logic will go here.
