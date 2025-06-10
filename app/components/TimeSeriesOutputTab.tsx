@@ -193,7 +193,9 @@ export default function EnhancedTimeSeriesOutputTab({
   };
 
   // Helper function to get strike price for a given period
+// Helper function to get strike price for a given period
   const getStrikePrice = (contract: Contract, monthIndex: number, year: number): number => {
+    // Handle time series based pricing
     if (contract.pricingType === 'timeseries' && contract.priceTimeSeries && contract.priceTimeSeries.length > 0) {
       if (contract.priceInterval === 'monthly') {
         return contract.priceTimeSeries[monthIndex] || contract.strikePrice;
@@ -205,6 +207,7 @@ export default function EnhancedTimeSeriesOutputTab({
       }
     }
     
+    // Handle escalation based pricing
     if (contract.pricingType === 'escalation' && contract.escalationRate && contract.referenceDate) {
       const refYear = new Date(contract.referenceDate).getFullYear();
       const yearsDiff = year - refYear;
@@ -212,6 +215,8 @@ export default function EnhancedTimeSeriesOutputTab({
       return contract.strikePrice * escalationFactor;
     }
     
+    // Fallback for 'fixed', 'custom_time_of_day', or any other unhandled pricing types.
+    // This ensures that even new, unhandled pricing types will gracefully use the base strike price.
     return contract.strikePrice;
   };
 
