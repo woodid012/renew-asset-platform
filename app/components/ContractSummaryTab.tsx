@@ -1,42 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import dynamic from 'next/dynamic';
-
-// Proper dynamic import for Chart.js
-const Line = dynamic(
-  () => import('react-chartjs-2').then((mod) => mod.Line),
-  { 
-    ssr: false,
-    loading: () => <div className="flex items-center justify-center h-64 text-gray-500">Loading chart...</div>
-  }
-);
-
-// Register Chart.js components INCLUDING Filler
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend,
-  Filler, // ADD THIS
-} from 'chart.js';
-
-if (typeof window !== 'undefined') {
-  ChartJS.register(
-    CategoryScale,
-    LinearScale,
-    PointElement,
-    LineElement,
-    Title,
-    Tooltip,
-    Legend,
-    Filler // ADD THIS
-  );
-}
 
 interface Contract {
   _id?: string;
@@ -52,6 +16,7 @@ interface Contract {
   strikePrice: number;
   unit: string;
   contractType?: string; // New field for Energy/Green
+  direction: 'buy' | 'sell'; // NEW: Buy/Sell direction
   volumeShape: 'flat' | 'solar' | 'wind' | 'custom';
   status: 'active' | 'pending';
   indexation: string;
@@ -69,28 +34,10 @@ export default function ContractSummaryTab({
   marketPrices,
   volumeShapes,
 }: ContractSummaryTabProps) {
-  const [volumeChartView, setVolumeChartView] = useState<'Energy' | 'Green' | 'Both'>('Both');
-  const [mtmChartView, setMtmChartView] = useState<'Energy' | 'Green' | 'Both'>('Both');
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
 
-  // Type colors (Green/Energy based on contractType)
-  const contractTypeColors: { [key: string]: string } = {
-    'Energy': '#10b981',
-    'Green': '#3b82f6',
-  };
-
-  // Get contract type colors
-  const getContractTypeColor = (type: string) => {
-    switch (type) {
-      case 'retail': return 'bg-orange-100 text-orange-800';
-      case 'wholesale': return 'bg-green-100 text-green-800';
-      case 'offtake': return 'bg-purple-100 text-purple-800';
-      default: return 'bg-blue-100 text-blue-800';
-    }
-  };
-
   // Get available years from contracts
-  const getAvailableYears = () => {
+  const getAvailableYears = (): number[] => {
     const years = new Set<number>();
     contracts.forEach(contract => {
       const startYear = new Date(contract.startDate).getFullYear();
@@ -120,18 +67,19 @@ export default function ContractSummaryTab({
   const availableYears = getAvailableYears();
   const activeContracts = getActiveContractsForYear(selectedYear);
 
-  // Calculate aggregations for selected year
-  const calculateAggregations = () => {
+  // Calculate basic aggregations for selected year
+  const calculateBasicAggregations = () => {
     // Combined business type + contract type aggregations
     const combinedTypeAggregations: { [key: string]: { count: number, volume: number, avgStrike: number, totalStrike: number } } = {};
-
     // Pure contract type aggregations (Energy/Green)
     const contractTypeAggregations: { [key: string]: { count: number, volume: number, avgStrike: number, totalStrike: number } } = {};
-
+    // Direction aggregations (Buy/Sell)
+    const directionAggregations: { [key: string]: { count: number, volume: number, avgStrike: number, totalStrike: number } } = {};
     const categoryAggregations: { [key: string]: { count: number, volume: number, avgStrike: number, totalStrike: number } } = {};
 
     activeContracts.forEach(contract => {
       const contractTypeKey = contract.contractType || 'Energy'; // Default to Energy if not set
+      const directionKey = contract.direction || 'buy'; // Default to buy if not set
       
       // Combined business type + contract type (e.g., "Retail Energy", "Wholesale Green")
       const combinedKey = `${contract.type.charAt(0).toUpperCase() + contract.type.slice(1)} ${contractTypeKey}`;
@@ -150,6 +98,14 @@ export default function ContractSummaryTab({
       contractTypeAggregations[contractTypeKey].volume += contract.annualVolume;
       contractTypeAggregations[contractTypeKey].totalStrike += contract.strikePrice * contract.annualVolume;
 
+      // Direction aggregation (Buy/Sell)
+      if (!directionAggregations[directionKey]) {
+        directionAggregations[directionKey] = { count: 0, volume: 0, avgStrike: 0, totalStrike: 0 };
+      }
+      directionAggregations[directionKey].count += 1;
+      directionAggregations[directionKey].volume += contract.annualVolume;
+      directionAggregations[directionKey].totalStrike += contract.strikePrice * contract.annualVolume;
+
       // Category aggregation
       if (!categoryAggregations[contract.category]) {
         categoryAggregations[contract.category] = { count: 0, volume: 0, avgStrike: 0, totalStrike: 0 };
@@ -159,27 +115,18 @@ export default function ContractSummaryTab({
       categoryAggregations[contract.category].totalStrike += contract.strikePrice * contract.annualVolume;
     });
 
-    // Calculate volume-weighted average strike prices for combined types
-    Object.keys(combinedTypeAggregations).forEach(combinedType => {
-      const agg = combinedTypeAggregations[combinedType];
-      agg.avgStrike = agg.volume > 0 ? agg.totalStrike / agg.volume : 0;
+    // Calculate volume-weighted average strike prices for all aggregations
+    [combinedTypeAggregations, contractTypeAggregations, directionAggregations, categoryAggregations].forEach(aggregation => {
+      Object.keys(aggregation).forEach(key => {
+        const agg = aggregation[key];
+        agg.avgStrike = agg.volume > 0 ? agg.totalStrike / agg.volume : 0;
+      });
     });
 
-    // Calculate for contract types
-    Object.keys(contractTypeAggregations).forEach(contractType => {
-      const agg = contractTypeAggregations[contractType];
-      agg.avgStrike = agg.volume > 0 ? agg.totalStrike / agg.volume : 0;
-    });
-
-    Object.keys(categoryAggregations).forEach(category => {
-      const agg = categoryAggregations[category];
-      agg.avgStrike = agg.volume > 0 ? agg.totalStrike / agg.volume : 0;
-    });
-
-    return { combinedTypeAggregations, contractTypeAggregations, categoryAggregations };
+    return { combinedTypeAggregations, contractTypeAggregations, directionAggregations, categoryAggregations };
   };
 
-  const { combinedTypeAggregations, contractTypeAggregations, categoryAggregations } = calculateAggregations();
+  const { combinedTypeAggregations, contractTypeAggregations, directionAggregations, categoryAggregations } = calculateBasicAggregations();
 
   // Helper function to get color for combined business + contract type
   const getCombinedTypeColor = (combinedType: string) => {
@@ -193,187 +140,6 @@ export default function ContractSummaryTab({
       if (combinedType.includes('Offtake')) return 'bg-purple-50 text-purple-900 border-l-4 border-purple-400';
     }
     return 'bg-blue-100 text-blue-800 border-l-4 border-blue-500';
-  };
-
-  // Create volume chart data - UPDATED to use contractType instead of unit
-  const createVolumeChartData = () => {
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    
-    const contractTypeData: { [key: string]: number[] } = {};
-    
-    activeContracts.forEach(contract => {
-      const contractTypeKey = contract.contractType || 'Energy'; // Default to Energy if not set
-      if (!contractTypeData[contractTypeKey]) {
-        contractTypeData[contractTypeKey] = new Array(12).fill(0);
-      }
-      
-      const volumeProfile = volumeShapes[contract.volumeShape] || [];
-      volumeProfile.forEach((pct, monthIndex) => {
-        const monthlyVolume = contract.annualVolume * pct / 100;
-        contractTypeData[contractTypeKey][monthIndex] += monthlyVolume;
-      });
-    });
-
-    const datasets: any[] = [];
-    
-    Object.entries(contractTypeData).forEach(([contractType, monthlyVolumes]) => {
-      if (volumeChartView === 'Both' || volumeChartView === contractType) {
-        const color = contractTypeColors[contractType] || '#6b7280';
-        datasets.push({
-          label: contractType,
-          data: monthlyVolumes,
-          borderColor: color,
-          backgroundColor: color + '20',
-          borderWidth: 3,
-          tension: 0.1,
-          fill: true
-        });
-      }
-    });
-
-    return {
-      labels: months,
-      datasets: datasets
-    };
-  };
-
-  // Create MtM chart data - UPDATED to use contractType
-  const createMtMChartData = () => {
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    
-    const contractTypeData: { [key: string]: number[] } = {};
-    
-    activeContracts.forEach(contract => {
-      const contractTypeKey = contract.contractType || 'Energy'; // Default to Energy if not set
-      if (!contractTypeData[contractTypeKey]) {
-        contractTypeData[contractTypeKey] = new Array(12).fill(0);
-      }
-      
-      const volumeProfile = volumeShapes[contract.volumeShape] || [];
-      const statePrices = marketPrices[contract.state] || marketPrices.NSW || [];
-      
-      volumeProfile.forEach((pct, monthIndex) => {
-        const volume = contract.annualVolume * pct / 100;
-        const strikeValue = volume * contract.strikePrice;
-        const marketValue = volume * (statePrices[monthIndex] || 0);
-        
-        let netMtM;
-        if (contract.type === 'retail') {
-          netMtM = strikeValue - marketValue;
-        } else {
-          netMtM = marketValue - strikeValue;
-        }
-        
-        contractTypeData[contractTypeKey][monthIndex] += netMtM;
-      });
-    });
-
-    const datasets: any[] = [];
-    
-    Object.entries(contractTypeData).forEach(([contractType, monthlyMtM]) => {
-      if (mtmChartView === 'Both' || mtmChartView === contractType) {
-        const color = contractTypeColors[contractType] || '#6b7280';
-        datasets.push({
-          label: contractType,
-          data: monthlyMtM,
-          borderColor: color,
-          backgroundColor: color + '20',
-          borderWidth: 3,
-          tension: 0.1,
-          fill: true
-        });
-      }
-    });
-
-    return {
-      labels: months,
-      datasets: datasets
-    };
-  };
-
-  // Chart options
-  const volumeChartOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      title: {
-        display: true,
-        text: `Monthly Volume by Contract Type (${selectedYear})`,
-        font: {
-          size: 16,
-          weight: 'bold' as const
-        }
-      },
-      legend: {
-        display: true,
-        position: 'top' as const
-      }
-    },
-    scales: {
-      y: {
-        beginAtZero: true,
-        title: {
-          display: true,
-          text: 'Volume (MWh)'
-        },
-        ticks: {
-          callback: function(value: any) {
-            return value.toLocaleString();
-          }
-        }
-      },
-      x: {
-        title: {
-          display: true,
-          text: 'Month'
-        }
-      }
-    },
-    animation: {
-      duration: 0
-    }
-  };
-
-  const mtmChartOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      title: {
-        display: true,
-        text: `Monthly Net MtM by Contract Type (${selectedYear})`,
-        font: {
-          size: 16,
-          weight: 'bold' as const
-        }
-      },
-      legend: {
-        display: true,
-        position: 'top' as const
-      }
-    },
-    scales: {
-      y: {
-        beginAtZero: false,
-        title: {
-          display: true,
-          text: 'Net MtM ($)'
-        },
-        ticks: {
-          callback: function(value: any) {
-            return '$' + value.toLocaleString();
-          }
-        }
-      },
-      x: {
-        title: {
-          display: true,
-          text: 'Month'
-        }
-      }
-    },
-    animation: {
-      duration: 0
-    }
   };
 
   return (
@@ -407,7 +173,45 @@ export default function ContractSummaryTab({
           ) : (
             <div className="space-y-6">
               
-              {/* By Contract Type (Energy/Green) - Shows split by business type */}
+              {/* By Direction (Buy/Sell) */}
+              <div>
+                <h3 className="text-lg font-semibold text-gray-800 mb-4">By Direction (Buy/Sell)</h3>
+                <div className="space-y-3">
+                  {Object.entries(directionAggregations).map(([direction, data]) => (
+                    data.count > 0 && (
+                      <div key={direction} className="bg-gray-50 rounded-lg p-4">
+                        <div className="flex justify-between items-center mb-2">
+                          <div className="flex items-center gap-2">
+                            <div 
+                              className={`w-4 h-4 rounded ${
+                                direction === 'buy' ? 'bg-green-500' : 'bg-red-500'
+                              }`}
+                            ></div>
+                            <span className={`px-3 py-1 rounded-full text-sm font-medium uppercase ${
+                              direction === 'buy' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                            }`}>
+                              {direction}
+                            </span>
+                          </div>
+                          <span className="text-sm text-gray-600">{data.count} contract{data.count !== 1 ? 's' : ''}</span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4 text-sm">
+                          <div>
+                            <span className="text-gray-600 font-medium">Total Volume:</span>
+                            <span className="ml-2 text-gray-900 font-semibold">{data.volume.toLocaleString()} MWh</span>
+                          </div>
+                          <div>
+                            <span className="text-gray-600 font-medium">Avg Strike:</span>
+                            <span className="ml-2 text-gray-900 font-semibold">${data.avgStrike.toFixed(2)}/MWh</span>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  ))}
+                </div>
+              </div>
+              
+              {/* By Contract Type (Energy/Green) */}
               <div>
                 <h3 className="text-lg font-semibold text-gray-800 mb-4">By Contract Type (Energy/Green)</h3>
                 <div className="space-y-3">
@@ -417,8 +221,9 @@ export default function ContractSummaryTab({
                         <div className="flex justify-between items-center mb-2">
                           <div className="flex items-center gap-2">
                             <div 
-                              className="w-4 h-4 rounded"
-                              style={{ backgroundColor: contractTypeColors[contractType] || '#6b7280' }}
+                              className={`w-4 h-4 rounded ${
+                                contractType === 'Green' ? 'bg-green-400' : 'bg-blue-400'
+                              }`}
                             ></div>
                             <span className={`px-3 py-1 rounded-full text-sm font-medium ${
                               contractType === 'Green' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'
@@ -438,85 +243,9 @@ export default function ContractSummaryTab({
                             <span className="ml-2 text-gray-900 font-semibold">${data.avgStrike.toFixed(2)}/MWh</span>
                           </div>
                         </div>
-                        
-                        {/* Show breakdown by business type within this contract type */}
-                        <div className="mt-3 pt-3 border-t border-gray-200">
-                          <div className="text-xs text-gray-500 mb-2">Breakdown by Business Type:</div>
-                          <div className="grid grid-cols-1 gap-2">
-                            {Object.entries(combinedTypeAggregations)
-                              .filter(([key]) => key.includes(contractType))
-                              .map(([combinedType, combinedData]) => (
-                                <div key={combinedType} className={`px-2 py-1 rounded text-xs ${getCombinedTypeColor(combinedType)}`}>
-                                  <div className="flex justify-between items-center">
-                                    <span className="font-medium">{combinedType}</span>
-                                    <span>{combinedData.count} • {combinedData.volume.toLocaleString()} MWh • ${combinedData.avgStrike.toFixed(2)}/MWh</span>
-                                  </div>
-                                </div>
-                              ))
-                            }
-                          </div>
-                        </div>
                       </div>
                     )
                   ))}
-                </div>
-              </div>
-              
-              {/* By Business Type - Shows split by contract type */}
-              <div>
-                <h3 className="text-lg font-semibold text-gray-800 mb-4">By Business Type (Retail/Wholesale/Offtake)</h3>
-                <div className="space-y-3">
-                  {['retail', 'wholesale', 'offtake'].map(businessType => {
-                    // Calculate totals for this business type across all contract types
-                    const businessTypeData = Object.entries(combinedTypeAggregations)
-                      .filter(([key]) => key.toLowerCase().includes(businessType))
-                      .reduce((acc, [, data]) => ({
-                        count: acc.count + data.count,
-                        volume: acc.volume + data.volume,
-                        totalStrike: acc.totalStrike + data.totalStrike
-                      }), { count: 0, volume: 0, totalStrike: 0 });
-                    
-                    const avgStrike = businessTypeData.volume > 0 ? businessTypeData.totalStrike / businessTypeData.volume : 0;
-                    
-                    return businessTypeData.count > 0 && (
-                      <div key={businessType} className="bg-gray-50 rounded-lg p-4">
-                        <div className="flex justify-between items-center mb-2">
-                          <span className={`px-3 py-1 rounded-full text-sm font-medium uppercase ${getContractTypeColor(businessType)}`}>
-                            {businessType}
-                          </span>
-                          <span className="text-sm text-gray-600">{businessTypeData.count} contract{businessTypeData.count !== 1 ? 's' : ''}</span>
-                        </div>
-                        <div className="grid grid-cols-2 gap-4 text-sm">
-                          <div>
-                            <span className="text-gray-600 font-medium">Total Volume:</span>
-                            <span className="ml-2 text-gray-900 font-semibold">{businessTypeData.volume.toLocaleString()} MWh</span>
-                          </div>
-                          <div>
-                            <span className="text-gray-600 font-medium">Avg Strike:</span>
-                            <span className="ml-2 text-gray-900 font-semibold">${avgStrike.toFixed(2)}/MWh</span>
-                          </div>
-                        </div>
-                        
-                        {/* Show breakdown by contract type within this business type */}
-                        <div className="mt-3 pt-3 border-t border-gray-200">
-                          <div className="text-xs text-gray-500 mb-2">Breakdown by Contract Type:</div>
-                          <div className="grid grid-cols-1 gap-2">
-                            {Object.entries(combinedTypeAggregations)
-                              .filter(([key]) => key.toLowerCase().includes(businessType))
-                              .map(([combinedType, combinedData]) => (
-                                <div key={combinedType} className={`px-2 py-1 rounded text-xs ${getCombinedTypeColor(combinedType)}`}>
-                                  <div className="flex justify-between items-center">
-                                    <span className="font-medium">{combinedType}</span>
-                                    <span>{combinedData.count} • {combinedData.volume.toLocaleString()} MWh • ${combinedData.avgStrike.toFixed(2)}/MWh</span>
-                                  </div>
-                                </div>
-                              ))
-                            }
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
                 </div>
               </div>
 
@@ -577,73 +306,82 @@ export default function ContractSummaryTab({
         </div>
       </div>
 
-      {/* Right Panel - Charts */}
+      {/* Right Panel - Information */}
       <div className="space-y-6">
         
-        {/* Volume Chart */}
-        <div className="bg-white rounded-xl p-6 shadow-md border border-gray-200">
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-3">
-              📈 Volume Analysis
-            </h2>
-            <div className="flex bg-gray-100 rounded-lg p-1">
-              {(['Energy', 'Green', 'Both'] as const).map((view) => (
-                <button
-                  key={view}
-                  onClick={() => setVolumeChartView(view)}
-                  className={`px-3 py-1 text-sm font-medium rounded-md transition-colors ${
-                    volumeChartView === view
-                      ? 'bg-white text-gray-900 shadow-sm'
-                      : 'text-gray-600 hover:text-gray-900'
-                  }`}
-                >
-                  {view}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div className="h-80">
-            {activeContracts.length > 0 ? (
-              <Line data={createVolumeChartData()} options={volumeChartOptions} />
-            ) : (
-              <div className="flex items-center justify-center h-full text-gray-500">
-                <p>No active contracts for {selectedYear}</p>
-              </div>
-            )}
+        {/* Charts Disabled Notice */}
+        <div className="bg-yellow-50 rounded-xl p-6 shadow-md border border-yellow-200">
+          <h2 className="text-2xl font-bold text-yellow-800 flex items-center gap-3 mb-4">
+            ⚠️ Analysis Under Development
+          </h2>
+          <div className="space-y-4 text-yellow-700">
+            <p>
+              Volume and Mark-to-Market analysis charts are currently being recalibrated to ensure accuracy with the new Buy/Sell direction feature.
+            </p>
+            <p>
+              The portfolio aggregations shown on the left provide basic contract summaries. For detailed analysis, please use:
+            </p>
+            <ul className="list-disc list-inside space-y-2 ml-4">
+              <li><strong>Price Curves Tab:</strong> For market price data and forecasting</li>
+              <li><strong>Time Series Output Tab:</strong> For detailed contract cashflow analysis</li>
+              <li><strong>Contract Input Tab:</strong> For managing individual contract details</li>
+            </ul>
           </div>
         </div>
 
-        {/* MtM Chart */}
+        {/* Contract Overview */}
         <div className="bg-white rounded-xl p-6 shadow-md border border-gray-200">
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-3">
-              💰 Net MtM Analysis
-            </h2>
-            <div className="flex bg-gray-100 rounded-lg p-1">
-              {(['Energy', 'Green', 'Both'] as const).map((view) => (
-                <button
-                  key={view}
-                  onClick={() => setMtmChartView(view)}
-                  className={`px-3 py-1 text-sm font-medium rounded-md transition-colors ${
-                    mtmChartView === view
-                      ? 'bg-white text-gray-900 shadow-sm'
-                      : 'text-gray-600 hover:text-gray-900'
-                  }`}
-                >
-                  {view}
-                </button>
+          <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-3">
+            📋 Contract Overview
+          </h2>
+          
+          {activeContracts.length > 0 ? (
+            <div className="space-y-4">
+              {activeContracts.slice(0, 5).map((contract, index) => (
+                <div key={contract._id || index} className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors">
+                  <div className="flex justify-between items-start mb-2">
+                    <h4 className="font-semibold text-gray-800">{contract.name}</h4>
+                    <div className="flex gap-2">
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium uppercase ${
+                        contract.direction === 'buy' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                      }`}>
+                        {contract.direction || 'buy'}
+                      </span>
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        contract.contractType === 'Green' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'
+                      }`}>
+                        {contract.contractType || 'Energy'}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4 text-sm text-gray-600">
+                    <div>
+                      <span className="font-medium">Type:</span> {contract.type}
+                    </div>
+                    <div>
+                      <span className="font-medium">State:</span> {contract.state}
+                    </div>
+                    <div>
+                      <span className="font-medium">Volume:</span> {contract.annualVolume.toLocaleString()} MWh
+                    </div>
+                    <div>
+                      <span className="font-medium">Strike:</span> ${contract.strikePrice}/MWh
+                    </div>
+                  </div>
+                </div>
               ))}
+              
+              {activeContracts.length > 5 && (
+                <div className="text-center text-gray-500 text-sm">
+                  ... and {activeContracts.length - 5} more contracts
+                </div>
+              )}
             </div>
-          </div>
-          <div className="h-80">
-            {activeContracts.length > 0 ? (
-              <Line data={createMtMChartData()} options={mtmChartOptions} />
-            ) : (
-              <div className="flex items-center justify-center h-full text-gray-500">
-                <p>No active contracts for {selectedYear}</p>
-              </div>
-            )}
-          </div>
+          ) : (
+            <div className="text-center py-8 text-gray-500">
+              <p>No contracts found for {selectedYear}</p>
+            </div>
+          )}
         </div>
       </div>
     </div>

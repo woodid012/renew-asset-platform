@@ -48,6 +48,7 @@ export interface Contract {
   strikePrice: number;
   unit: string;
   contractType?: string;
+  direction: 'buy' | 'sell'; // NEW: Buy or Sell direction
   volumeShape: 'flat' | 'solar' | 'wind' | 'custom';
   status: 'active' | 'pending';
   indexation: string;
