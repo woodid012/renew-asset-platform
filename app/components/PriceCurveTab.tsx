@@ -82,16 +82,42 @@ export default function PriceCurveTab({
     WA: '#43e97b'
   };
 
+  // Helper function to get display-friendly type names
+  const getDisplayTypeName = (type: string): string => {
+    switch (type) {
+      case 'Green':
+        return 'Green Certificate';
+      case 'Energy':
+        return 'Energy';
+      default:
+        return type;
+    }
+  };
+
+  // Convert UI display types to database types
+  const getDbType = (uiType: string): string => {
+    switch (uiType) {
+      case 'Green':
+        return 'green';  // Convert UI "Green" to database "green"
+      case 'Energy':
+        return 'Energy'; // Keep Energy as-is
+      default:
+        return uiType.toLowerCase(); // Default to lowercase for safety
+    }
+  };
+
   // Fetch price curve data from MongoDB
   const fetchPriceCurveData = async () => {
     setIsLoading(true);
     setError(null);
     
     try {
+      const dbType = getDbType(selectedType);
+      
       const params = new URLSearchParams({
         curve: selectedCurve,
         profile: selectedProfile,
-        type: selectedType,
+        type: dbType, // Use the database-compatible type
         interval: selectedInterval,
         cpiRate: cpiRate,
         refYear: refYear
@@ -101,6 +127,8 @@ export default function PriceCurveTab({
       if (selectedYear !== 'all') {
         params.append('year', selectedYear);
       }
+      
+      console.log(`Fetching price curves: UI type="${selectedType}" -> DB type="${dbType}"`);
       
       const response = await fetch(`/api/price-curves?${params}`);
       
@@ -116,29 +144,52 @@ export default function PriceCurveTab({
         setTimeLabels(result.timeLabels || months);
         setIsTimeSeries(result.isTimeSeries || false);
         setCpiSettings(result.cpiSettings);
-        console.log('Fetched price curve data:', result.metadata);
+        
+        console.log('Successfully fetched price curve data:', result.metadata);
+        
+        // Clear any previous errors
+        setError(null);
       } else {
         setError(result.error || 'Failed to fetch price curve data');
         console.error('API Error:', result);
       }
     } catch (err) {
-      // If API is not available, provide fallback message
+      console.error('Network Error:', err);
+      
+      // Enhanced error handling with type-specific fallbacks
       if (err instanceof Error && err.message.includes('404')) {
         setError('Price curves API not found. Please create the API route at /api/price-curves/route.ts');
       } else {
-        setError('Network error while fetching price curve data. Using fallback data.');
+        const errorMessage = selectedType === 'Green' 
+          ? 'Network error while fetching Green certificate data. Using fallback data.'
+          : 'Network error while fetching price curve data. Using fallback data.';
+        setError(errorMessage);
       }
-      console.error('Network Error:', err);
       
-      // Use existing marketPrices as fallback
+      // Provide type-specific fallback data
       if (Object.keys(marketPrices).length === 0) {
-        // Set some fallback data if none exists
-        const fallbackPrices = {
-          NSW: [85.20, 78.50, 72.30, 69.80, 75.60, 82.40, 89.70, 91.20, 86.50, 79.30, 74.80, 81.60],
-          VIC: [82.10, 76.20, 70.50, 67.90, 73.20, 79.80, 86.30, 88.50, 83.70, 76.80, 72.40, 78.90],
-          QLD: [88.50, 81.70, 75.80, 73.20, 78.90, 85.60, 92.10, 94.30, 89.20, 82.40, 77.60, 84.80],
-          SA: [91.20, 84.60, 78.30, 75.70, 81.50, 88.90, 95.80, 98.20, 92.60, 85.30, 80.10, 87.40]
-        };
+        let fallbackPrices;
+        
+        if (selectedType === 'Green') {
+          // Green certificate fallback prices (typically $20-60/MWh)
+          fallbackPrices = {
+            NSW: [45, 42, 38, 35, 40, 48, 52, 55, 50, 44, 41, 47],
+            VIC: [43, 40, 36, 33, 38, 46, 50, 53, 48, 42, 39, 45],
+            QLD: [47, 44, 40, 37, 42, 50, 54, 57, 52, 46, 43, 49],
+            SA: [49, 46, 42, 39, 44, 52, 56, 59, 54, 48, 45, 51],
+            WA: [41, 38, 34, 31, 36, 44, 48, 51, 46, 40, 37, 43]
+          };
+        } else {
+          // Energy fallback prices
+          fallbackPrices = {
+            NSW: [85.20, 78.50, 72.30, 69.80, 75.60, 82.40, 89.70, 91.20, 86.50, 79.30, 74.80, 81.60],
+            VIC: [82.10, 76.20, 70.50, 67.90, 73.20, 79.80, 86.30, 88.50, 83.70, 76.80, 72.40, 78.90],
+            QLD: [88.50, 81.70, 75.80, 73.20, 78.90, 85.60, 92.10, 94.30, 89.20, 82.40, 77.60, 84.80],
+            SA: [91.20, 84.60, 78.30, 75.70, 81.50, 88.90, 95.80, 98.20, 92.60, 85.30, 80.10, 87.40],
+            WA: [79.80, 73.50, 67.90, 65.40, 71.20, 77.60, 83.90, 86.10, 81.40, 74.70, 70.20, 76.50]
+          };
+        }
+        
         updateMarketPrices(fallbackPrices);
       }
     } finally {
@@ -305,7 +356,7 @@ export default function PriceCurveTab({
     plugins: {
       title: {
         display: true,
-        text: `Nominal Prices: ${selectedProfile === 'all' ? 'All Profiles' : selectedProfile.charAt(0).toUpperCase() + selectedProfile.slice(1)} ${selectedType} - ${selectedYear === 'all' ? 'All Years' : selectedYear} (${selectedCurve})`,
+        text: `${getDisplayTypeName(selectedType)} Prices: ${selectedProfile === 'all' ? 'All Profiles' : selectedProfile.charAt(0).toUpperCase() + selectedProfile.slice(1)} - ${selectedYear === 'all' ? 'All Years' : selectedYear} (${selectedCurve})`,
         font: {
           size: 16,
           weight: 'bold' as const
@@ -443,7 +494,7 @@ export default function PriceCurveTab({
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="Energy">Energy</option>
-              <option value="green">Green</option>
+              <option value="Green">Green</option>
             </select>
           </div>
 
@@ -597,7 +648,6 @@ export default function PriceCurveTab({
           )}
         </div>
       </div>
-
 
       {/* Information Panel */}
       <div className="bg-white rounded-xl p-6 shadow-md border border-gray-200">
