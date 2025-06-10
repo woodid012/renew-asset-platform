@@ -61,6 +61,8 @@ export interface Contract {
 
   // Enhanced volume fields
   timeSeriesData?: TimeSeriesDataPoint[];
+  volumeTimeSeries?: number[]; // NEW: Direct volume time series (like priceTimeSeries)
+  volumeInterval?: 'monthly' | 'quarterly' | 'yearly'; // NEW: Volume interval (like priceInterval)
   tenor?: {
     value: number;
     unit: 'months' | 'years';

@@ -3,8 +3,6 @@
 import { useState } from 'react';
 import { Contract, SettingsData, TimeSeriesDataPoint, PriceCurve } from '@/app/types';
 
-
-
 interface ContractVolumeEditorProps {
   formData: Omit<Contract, '_id'>;
   volumeShapes: { [key: string]: number[] };
@@ -58,7 +56,6 @@ const VolumeUtils = {
       const month = currentDate.getMonth() + 1;
       const period = `${year}-${month.toString().padStart(2, '0')}`;
       
-      // Use the percentage for this month (cycling through 12 months)
       const monthIndex = (currentDate.getMonth()) % 12;
       const monthlyVolume = (annualVolume * percentages[monthIndex]) / 100;
       
@@ -67,7 +64,6 @@ const VolumeUtils = {
         volume: monthlyVolume
       });
       
-      // Move to next month
       currentDate.setMonth(currentDate.getMonth() + 1);
     }
     
@@ -83,87 +79,46 @@ export default function ContractVolumeEditor({
 }: ContractVolumeEditorProps) {
   const [volumeDataFile, setVolumeDataFile] = useState<File | null>(null);
   const [volumeDataPreview, setVolumeDataPreview] = useState<TimeSeriesDataPoint[]>([]);
-  const [volumeSource, setVolumeSource] = useState<'percentage' | 'monthly'>(
-    VolumeUtils.hasMonthlyData(formData) ? 'monthly' : 'percentage'
+  const [volumeSource, setVolumeSource] = useState<'percentage' | 'timeseries'>(
+    VolumeUtils.hasMonthlyData(formData) ? 'timeseries' : 'percentage'
   );
-  const [showVolumePreview, setShowVolumePreview] = useState(false); // FIXED: Removed extra parenthesis
+  const [showVolumePreview, setShowVolumePreview] = useState(false);
 
-  // Handle CSV volume data upload
-  const handleVolumeDataUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    setVolumeDataFile(file);
-
-    try {
-      const text = await file.text();
-      const lines = text.split('\n').filter(line => line.trim());
-      const headers = lines[0].toLowerCase().split(',').map(h => h.trim());
-      
-      // Find period and volume columns
-      const periodIndex = headers.findIndex(h => h.includes('period') || h.includes('date') || h.includes('month'));
-      const volumeIndex = headers.findIndex(h => h.includes('volume') || h.includes('mwh') || h.includes('energy'));
-      
-      if (periodIndex === -1 || volumeIndex === -1) {
-        alert('CSV must have columns for period (date/month) and volume (MWh)');
-        return;
-      }
-
-      const timeSeriesData: TimeSeriesDataPoint[] = [];
-      
-      lines.slice(1).forEach(line => {
-        const cells = line.split(',');
-        const periodStr = cells[periodIndex]?.trim();
-        const volumeStr = cells[volumeIndex]?.trim();
-        
-        if (!periodStr || !volumeStr) return;
-        
-        // Parse period - support various formats
-        let period = '';
-        if (periodStr.match(/^\d{4}-\d{2}$/)) {
-          // Already in YYYY-MM format
-          period = periodStr;
-        } else if (periodStr.match(/^\d{1,2}\/\d{4}$/)) {
-          // MM/YYYY format
-          const [month, year] = periodStr.split('/');
-          period = `${year}-${month.padStart(2, '0')}`;
-        } else if (periodStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
-          // YYYY-MM-DD format - extract YYYY-MM
-          period = periodStr.substring(0, 7);
-        }
-        
-        const volume = parseFloat(volumeStr);
-        if (period && !isNaN(volume)) {
-          timeSeriesData.push({ period, volume });
-        }
-      });
-
-      if (timeSeriesData.length === 0) {
-        alert('No valid volume data found in CSV');
-        return;
-      }
-
-      // Calculate totals and metadata
-      const totalVolume = VolumeUtils.calculateTotalVolume(timeSeriesData);
-      const yearsCovered = VolumeUtils.getYearsCovered(timeSeriesData);
-
-      setVolumeDataPreview(timeSeriesData.slice(0, 12)); // Show first 12 for preview
-
-      // Update form data
-      onInputChange('timeSeriesData', timeSeriesData);
-      onInputChange('totalVolume', totalVolume);
-      onInputChange('yearsCovered', yearsCovered);
-      onInputChange('dataSource', 'csv_import');
-      onInputChange('annualVolume', totalVolume); // Update annual volume to match total
-
-    } catch (error) {
-      console.error('Error parsing volume file:', error);
-      alert('Error parsing volume file. Please ensure it\'s a valid CSV with period and volume columns.');
+  // Calculate contract periods for time series (identical to price editor)
+  const calculateContractPeriods = (interval: 'monthly' | 'quarterly' | 'yearly') => {
+    if (!formData.startDate || !formData.endDate) return 12;
+    
+    const start = new Date(formData.startDate);
+    const end = new Date(formData.endDate);
+    
+    if (interval === 'monthly') {
+      const months = (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth()) + 1;
+      return Math.max(1, months);
+    } else if (interval === 'quarterly') {
+      const months = (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth()) + 1;
+      return Math.max(1, Math.ceil(months / 3));
+    } else {
+      const years = end.getFullYear() - start.getFullYear() + 1;
+      return Math.max(1, years);
     }
   };
 
-  // Generate monthly data from percentage and contract dates
-  const handleGenerateMonthlyData = () => {
+  // Handle volume source change (identical to price editor pattern)
+  const handleVolumeSourceChange = (source: 'percentage' | 'timeseries') => {
+    setVolumeSource(source);
+    
+    if (source === 'percentage') {
+      handleClearTimeSeries();
+    } else if (source === 'timeseries') {
+      const defaultInterval = 'monthly';
+      const periods = calculateContractPeriods(defaultInterval);
+      onInputChange('volumeTimeSeries', Array(periods).fill(formData.annualVolume / 12 || 1000));
+      onInputChange('volumeInterval', defaultInterval);
+    }
+  };
+
+  // Generate time series from percentage and contract dates (updated to match price editor)
+  const handleGenerateTimeSeries = () => {
     if (!formData.startDate || !formData.endDate || !formData.annualVolume) {
       alert('Please set start date, end date, and annual volume first');
       return;
@@ -182,16 +137,16 @@ export default function ContractVolumeEditor({
 
     setVolumeDataPreview(timeSeriesData.slice(0, 12));
 
-    // Update form data
     onInputChange('timeSeriesData', timeSeriesData);
     onInputChange('totalVolume', totalVolume);
     onInputChange('yearsCovered', yearsCovered);
     onInputChange('dataSource', 'manual');
   };
 
-  // Clear monthly data and revert to percentage
-  const handleClearMonthlyData = () => {
+  // Clear time series data and revert to percentage (identical to price editor)
+  const handleClearTimeSeries = () => {
     onInputChange('timeSeriesData', undefined);
+    onInputChange('volumeTimeSeries', undefined);
     onInputChange('totalVolume', undefined);
     onInputChange('yearsCovered', undefined);
     onInputChange('dataSource', 'manual');
@@ -199,12 +154,127 @@ export default function ContractVolumeEditor({
     setVolumeSource('percentage');
   };
 
-  // Handle volume source change
-  const handleVolumeSourceChange = (source: 'percentage' | 'monthly') => {
-    setVolumeSource(source);
-    
-    if (source === 'percentage') {
-      handleClearMonthlyData();
+  // Update time series volume (identical to price editor pattern)
+  const updateTimeSeriesVolume = (index: number, value: number) => {
+    if (!formData.volumeTimeSeries) return;
+
+    const updatedSeries = [...formData.volumeTimeSeries];
+    updatedSeries[index] = value;
+    onInputChange('volumeTimeSeries', updatedSeries);
+
+    // Also update timeSeriesData for consistency
+    if (formData.timeSeriesData) {
+      const updatedTimeSeriesData = [...formData.timeSeriesData];
+      if (updatedTimeSeriesData[index]) {
+        updatedTimeSeriesData[index].volume = value;
+        onInputChange('timeSeriesData', updatedTimeSeriesData);
+        
+        // Recalculate totals
+        const totalVolume = VolumeUtils.calculateTotalVolume(updatedTimeSeriesData);
+        onInputChange('totalVolume', totalVolume);
+      }
+    }
+  };
+
+  // Handle interval change (identical to price editor)
+  const handleIntervalChange = (newInterval: 'monthly' | 'quarterly' | 'yearly') => {
+    const oldInterval = formData.volumeInterval || 'monthly';
+    const oldVolumes = formData.volumeTimeSeries || [];
+
+    if (newInterval === oldInterval || oldVolumes.length === 0) {
+      onInputChange('volumeInterval', newInterval);
+      return;
+    }
+
+    const newPeriods = calculateContractPeriods(newInterval);
+    let newVolumes = Array(newPeriods).fill(formData.annualVolume / 12 || 1000);
+
+    if (oldInterval === 'quarterly' && newInterval === 'monthly') {
+      newVolumes = newVolumes.map((_, monthIndex) => {
+        const quarterIndex = Math.floor(monthIndex / 3);
+        return oldVolumes[quarterIndex % oldVolumes.length];
+      });
+    }
+    else if (oldInterval === 'monthly' && newInterval === 'quarterly') {
+      newVolumes = newVolumes.map((_, quarterIndex) => {
+        const startMonth = quarterIndex * 3;
+        const endMonth = startMonth + 3;
+        const monthsInQuarter = oldVolumes.slice(startMonth, endMonth);
+
+        if (monthsInQuarter.length === 0) return formData.annualVolume / 4 || 250;
+
+        return monthsInQuarter.reduce((sum, volume) => sum + volume, 0) / monthsInQuarter.length;
+      });
+    }
+
+    onInputChange('volumeInterval', newInterval);
+    onInputChange('volumeTimeSeries', newVolumes);
+  };
+
+  // Handle CSV volume data upload (identical structure to price editor)
+  const handleVolumeDataUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setVolumeDataFile(file);
+
+    try {
+      const text = await file.text();
+      const lines = text.split('\n').filter(line => line.trim());
+      const headers = lines[0].toLowerCase().split(',').map(h => h.trim());
+      
+      const periodIndex = headers.findIndex(h => h.includes('period') || h.includes('date') || h.includes('month'));
+      const volumeIndex = headers.findIndex(h => h.includes('volume') || h.includes('mwh') || h.includes('energy'));
+      
+      if (periodIndex === -1 || volumeIndex === -1) {
+        alert('CSV must have columns for period (date/month) and volume (MWh)');
+        return;
+      }
+
+      const timeSeriesData: TimeSeriesDataPoint[] = [];
+      
+      lines.slice(1).forEach(line => {
+        const cells = line.split(',');
+        const periodStr = cells[periodIndex]?.trim();
+        const volumeStr = cells[volumeIndex]?.trim();
+        
+        if (!periodStr || !volumeStr) return;
+        
+        let period = '';
+        if (periodStr.match(/^\d{4}-\d{2}$/)) {
+          period = periodStr;
+        } else if (periodStr.match(/^\d{1,2}\/\d{4}$/)) {
+          const [month, year] = periodStr.split('/');
+          period = `${year}-${month.padStart(2, '0')}`;
+        } else if (periodStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+          period = periodStr.substring(0, 7);
+        }
+        
+        const volume = parseFloat(volumeStr);
+        if (period && !isNaN(volume)) {
+          timeSeriesData.push({ period, volume });
+        }
+      });
+
+      if (timeSeriesData.length === 0) {
+        alert('No valid volume data found in CSV');
+        return;
+      }
+
+      const totalVolume = VolumeUtils.calculateTotalVolume(timeSeriesData);
+      const yearsCovered = VolumeUtils.getYearsCovered(timeSeriesData);
+
+      setVolumeDataPreview(timeSeriesData.slice(0, 12));
+
+      onInputChange('timeSeriesData', timeSeriesData);
+      onInputChange('totalVolume', totalVolume);
+      onInputChange('yearsCovered', yearsCovered);
+      onInputChange('dataSource', 'csv_import');
+      onInputChange('annualVolume', totalVolume);
+
+    } catch (error) {
+      console.error('Error parsing volume file:', error);
+      alert('Error parsing volume file. Please ensure it\'s a valid CSV with period and volume columns.');
     }
   };
 
@@ -226,12 +296,12 @@ export default function ContractVolumeEditor({
         </div>
 
         <div className="p-6">
-          {/* Volume Source Selection */}
+          {/* Volume Data Source Selection (identical to price editor) */}
           <div className="mb-6">
             <h3 className="text-lg font-semibold text-gray-800 mb-4">Volume Data Source</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               
-              {/* Percentage-Based / Generate Option */}
+              {/* Percentage-Based Option */}
               <div 
                 className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${
                   volumeSource === 'percentage'
@@ -251,31 +321,31 @@ export default function ContractVolumeEditor({
                   <h4 className="font-semibold text-gray-800">Generate from Volume Shape</h4>
                 </div>
                 <p className="text-sm text-gray-600">
-                  Use annual volume + volume shapes (flat, solar, wind, custom) to generate monthly time series for the contract duration
+                  Use annual volume + volume shapes (flat, solar, wind, custom) to generate time series
                 </p>
               </div>
 
-              {/* Upload CSV Option */}
+              {/* Time Series Option */}
               <div 
                 className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${
-                  volumeSource === 'monthly' 
+                  volumeSource === 'timeseries' 
                     ? 'border-purple-500 bg-purple-50' 
                     : 'border-gray-200 hover:border-gray-300'
                 }`}
-                onClick={() => handleVolumeSourceChange('monthly')}
+                onClick={() => handleVolumeSourceChange('timeseries')}
               >
                 <div className="flex items-center mb-2">
                   <input
                     type="radio"
                     name="volumeSource"
-                    checked={volumeSource === 'monthly'}
-                    onChange={() => handleVolumeSourceChange('monthly')}
+                    checked={volumeSource === 'timeseries'}
+                    onChange={() => handleVolumeSourceChange('timeseries')}
                     className="mr-2"
                   />
-                  <h4 className="font-semibold text-gray-800">Upload Actual Data</h4>
+                  <h4 className="font-semibold text-gray-800">Time Series</h4>
                 </div>
                 <p className="text-sm text-gray-600">
-                  Upload actual monthly volume data from CSV file with specific volumes for each period
+                  Use different volumes for each period or upload actual data
                 </p>
               </div>
             </div>
@@ -284,8 +354,8 @@ export default function ContractVolumeEditor({
           {/* Configuration Content Based on Source */}
           <div className="space-y-6">
             
-            {/* Combined Percentage-Based/Generate Configuration */}
-            {(volumeSource === 'percentage') && (
+            {/* Percentage-Based Configuration */}
+            {volumeSource === 'percentage' && (
               <div className="border border-gray-200 rounded-lg p-6">
                 <h4 className="text-lg font-semibold text-gray-800 mb-4">📊 Generate Volume Time Series</h4>
                 
@@ -304,14 +374,7 @@ export default function ContractVolumeEditor({
                       </div>
                       <div>
                         <span className="text-blue-600">Contract Months:</span>
-                        <div className="font-medium">
-                          {(() => {
-                            const start = new Date(formData.startDate);
-                            const end = new Date(formData.endDate);
-                            const months = (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth()) + 1;
-                            return months > 0 ? months : 0;
-                          })()}
-                        </div>
+                        <div className="font-medium">{calculateContractPeriods('monthly')}</div>
                       </div>
                       <div>
                         <span className="text-blue-600">Volume Shape:</span>
@@ -433,15 +496,60 @@ export default function ContractVolumeEditor({
               </div>
             )}
 
-            {/* CSV Upload Configuration */}
-            {volumeSource === 'monthly' && (
+            {/* Time Series Configuration */}
+            {volumeSource === 'timeseries' && (
               <div className="border border-gray-200 rounded-lg p-6">
-                <h4 className="text-lg font-semibold text-gray-800 mb-4">📤 Upload Monthly Volume Data</h4>
+                <h4 className="text-lg font-semibold text-gray-800 mb-4">📊 Time Series Configuration</h4>
                 
-                <div className="space-y-4">
+                <div className="space-y-6">
+                  {/* Contract Duration Info */}
+                  {formData.startDate && formData.endDate && (
+                    <div className="bg-purple-50 rounded-lg p-4">
+                      <h5 className="font-medium text-purple-800 mb-2">Contract Duration</h5>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                        <div>
+                          <span className="text-purple-600">Start Date:</span>
+                          <div className="font-medium">{formData.startDate}</div>
+                        </div>
+                        <div>
+                          <span className="text-purple-600">End Date:</span>
+                          <div className="font-medium">{formData.endDate}</div>
+                        </div>
+                        <div>
+                          <span className="text-purple-600">Monthly Periods:</span>
+                          <div className="font-medium">{calculateContractPeriods('monthly')}</div>
+                        </div>
+                        <div>
+                          <span className="text-purple-600">Quarterly Periods:</span>
+                          <div className="font-medium">{calculateContractPeriods('quarterly')}</div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Volume Interval Selection */}
+                  <div>
+                    <div className="flex justify-between items-center mb-4">
+                      <label className="block text-sm font-medium text-gray-700">
+                        Volume Interval
+                      </label>
+                      
+                      <select
+                        value={formData.volumeInterval || 'monthly'}
+                        onChange={(e) => handleIntervalChange(e.target.value as 'monthly' | 'quarterly' | 'yearly')}
+                        className="px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      >
+                        <option value="monthly">Monthly</option>
+                        <option value="quarterly">Quarterly</option>
+                        <option value="yearly">Yearly</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Upload CSV Option */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Upload CSV File
+                      Upload Volume Series (CSV)
                     </label>
                     <input
                       type="file"
@@ -455,9 +563,79 @@ export default function ContractVolumeEditor({
                     </p>
                   </div>
 
+                  {/* Manual Volume Input Grid */}
+                  <div>
+                    <h5 className="font-medium text-gray-800 mb-4">Volume Configuration</h5>
+                    
+                    {formData.volumeTimeSeries && formData.volumeTimeSeries.length > 0 && (
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        {formData.volumeTimeSeries.map((volume, index) => {
+                          let periodLabel = '';
+                          if (formData.volumeInterval === 'monthly') {
+                            periodLabel = months[index % 12];
+                          } else if (formData.volumeInterval === 'quarterly') {
+                            periodLabel = `Q${(index % 4) + 1}`;
+                          } else {
+                            periodLabel = `Year ${index + 1}`;
+                          }
+                          
+                          return (
+                            <div key={index} className="bg-white border border-gray-200 rounded-lg p-3">
+                              <label className="block text-xs text-gray-600 mb-1 font-medium">{periodLabel}</label>
+                              <input
+                                type="number"
+                                value={volume.toFixed(0)}
+                                onChange={(e) => updateTimeSeriesVolume(index, parseFloat(e.target.value) || 0)}
+                                className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-purple-500"
+                                step="1000"
+                                min="0"
+                              />
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                    
+                    {(!formData.volumeTimeSeries || formData.volumeTimeSeries.length === 0) && (
+                      <div className="text-center py-8 text-gray-500 border-2 border-dashed border-gray-300 rounded-lg">
+                        <p className="mb-2">No volume series configured</p>
+                        <p className="text-sm">Select an interval above or upload CSV data</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Volume Summary */}
+                  {formData.volumeTimeSeries && formData.volumeTimeSeries.length > 0 && (
+                    <div className="bg-gray-50 rounded-lg p-4">
+                      <h5 className="font-medium text-gray-800 mb-3">Volume Summary</h5>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                        <div>
+                          <span className="text-gray-600">Min Volume:</span>
+                          <div className="font-medium">{Math.min(...formData.volumeTimeSeries).toLocaleString()} MWh</div>
+                        </div>
+                        <div>
+                          <span className="text-gray-600">Max Volume:</span>
+                          <div className="font-medium">{Math.max(...formData.volumeTimeSeries).toLocaleString()} MWh</div>
+                        </div>
+                        <div>
+                          <span className="text-gray-600">Total:</span>
+                          <div className="font-medium">
+                            {formData.volumeTimeSeries.reduce((a, b) => a + b, 0).toLocaleString()} MWh
+                          </div>
+                        </div>
+                        <div>
+                          <span className="text-gray-600">Average:</span>
+                          <div className="font-medium">
+                            {(formData.volumeTimeSeries.reduce((a, b) => a + b, 0) / formData.volumeTimeSeries.length).toLocaleString()} MWh
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   {formData.timeSeriesData && formData.timeSeriesData.length > 0 && (
                     <div className="bg-green-50 rounded-lg p-4">
-                      <h5 className="font-medium text-green-800 mb-2">✅ Monthly Volume Data Loaded</h5>
+                      <h5 className="font-medium text-green-800 mb-2">✅ Volume Time Series Loaded</h5>
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                         <div>
                           <span className="text-green-600">Data Points:</span>
@@ -490,10 +668,10 @@ export default function ContractVolumeEditor({
               </div>
             )}
 
-            {/* Monthly Data Preview */}
+            {/* Volume Data Preview */}
             {formData.timeSeriesData && formData.timeSeriesData.length > 0 && showVolumePreview && (
               <div className="border border-gray-200 rounded-lg p-6">
-                <h4 className="text-lg font-semibold text-gray-800 mb-4">📈 Monthly Volume Time Series Preview</h4>
+                <h4 className="text-lg font-semibold text-gray-800 mb-4">📈 Volume Time Series Preview</h4>
                 
                 <div className="max-h-60 overflow-y-auto">
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
@@ -521,7 +699,7 @@ export default function ContractVolumeEditor({
               onClick={() => {
                 // Auto-generate time series if using volume shapes
                 if (volumeSource === 'percentage' && formData.startDate && formData.endDate && formData.annualVolume) {
-                  handleGenerateMonthlyData();
+                  handleGenerateTimeSeries();
                 }
                 onClose();
               }}
