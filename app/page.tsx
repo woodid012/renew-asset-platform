@@ -24,20 +24,6 @@ interface VolumeShapeData {
   [key: string]: number[];
 }
 
-interface SettingsData {
-  contractTypes: {
-    retail: string[];
-    wholesale: string[];
-    offtake: string[];
-  };
-  volumeShapes: {
-    [key: string]: number[];
-  };
-  states: string[];
-  indexationTypes: string[];
-  unitTypes: string[];
-}
-
 const tabs = [
   { id: 'summary', label: 'Contract Summary' },
   { id: 'input', label: 'Contract Input' },
