@@ -33,8 +33,8 @@ interface MtMCalculation {
 
 // Market price mapping based on volume shape and contract type
 const getMarketPriceProfile = (volumeShape: string, state: string, contractType: string, marketPrices: { [key: string]: number[] }): number[] => {
-  // Determine contract type suffix (Energy vs Green)
-  const typeKey = contractType === 'Green' ? 'green' : 'energy';
+  // Determine contract type suffix for market curve selection
+  const typeKey = contractType?.toLowerCase() === 'green' ? 'green' : 'energy';
   
   // Determine profile based on volume shape
   let profileType = 'baseload'; // Default profile
@@ -46,19 +46,32 @@ const getMarketPriceProfile = (volumeShape: string, state: string, contractType:
   }
   
   // Build the market price key following the Price Curve tab structure
-  // Format: "STATE - profile" or "STATE - profile - type"
-  const possibleKeys = [
-    `${state} - ${profileType}`,           // e.g., "NSW - solar"
-    `${state} - ${profileType} - ${typeKey}`, // e.g., "NSW - solar - energy"
-    `${state}`,                            // e.g., "NSW" (fallback)
-    `${state} - baseload`,                 // e.g., "NSW - baseload" (fallback)
-    `${state} - baseload - ${typeKey}`     // e.g., "NSW - baseload - energy" (fallback)
-  ];
+  // Priority order for Green contracts: try green-specific curves first
+  // Priority order for Energy contracts: try energy-specific curves first
+  let possibleKeys: string[] = [];
+  
+  if (typeKey === 'green') {
+    possibleKeys = [
+      `${state} - ${profileType} - green`,      // e.g., "NSW - solar - green"
+      `${state} - ${profileType}`,              // e.g., "NSW - solar" (fallback)
+      `${state} - baseload - green`,            // e.g., "NSW - baseload - green"
+      `${state} - baseload`,                    // e.g., "NSW - baseload"
+      `${state}`                                // e.g., "NSW" (ultimate fallback)
+    ];
+  } else {
+    possibleKeys = [
+      `${state} - ${profileType} - energy`,     // e.g., "NSW - solar - energy"
+      `${state} - ${profileType}`,              // e.g., "NSW - solar"
+      `${state} - baseload - energy`,           // e.g., "NSW - baseload - energy"
+      `${state} - baseload`,                    // e.g., "NSW - baseload"
+      `${state}`                                // e.g., "NSW"
+    ];
+  }
   
   // Try to find matching market price data
   for (const key of possibleKeys) {
     if (marketPrices[key] && marketPrices[key].length > 0) {
-      console.log(`Using market price key: ${key} for ${state} ${profileType} ${contractType}`);
+      console.log(`✅ Using market price key: "${key}" for ${contractType} contract: ${state} ${profileType}`);
       return marketPrices[key];
     }
   }
@@ -67,20 +80,20 @@ const getMarketPriceProfile = (volumeShape: string, state: string, contractType:
   const fallbackKeys = Object.keys(marketPrices);
   const stateKey = fallbackKeys.find(key => key.startsWith(state));
   if (stateKey && marketPrices[stateKey].length > 0) {
-    console.log(`Using fallback market price key: ${stateKey} for ${state} ${profileType} ${contractType}`);
+    console.warn(`⚠️ Using fallback market price key: "${stateKey}" for ${contractType} contract: ${state} ${profileType}`);
     return marketPrices[stateKey];
   }
   
   // Last resort - use NSW or first available
   const defaultKey = fallbackKeys.find(key => key.startsWith('NSW')) || fallbackKeys[0];
   if (defaultKey && marketPrices[defaultKey].length > 0) {
-    console.warn(`Using default market price key: ${defaultKey} for ${state} ${profileType} ${contractType}`);
+    console.error(`❌ Using default market price key: "${defaultKey}" for ${contractType} contract: ${state} ${profileType}`);
     return marketPrices[defaultKey];
   }
   
   // Absolute fallback
-  console.warn(`No market price data found for ${state} ${profileType} ${contractType}, using default values`);
-  return Array(12).fill(80);
+  console.error(`❌ No market price data found for ${contractType} contract: ${state} ${profileType}, using default values`);
+  return Array(12).fill(contractType?.toLowerCase() === 'green' ? 45 : 80); // Different defaults for Green vs Energy
 };
 
 // Volume calculation utilities
@@ -561,12 +574,16 @@ export default function MarkToMarketTab({
                       const contract = contracts.find(c => c.name === calc.contractName);
                       if (!contract) return null;
                       
-                      const usedKey = getMarketPriceProfile(
-                        contract.volumeShape,
-                        contract.state,
-                        contract.contractType || 'Energy',
-                        { ...marketPrices, '_debug': [0] } // Add debug flag
-                      );
+                      // Test the market price mapping for this contract
+                      const testKeys = [
+                        `${contract.state} - ${contract.volumeShape} - ${(contract.contractType || 'Energy').toLowerCase()}`,
+                        `${contract.state} - ${contract.volumeShape}`,
+                        `${contract.state} - baseload - ${(contract.contractType || 'Energy').toLowerCase()}`,
+                        `${contract.state} - baseload`,
+                        `${contract.state}`
+                      ];
+                      
+                      const foundKey = testKeys.find(key => marketPrices[key] && marketPrices[key].length > 0);
                       
                       return (
                         <div key={index} className="flex justify-between bg-white rounded px-2 py-1">
@@ -574,7 +591,7 @@ export default function MarkToMarketTab({
                             {calc.contractName} ({contract.state} {contract.volumeShape} {contract.contractType || 'Energy'})
                           </span>
                           <span className="font-mono text-blue-600">
-                            Avg: ${calc.avgMarketPrice.toFixed(2)}
+                            {foundKey ? `"${foundKey}"` : 'No match'} → ${calc.avgMarketPrice.toFixed(2)}
                           </span>
                         </div>
                       );
@@ -727,6 +744,7 @@ export default function MarkToMarketTab({
                       <tr className="bg-gray-50 border-b border-gray-200">
                         <th className="text-left p-3 font-semibold text-gray-700">Contract</th>
                         <th className="text-left p-3 font-semibold text-gray-700">Direction</th>
+                        <th className="text-left p-3 font-semibold text-gray-700">Contract Type</th>
                         <th className="text-left p-3 font-semibold text-gray-700">Category</th>
                         <th className="text-left p-3 font-semibold text-gray-700">State</th>
                         <th className="text-left p-3 font-semibold text-gray-700">Volume (MWh)</th>
@@ -748,6 +766,13 @@ export default function MarkToMarketTab({
                               calc.direction === 'buy' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
                             }`}>
                               {calc.direction}
+                            </span>
+                          </td>
+                          <td className="p-3">
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                              calc.contractType === 'Green' ? 'bg-emerald-100 text-emerald-800' : 'bg-blue-100 text-blue-800'
+                            }`}>
+                              {calc.contractType}
                             </span>
                           </td>
                           <td className="p-3 text-gray-700">{calc.category}</td>
