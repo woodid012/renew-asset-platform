@@ -54,6 +54,7 @@ export async function POST(request: NextRequest) {
     // Set default values and process enhanced fields
     contractData.status = contractData.status || 'active';
     contractData.unit = contractData.unit || 'Energy';
+    contractData.direction = contractData.direction || 'sell';
     contractData.volumeShape = contractData.volumeShape || 'flat';
     contractData.pricingType = contractData.pricingType || 'fixed';
     contractData.dataSource = contractData.dataSource || 'manual';
