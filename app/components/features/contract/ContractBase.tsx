@@ -90,6 +90,13 @@ export default function ContractBase({
     }
   }, []);
 
+  // Initialize default trade direction if not set
+  useEffect(() => {
+    if (!formData.direction) {
+      onInputChange('direction', 'buy');
+    }
+  }, []);
+
   // Calculate and update tenor whenever dates change
   useEffect(() => {
     if (formData.startDate && formData.endDate) {
@@ -157,22 +164,43 @@ export default function ContractBase({
               <h3 className="text-lg font-semibold text-gray-800 mb-4">Contract Details</h3>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Contract Name */}
+                {/* Contract Name and Trade Direction */}
                 <div className="md:col-span-2">
-                  <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
-                    Contract Name *
-                  </label>
-                  <input
-                    id="name"
-                    type="text"
-                    value={formData.name}
-                    onChange={(e) => onInputChange('name', e.target.value)}
-                    className={`w-full px-4 py-2 border rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                      errors.name ? 'border-red-500 bg-red-50' : 'border-gray-300 hover:border-gray-400'
-                    }`}
-                    placeholder="Enter contract name"
-                  />
-                  {errors.name && <p className="mt-1 text-sm text-red-600">{errors.name}</p>}
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    {/* Contract Name */}
+                    <div className="md:col-span-3">
+                      <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
+                        Contract Name *
+                      </label>
+                      <input
+                        id="name"
+                        type="text"
+                        value={formData.name}
+                        onChange={(e) => onInputChange('name', e.target.value)}
+                        className={`w-full px-4 py-2 border rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                          errors.name ? 'border-red-500 bg-red-50' : 'border-gray-300 hover:border-gray-400'
+                        }`}
+                        placeholder="Enter contract name"
+                      />
+                      {errors.name && <p className="mt-1 text-sm text-red-600">{errors.name}</p>}
+                    </div>
+
+                    {/* Trade Direction */}
+                    <div>
+                      <label htmlFor="direction" className="block text-sm font-medium text-gray-700 mb-2">
+                        Trade Direction *
+                      </label>
+                      <select
+                        id="direction"
+                        value={formData.direction || 'buy'}
+                        onChange={(e) => onInputChange('direction', e.target.value as 'buy' | 'sell')}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 hover:border-gray-400"
+                      >
+                        <option value="buy">Buy</option>
+                        <option value="sell">Sell</option>
+                      </select>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Contract Type */}
@@ -341,6 +369,14 @@ export default function ContractBase({
                 <div className="space-y-6">
                   {/* Basic Contract Info */}
                   <div className="bg-gray-50 rounded-lg p-4 space-y-3">
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-600 font-medium">Trade Direction:</span>
+                      <span className={`px-3 py-1 rounded-full text-sm font-semibold uppercase ${
+                        formData.direction === 'buy' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                      }`}>
+                        {formData.direction || 'buy'}
+                      </span>
+                    </div>
                     <div className="flex justify-between items-center">
                       <span className="text-gray-600 font-medium">Contract Period:</span>
                       <span className="text-gray-900 font-semibold">

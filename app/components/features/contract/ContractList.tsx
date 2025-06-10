@@ -50,7 +50,8 @@ export default function ContractList({
     state: 'all',
     status: 'all',
     pricingType: 'all',
-    contractType: 'all'
+    contractType: 'all',
+    direction: 'all' // NEW: Added direction filter
   });
   const [showFilters, setShowFilters] = useState(false);
 
@@ -59,11 +60,13 @@ export default function ContractList({
     const uniqueStates = [...new Set(contracts.map(c => c.state))].sort();
     const uniqueContractTypes = [...new Set(contracts.map(c => c.unit || 'Energy'))].sort();
     const uniquePricingTypes = [...new Set(contracts.map(c => c.pricingType || 'fixed'))].sort();
+    const uniqueDirections = [...new Set(contracts.map(c => c.direction || 'buy'))].sort();
     
     return {
       states: uniqueStates,
       contractTypes: uniqueContractTypes,
-      pricingTypes: uniquePricingTypes
+      pricingTypes: uniquePricingTypes,
+      directions: uniqueDirections
     };
   }, [contracts]);
 
@@ -92,6 +95,9 @@ export default function ContractList({
       // Contract type filter (unit field)
       if (filters.contractType !== 'all' && (contract.contractType || 'Energy') !== filters.contractType) return false;
 
+      // Direction filter
+      if (filters.direction !== 'all' && (contract.direction || 'buy') !== filters.direction) return false;
+
       return true;
     });
   }, [contracts, filters]);
@@ -104,7 +110,8 @@ export default function ContractList({
       state: 'all',
       status: 'all',
       pricingType: 'all',
-      contractType: 'all'
+      contractType: 'all',
+      direction: 'all'
     });
   };
 
@@ -124,6 +131,12 @@ export default function ContractList({
     return status === 'active'
       ? 'bg-green-100 text-green-800'
       : 'bg-yellow-100 text-yellow-800';
+  };
+
+  const getDirectionColor = (direction: string) => {
+    return direction === 'buy'
+      ? 'bg-green-100 text-green-800'
+      : 'bg-red-100 text-red-800';
   };
 
   const getPricingTypeLabel = (contract: Contract) => {
@@ -322,6 +335,20 @@ export default function ContractList({
               />
             </div>
 
+            {/* Trade Direction */}
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Direction</label>
+              <select
+                value={filters.direction}
+                onChange={(e) => setFilters(prev => ({ ...prev, direction: e.target.value }))}
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="all">All Directions</option>
+                <option value="buy">Buy</option>
+                <option value="sell">Sell</option>
+              </select>
+            </div>
+
             {/* Contract Type */}
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">Type</label>
@@ -365,7 +392,9 @@ export default function ContractList({
                 <option value="pending">Pending</option>
               </select>
             </div>
+          </div>
 
+          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-4">
             {/* Pricing Type */}
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">Pricing</label>
@@ -385,9 +414,7 @@ export default function ContractList({
                 ))}
               </select>
             </div>
-          </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-4">
             {/* Contract Type (Unit) */}
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">Contract Type</label>
@@ -404,7 +431,7 @@ export default function ContractList({
             </div>
 
             {/* Spacer columns */}
-            <div className="md:col-span-2 lg:col-span-3"></div>
+            <div className="md:col-span-1 lg:col-span-2"></div>
 
             {/* Filter Actions */}
             <div className="md:col-span-3 lg:col-span-2 flex gap-2 items-end">
@@ -435,6 +462,17 @@ export default function ContractList({
                     <button
                       onClick={() => setFilters(prev => ({ ...prev, search: '' }))}
                       className="hover:bg-blue-200 rounded-full w-4 h-4 flex items-center justify-center"
+                    >
+                      ×
+                    </button>
+                  </span>
+                )}
+                {filters.direction !== 'all' && (
+                  <span className="inline-flex items-center gap-1 px-2 py-1 bg-emerald-100 text-emerald-800 text-xs rounded-full">
+                    Direction: {filters.direction}
+                    <button
+                      onClick={() => setFilters(prev => ({ ...prev, direction: 'all' }))}
+                      className="hover:bg-emerald-200 rounded-full w-4 h-4 flex items-center justify-center"
                     >
                       ×
                     </button>
@@ -529,6 +567,7 @@ export default function ContractList({
             <thead>
               <tr className="bg-gray-50 border-b border-gray-200">
                 <th className="text-left p-4 font-semibold text-gray-700">Name</th>
+                <th className="text-left p-4 font-semibold text-gray-700">Direction</th>
                 <th className="text-left p-4 font-semibold text-gray-700">Type</th>
                 <th className="text-left p-4 font-semibold text-gray-700">Category</th>
                 <th className="text-left p-4 font-semibold text-gray-700">State</th>
@@ -563,6 +602,11 @@ export default function ContractList({
                       </div>
                     </td>
                     <td className="p-4">
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium uppercase ${getDirectionColor(contract.direction || 'buy')}`}>
+                        {contract.direction || 'buy'}
+                      </span>
+                    </td>
+                    <td className="p-4">
                       <span className={`px-2 py-1 rounded-full text-xs font-medium uppercase ${getContractTypeColor(contract.type)}`}>
                         {contract.type}
                       </span>
@@ -570,7 +614,7 @@ export default function ContractList({
                     <td className="p-4 text-gray-700">{contract.category}</td>
                     <td className="p-4 text-gray-700">{contract.state}</td>
                     <td className="p-4 text-gray-700">{contract.counterparty}</td>
-                                        <td className="p-4">
+                    <td className="p-4">
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                         contract.contractType === 'Green' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'
                       }`}>
