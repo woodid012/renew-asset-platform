@@ -9,7 +9,7 @@ interface MarkToMarketTabProps {
   selectedContract: Contract | null;
   setSelectedContract: Dispatch<SetStateAction<Contract | null>>;
   settings: SettingsData | null;
-  priceCurves: PriceCurve[];
+
   // You can add any other properties from commonProps that this tab might need
 }
 
