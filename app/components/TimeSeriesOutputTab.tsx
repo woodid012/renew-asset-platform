@@ -1,48 +1,8 @@
 'use client';
 
 import { useState } from 'react';
+import { Contract, SettingsData, TimeSeriesDataPoint, PriceCurve } from '@/app/types';
 
-interface TimeSeriesDataPoint {
-  period: string; // YYYY-MM format
-  volume: number; // MWh
-  date?: Date;
-}
-
-interface Contract {
-  _id?: string;
-  id?: number;
-  name: string;
-  type: 'retail' | 'wholesale' | 'offtake';
-  category: string;
-  state: string;
-  counterparty: string;
-  startDate: string;
-  endDate: string;
-  annualVolume: number;
-  strikePrice: number;
-  unit: string;
-  volumeShape: 'flat' | 'solar' | 'wind' | 'custom';
-  status: 'active' | 'pending';
-  indexation: string;
-  referenceDate: string;
-  
-  // Enhanced volume fields
-  timeSeriesData?: TimeSeriesDataPoint[];
-  tenor?: {
-    value: number;
-    unit: 'months' | 'years';
-  };
-  dataSource?: 'manual' | 'csv_import' | 'api_import';
-  yearsCovered?: number[];
-  totalVolume?: number;
-  
-  // Pricing fields
-  pricingType?: 'fixed' | 'escalation' | 'timeseries';
-  escalationRate?: number;
-  priceTimeSeries?: number[];
-  priceInterval?: 'monthly' | 'quarterly' | 'yearly';
-  productDetail?: 'CY' | 'FY' | 'Q1' | 'Q2' | 'Q3' | 'Q4';
-}
 
 interface TimeSeriesRow {
   buysell: string;
