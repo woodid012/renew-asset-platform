@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Head from 'next/head';
 
 // Import tab components
-import { Contract, SettingsData, TimeSeriesRow } from './types'; 
+import { Contract, SettingsData } from './types'; 
 
 import ContractSummaryTab from './components/ContractSummaryTab';
 import ContractInputTab from './components/ContractInputTab';
