@@ -31,33 +31,68 @@ interface MtMCalculation {
   dataSource: string;
 }
 
+// Convert UI contract types to database types (keeping for future use)
+const getDbContractType = (uiType: string): string => {
+  switch (uiType) {
+    case 'Green':
+      return 'green';  // Convert UI "Green" to database "green"
+    case 'Energy':
+      return 'Energy'; // Keep Energy as-is
+    default:
+      return uiType.toLowerCase(); // Default to lowercase for safety
+  }
+};
+
 // Market price mapping based on volume shape and contract type
-// Updated getMarketPriceProfile function for MarkToMarketTab.tsx
+// Fixed getMarketPriceProfile function for MarkToMarketTab.tsx
 // This should replace the existing function around line 40
 
+// Updated getMarketPriceProfile function that matches your database structure
+// Replace the existing function in MarkToMarketTab.tsx
+
+// Updated getMarketPriceProfile function that matches your database structure
+// Replace the existing function in MarkToMarketTab.tsx
+
 const getMarketPriceProfile = (volumeShape: string, state: string, contractType: string, marketPrices: { [key: string]: number[] }): number[] => {
-  // Handle Green certificates differently - they're typically uniform across states/profiles
+  console.log(`🔍 Getting market price for: state=${state}, volumeShape=${volumeShape}, contractType=${contractType}`);
+  console.log('📊 Available market price keys:', Object.keys(marketPrices));
+  
+  // Handle Green certificates - match your database structure
   if (contractType === 'Green') {
-    console.log('Looking for Green certificate prices...');
+    console.log('🟢 Looking for Green certificate prices...');
     
-    // Green certificate price lookup order (most to least specific)
+    // Your database has: state="QLD", profile="solar"/"baseload", type="green"
+    // API should create keys like: "QLD - solar - green", "QLD - baseload - green"
+    
     const greenKeys = [
-      'green',           // Simple green key
-      'Green',           // Capitalized green key  
-      'green - baseload', // Green with profile
-      'Green - baseload',
-      'green - solar',
-      'Green - solar',
-      'green - wind', 
-      'Green - wind',
-      'green - all',
-      'Green - all',
-      // State-specific fallbacks (in case some states have different green prices)
-      `${state} - green`,
-      `${state} - Green`,
-      `green - ${state}`,
-      `Green - ${state}`,
-      // Generic fallbacks for any green-related key
+      // Exact matches for your database structure
+      `${state} - baseload - green`,     // e.g., "QLD - baseload - green"
+      `${state} - solar - green`,        // e.g., "QLD - solar - green" 
+      `${state} - wind - green`,         // e.g., "QLD - wind - green"
+      
+      // Try with volume shape if it's solar/wind
+      ...(volumeShape.toLowerCase().includes('solar') ? [`${state} - solar - green`] : []),
+      ...(volumeShape.toLowerCase().includes('wind') ? [`${state} - wind - green`] : []),
+      
+      // Generic fallbacks for the state
+      `${state} - green`,                // e.g., "QLD - green"
+      `${state}-green`,                  // e.g., "QLD-green"
+      `${state} green`,                  // e.g., "QLD green"
+      
+      // Try other states if current state not found
+      'NSW - baseload - green',
+      'VIC - baseload - green', 
+      'SA - baseload - green',
+      'WA - baseload - green',
+      'TAS - baseload - green',
+      
+      // Generic green keys
+      'green',
+      'Green',
+      'baseload - green',
+      'green - baseload',
+      
+      // Search for any key containing green
       ...Object.keys(marketPrices).filter(key => 
         key.toLowerCase().includes('green') || 
         key.toLowerCase().includes('certificate') ||
@@ -65,21 +100,35 @@ const getMarketPriceProfile = (volumeShape: string, state: string, contractType:
       )
     ];
     
+    // Remove duplicates while preserving order
+    const uniqueGreenKeys = [...new Set(greenKeys)];
+    
+    console.log('🔍 Trying Green certificate keys in order:', uniqueGreenKeys.slice(0, 5));
+    
     // Try each green key in order
-    for (const key of greenKeys) {
+    for (const key of uniqueGreenKeys) {
       if (marketPrices[key] && marketPrices[key].length > 0) {
-        console.log(`Using Green certificate price key: ${key}`);
+        console.log(`✅ Found Green certificate prices using key: "${key}"`);
+        console.log(`📈 Price range: $${Math.min(...marketPrices[key])}-$${Math.max(...marketPrices[key])}/MWh`);
         return marketPrices[key];
       }
     }
     
-    // If no green prices found, use default green certificate prices
-    console.warn('No Green certificate prices found in market data, using default Green certificate prices');
-    return Array(12).fill(45); // Default green certificate price ~$45/MWh
+    // Debug: Show what we actually have vs what we're looking for
+    console.warn('❌ No Green certificate prices found!');
+    console.warn('🔍 Looking for keys like:', `"${state} - baseload - green"`);
+    console.warn('📋 Available keys containing "green":', 
+      Object.keys(marketPrices).filter(k => k.toLowerCase().includes('green'))
+    );
+    console.warn('📋 All available keys:', Object.keys(marketPrices));
+    
+    // Use default green certificate price
+    console.warn('⚡ Using default Green certificate price: $45/MWh');
+    return Array(12).fill(45);
   }
   
-  // Energy price logic (existing logic for Energy contracts)
-  const typeKey = 'energy'; // Energy contracts don't need type suffix in lookup
+  // Energy price logic - match your database structure
+  console.log('⚡ Looking for Energy prices...');
   
   // Determine profile based on volume shape
   let profileType = 'baseload'; // Default profile
@@ -90,44 +139,38 @@ const getMarketPriceProfile = (volumeShape: string, state: string, contractType:
     profileType = 'wind';
   }
   
-  // Build the market price key following the Price Curve tab structure
-  // Format: "STATE - profile" or "STATE - profile - type"
-  const possibleKeys = [
-    `${state} - ${profileType}`,           // e.g., "NSW - solar"
-    `${state} - ${profileType} - ${typeKey}`, // e.g., "NSW - solar - energy"
-    `${state}`,                            // e.g., "NSW" (fallback)
-    `${state} - baseload`,                 // e.g., "NSW - baseload" (fallback)
-    `${state} - baseload - ${typeKey}`     // e.g., "NSW - baseload - energy" (fallback)
+  // Build energy market price keys - your database has type="Energy" (capitalized)
+  const energyKeys = [
+    `${state} - ${profileType} - Energy`,  // e.g., "QLD - solar - Energy"
+    `${state} - ${profileType} - energy`,  // e.g., "QLD - solar - energy" 
+    `${state} - ${profileType}`,           // e.g., "QLD - solar"
+    `${state} - baseload - Energy`,        // fallback to baseload
+    `${state} - baseload - energy`,        
+    `${state} - baseload`,                 
+    `${state}`,                            // e.g., "QLD"
   ];
   
-  // Try to find matching market price data
-  for (const key of possibleKeys) {
+  console.log('🔍 Trying Energy keys:', energyKeys.slice(0, 3));
+  
+  // Try to find matching energy market price data
+  for (const key of energyKeys) {
     if (marketPrices[key] && marketPrices[key].length > 0) {
-      console.log(`Using Energy market price key: ${key} for ${state} ${profileType} ${contractType}`);
+      console.log(`✅ Found Energy prices using key: "${key}"`);
       return marketPrices[key];
     }
   }
   
   // Ultimate fallback - try any state data
-  const fallbackKeys = Object.keys(marketPrices);
-  const stateKey = fallbackKeys.find(key => key.startsWith(state));
-  if (stateKey && marketPrices[stateKey].length > 0) {
-    console.log(`Using fallback market price key: ${stateKey} for ${state} ${profileType} ${contractType}`);
-    return marketPrices[stateKey];
+  const stateKeys = Object.keys(marketPrices).filter(key => key.includes(state));
+  if (stateKeys.length > 0 && marketPrices[stateKeys[0]].length > 0) {
+    console.log(`⚠️ Using fallback state key: "${stateKeys[0]}"`);
+    return marketPrices[stateKeys[0]];
   }
   
-  // Last resort - use NSW or first available
-  const defaultKey = fallbackKeys.find(key => key.startsWith('NSW')) || fallbackKeys[0];
-  if (defaultKey && marketPrices[defaultKey].length > 0) {
-    console.warn(`Using default market price key: ${defaultKey} for ${state} ${profileType} ${contractType}`);
-    return marketPrices[defaultKey];
-  }
-  
-  // Absolute fallback
-  console.warn(`No market price data found for ${state} ${profileType} ${contractType}, using default values`);
-  return Array(12).fill(80);
+  // Last resort fallback
+  console.warn(`❌ No market prices found for ${state} ${profileType} ${contractType}`);
+  return contractType === 'Green' ? Array(12).fill(45) : Array(12).fill(80);
 };
-
 // Volume calculation utilities
 const VolumeUtils = {
   hasMonthlyData: (contract: Contract): boolean => {
@@ -304,9 +347,15 @@ export default function MarkToMarketTab({
         const marketPricesForProfile = getMarketPriceProfile(
           contract.volumeShape, 
           contract.state, 
-          contract.contractType || 'Energy', 
+          contract.contractType || 'Energy',  // Pass the UI contract type 
           marketPrices
         );
+
+        // Skip calculation if no market prices found
+        if (marketPricesForProfile.length === 0) {
+          console.warn(`Skipping ${contract.name}: No market prices found for ${contract.state} ${contract.volumeShape} ${contract.contractType || 'Energy'}`);
+          return;
+        }
 
         let totalVolume = 0;
         let totalContractValue = 0;
@@ -318,7 +367,13 @@ export default function MarkToMarketTab({
         monthlyVolumes.forEach((volume, monthIndex) => {
           if (volume > 0) {
             const contractPrice = getContractPrice(contract, monthIndex, year);
-            const marketPrice = marketPricesForProfile[monthIndex] || 80; // Default fallback
+            const marketPrice = marketPricesForProfile[monthIndex];
+
+            // Skip if no market price available for this month
+            if (!marketPrice || marketPrice <= 0) {
+              console.warn(`Skipping month ${monthIndex + 1} for ${contract.name}: No market price data`);
+              return;
+            }
 
             totalVolume += volume;
             totalContractValue += volume * contractPrice;
@@ -606,13 +661,6 @@ export default function MarkToMarketTab({
                       const contract = contracts.find(c => c.name === calc.contractName);
                       if (!contract) return null;
                       
-                      const usedKey = getMarketPriceProfile(
-                        contract.volumeShape,
-                        contract.state,
-                        contract.contractType || 'Energy',
-                        { ...marketPrices, '_debug': [0] } // Add debug flag
-                      );
-                      
                       return (
                         <div key={index} className="flex justify-between bg-white rounded px-2 py-1">
                           <span className="text-gray-700">
@@ -838,9 +886,17 @@ export default function MarkToMarketTab({
           <div className="text-4xl mb-4">📊</div>
           <h3 className="text-lg font-semibold text-gray-800 mb-2">No MtM Data Available</h3>
           <p className="text-gray-600">
-            No active contracts found for {yearType} {selectedYear}. 
-            Please check your contracts or select a different year.
+            No active contracts found for {yearType} {selectedYear} with available market price data. 
+            Please check your contracts, market price data, or select a different year.
           </p>
+          <div className="mt-4 text-sm text-gray-500">
+            <p>Contracts are skipped when:</p>
+            <ul className="list-disc list-inside mt-2">
+              <li>No matching market price curves are found</li>
+              <li>Market price data is incomplete or zero</li>
+              <li>Contract has no volume for the selected year</li>
+            </ul>
+          </div>
         </div>
       )}
     </div>

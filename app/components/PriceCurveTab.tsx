@@ -203,153 +203,218 @@ export default function PriceCurveTab({
   }, [selectedYear, selectedProfile, selectedType, selectedCurve, selectedInterval, cpiRate, refYear]);
 
   // Create chart data for price curves with interval aggregation
-  const createPriceCurveData = () => {
-    const seriesKeys = Object.keys(marketPrices);
-    let chartLabels = isTimeSeries ? timeLabels : months;
-    let aggregatedData: { [key: string]: number[] } = {};
-    
-    // Apply interval aggregation to chart data
-    if (selectedInterval !== 'auto' && selectedInterval !== 'M') {
-      // Aggregate data based on selected interval
-      seriesKeys.forEach(seriesKey => {
-        const originalData = marketPrices[seriesKey] || [];
-        const aggregated: number[] = [];
-        
-        if (selectedInterval === 'Q') {
-          // Quarterly aggregation - ensure we process all quarters
-          const numQuarters = Math.ceil(originalData.length / 3);
-          for (let q = 0; q < numQuarters; q++) {
-            const startIdx = q * 3;
-            const endIdx = Math.min(startIdx + 3, originalData.length);
-            const quarterData = originalData.slice(startIdx, endIdx).filter(val => val > 0);
-            
-            if (quarterData.length > 0) {
-              const avg = quarterData.reduce((sum, val) => sum + val, 0) / quarterData.length;
-              aggregated.push(avg);
-            } else {
-              aggregated.push(0);
-            }
-          }
-        } else if (selectedInterval === 'Y') {
-          // Yearly aggregation - ensure we process all years
-          const numYears = Math.ceil(originalData.length / 12);
-          for (let y = 0; y < numYears; y++) {
-            const startIdx = y * 12;
-            const endIdx = Math.min(startIdx + 12, originalData.length);
-            const yearData = originalData.slice(startIdx, endIdx).filter(val => val > 0);
-            
-            if (yearData.length > 0) {
-              const avg = yearData.reduce((sum, val) => sum + val, 0) / yearData.length;
-              aggregated.push(avg);
-            } else {
-              aggregated.push(0);
-            }
-          }
-        }
-        
-        aggregatedData[seriesKey] = aggregated;
-      });
+// Replace the createPriceCurveData function in PriceCurveTab.tsx (around line 150-200)
+
+const createPriceCurveData = () => {
+  const seriesKeys = Object.keys(marketPrices);
+  let chartLabels = isTimeSeries ? timeLabels : months;
+  let aggregatedData: { [key: string]: number[] } = {};
+  
+  console.log('🎯 Creating chart data with keys:', seriesKeys);
+  console.log('🎯 Selected type:', selectedType, 'Selected profile:', selectedProfile);
+  
+  // Apply interval aggregation to chart data
+  if (selectedInterval !== 'auto' && selectedInterval !== 'M') {
+    // Aggregate data based on selected interval
+    seriesKeys.forEach(seriesKey => {
+      const originalData = marketPrices[seriesKey] || [];
+      const aggregated: number[] = [];
       
-      // Generate aggregated labels based on the first series data length
-      if (seriesKeys.length > 0) {
-        const firstSeriesLength = aggregatedData[seriesKeys[0]]?.length || 0;
-        const newLabels: string[] = [];
-        
-        if (selectedInterval === 'Q') {
-          for (let i = 0; i < firstSeriesLength; i++) {
-            if (isTimeSeries && timeLabels.length > i * 3) {
-              // Extract year from time series label
-              const originalLabel = timeLabels[i * 3] || '';
-              const yearMatch = originalLabel.match(/\d{4}/);
-              const year = yearMatch ? yearMatch[0] : '';
-              newLabels.push(`Q${(i % 4) + 1} ${year}`);
-            } else {
-              newLabels.push(`Q${(i % 4) + 1}`);
-            }
-          }
-        } else if (selectedInterval === 'Y') {
-          for (let i = 0; i < firstSeriesLength; i++) {
-            if (isTimeSeries && timeLabels.length > i * 12) {
-              // Extract year from time series label
-              const originalLabel = timeLabels[i * 12] || '';
-              const yearMatch = originalLabel.match(/\d{4}/);
-              newLabels.push(yearMatch ? yearMatch[0] : `Year ${i + 1}`);
-            } else {
-              newLabels.push(`Year ${i + 1}`);
-            }
+      if (selectedInterval === 'Q') {
+        // Quarterly aggregation - ensure we process all quarters
+        const numQuarters = Math.ceil(originalData.length / 3);
+        for (let q = 0; q < numQuarters; q++) {
+          const startIdx = q * 3;
+          const endIdx = Math.min(startIdx + 3, originalData.length);
+          const quarterData = originalData.slice(startIdx, endIdx).filter(val => val > 0);
+          
+          if (quarterData.length > 0) {
+            const avg = quarterData.reduce((sum, val) => sum + val, 0) / quarterData.length;
+            aggregated.push(avg);
+          } else {
+            aggregated.push(0);
           }
         }
-        
-        chartLabels = newLabels;
+      } else if (selectedInterval === 'Y') {
+        // Yearly aggregation - ensure we process all years
+        const numYears = Math.ceil(originalData.length / 12);
+        for (let y = 0; y < numYears; y++) {
+          const startIdx = y * 12;
+          const endIdx = Math.min(startIdx + 12, originalData.length);
+          const yearData = originalData.slice(startIdx, endIdx).filter(val => val > 0);
+          
+          if (yearData.length > 0) {
+            const avg = yearData.reduce((sum, val) => sum + val, 0) / yearData.length;
+            aggregated.push(avg);
+          } else {
+            aggregated.push(0);
+          }
+        }
       }
-    } else {
-      // Use original data for monthly or auto
-      aggregatedData = marketPrices;
+      
+      aggregatedData[seriesKey] = aggregated;
+    });
+    
+    // Generate aggregated labels based on the first series data length
+    if (seriesKeys.length > 0) {
+      const firstSeriesLength = aggregatedData[seriesKeys[0]]?.length || 0;
+      const newLabels: string[] = [];
+      
+      if (selectedInterval === 'Q') {
+        for (let i = 0; i < firstSeriesLength; i++) {
+          if (isTimeSeries && timeLabels.length > i * 3) {
+            // Extract year from time series label
+            const originalLabel = timeLabels[i * 3] || '';
+            const yearMatch = originalLabel.match(/\d{4}/);
+            const year = yearMatch ? yearMatch[0] : '';
+            newLabels.push(`Q${(i % 4) + 1} ${year}`);
+          } else {
+            newLabels.push(`Q${(i % 4) + 1}`);
+          }
+        }
+      } else if (selectedInterval === 'Y') {
+        for (let i = 0; i < firstSeriesLength; i++) {
+          if (isTimeSeries && timeLabels.length > i * 12) {
+            // Extract year from time series label
+            const originalLabel = timeLabels[i * 12] || '';
+            const yearMatch = originalLabel.match(/\d{4}/);
+            newLabels.push(yearMatch ? yearMatch[0] : `Year ${i + 1}`);
+          } else {
+            newLabels.push(`Year ${i + 1}`);
+          }
+        }
+      }
+      
+      chartLabels = newLabels;
+    }
+  } else {
+    // Use original data for monthly or auto
+    aggregatedData = marketPrices;
+  }
+  
+  // Generate colors for different profiles and types
+  const getSeriesColor = (seriesKey: string, index: number) => {
+    const lowerKey = seriesKey.toLowerCase();
+    
+    // Color coding based on content
+    if (lowerKey.includes('green')) {
+      if (lowerKey.includes('solar')) return '#10b981'; // Green for solar green certificates
+      if (lowerKey.includes('wind')) return '#059669';  // Darker green for wind green certificates  
+      return '#34d399'; // Light green for baseload green certificates
     }
     
-    // Generate colors for different profiles
-    const profileColors: { [key: string]: string } = {
-      'baseload': '#667eea',
-      'solar': '#f093fb', 
-      'wind': '#43e97b'
+    if (lowerKey.includes('solar')) return '#f59e0b'; // Orange for solar energy
+    if (lowerKey.includes('wind')) return '#3b82f6';   // Blue for wind energy
+    if (lowerKey.includes('baseload')) return '#6366f1'; // Indigo for baseload energy
+    
+    // Fallback colors by state
+    const stateColors: { [key: string]: string } = {
+      'nsw': '#667eea',
+      'vic': '#764ba2', 
+      'qld': '#f093fb',
+      'sa': '#4facfe',
+      'wa': '#43e97b'
     };
     
-    const generateColor = (seriesKey: string, index: number) => {
-      // Try to match profile from series key
-      const lowerKey = seriesKey.toLowerCase();
-      if (lowerKey.includes('baseload')) return profileColors.baseload;
-      if (lowerKey.includes('solar')) return profileColors.solar;
-      if (lowerKey.includes('wind')) return profileColors.wind;
-      
-      // Fallback to indexed colors
-      const colors = ['#667eea', '#764ba2', '#f093fb', '#4facfe', '#43e97b'];
-      return colors[index % colors.length];
-    };
+    for (const [state, color] of Object.entries(stateColors)) {
+      if (lowerKey.includes(state)) return color;
+    }
     
-    if (showAll) {
-      // When showing all, group by profile for the selected state only
-      const filteredSeries = seriesKeys.filter(key => key.includes(selectedState));
+    // Final fallback
+    const colors = ['#667eea', '#764ba2', '#f093fb', '#4facfe', '#43e97b'];
+    return colors[index % colors.length];
+  };
+  
+  if (showAll) {
+    // When showing all, filter by selected state and show different profiles/types
+    let filteredSeries = seriesKeys;
+    
+    // For Green certificates, we need to look for keys that include the state and "green"
+    if (selectedType === 'Green') {
+      filteredSeries = seriesKeys.filter(key => 
+        key.toLowerCase().includes(selectedState.toLowerCase()) && 
+        key.toLowerCase().includes('green')
+      );
       
-      const datasets = filteredSeries.map((seriesKey, index) => ({
-        label: seriesKey.includes(' - ') ? seriesKey.split(' - ')[1] : seriesKey,
+      console.log('🟢 Filtered Green certificate series for', selectedState, ':', filteredSeries);
+    } else {
+      // For Energy, use existing logic
+      filteredSeries = seriesKeys.filter(key => 
+        key.includes(selectedState) && !key.toLowerCase().includes('green')
+      );
+      
+      console.log('⚡ Filtered Energy series for', selectedState, ':', filteredSeries);
+    }
+    
+    const datasets = filteredSeries.map((seriesKey, index) => {
+      // Create better labels for the legend
+      let label = seriesKey;
+      if (seriesKey.includes(' - ')) {
+        const parts = seriesKey.split(' - ');
+        if (parts.length >= 2) {
+          // For "QLD - baseload - green" -> "Baseload Green"
+          // For "NSW - solar - Energy" -> "Solar Energy"
+          const profile = parts[1];
+          const type = parts[2] || selectedType;
+          label = `${profile.charAt(0).toUpperCase() + profile.slice(1)} ${type.charAt(0).toUpperCase() + type.slice(1)}`;
+        }
+      }
+      
+      return {
+        label: label,
         data: aggregatedData[seriesKey] || [],
-        borderColor: generateColor(seriesKey, index),
-        backgroundColor: generateColor(seriesKey, index) + '20',
+        borderColor: getSeriesColor(seriesKey, index),
+        backgroundColor: getSeriesColor(seriesKey, index) + '20',
         borderWidth: 3,
         tension: 0.1,
-        pointBackgroundColor: generateColor(seriesKey, index),
-        pointBorderColor: generateColor(seriesKey, index),
+        pointBackgroundColor: getSeriesColor(seriesKey, index),
+        pointBorderColor: getSeriesColor(seriesKey, index),
         pointBorderWidth: 2,
         pointRadius: 4,
-      }));
-
-      return {
-        labels: chartLabels,
-        datasets: datasets
       };
+    });
+
+    return {
+      labels: chartLabels,
+      datasets: datasets
+    };
+  } else {
+    // Single series view - find the best match for selected state and type
+    let selectedSeries: string;
+    
+    if (selectedType === 'Green') {
+      // Look for Green certificate data for the selected state
+      selectedSeries = seriesKeys.find(key => 
+        key.toLowerCase().includes(selectedState.toLowerCase()) && 
+        key.toLowerCase().includes('green')
+      ) || seriesKeys.find(key => key.toLowerCase().includes('green')) || seriesKeys[0];
     } else {
-      // Single series view
-      const selectedSeries = seriesKeys.find(key => key.includes(selectedState)) || seriesKeys[0];
-      
-      return {
-        labels: chartLabels,
-        datasets: [{
-          label: selectedSeries,
-          data: aggregatedData[selectedSeries] || [],
-          borderColor: generateColor(selectedSeries, 0),
-          backgroundColor: generateColor(selectedSeries, 0) + '20',
-          borderWidth: 3,
-          tension: 0.1,
-          pointBackgroundColor: generateColor(selectedSeries, 0),
-          pointBorderColor: generateColor(selectedSeries, 0),
-          pointBorderWidth: 2,
-          pointRadius: 5,
-          fill: true,
-        }]
-      };
+      // Look for Energy data for the selected state
+      selectedSeries = seriesKeys.find(key => 
+        key.includes(selectedState) && !key.toLowerCase().includes('green')
+      ) || seriesKeys.find(key => key.includes(selectedState)) || seriesKeys[0];
     }
-  };
-
+    
+    console.log('📊 Selected series for single view:', selectedSeries);
+    
+    return {
+      labels: chartLabels,
+      datasets: [{
+        label: selectedSeries,
+        data: aggregatedData[selectedSeries] || [],
+        borderColor: getSeriesColor(selectedSeries, 0),
+        backgroundColor: getSeriesColor(selectedSeries, 0) + '20',
+        borderWidth: 3,
+        tension: 0.1,
+        pointBackgroundColor: getSeriesColor(selectedSeries, 0),
+        pointBorderColor: getSeriesColor(selectedSeries, 0),
+        pointBorderWidth: 2,
+        pointRadius: 5,
+        fill: true,
+      }]
+    };
+  }
+};
   const chartOptions = {
     responsive: true,
     maintainAspectRatio: false,
