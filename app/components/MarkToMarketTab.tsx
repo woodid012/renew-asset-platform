@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Contract, SettingsData } from '@/app/types';
-import { getContractPrice, ContractPriceRequest } from '@/app/services/marketPriceService';
+import { mtmCalculationEngine, MtMCalculationResult, MtMCalculationOptions } from '@/app/services/mtmCalculationEngine';
+import TimeSeriesEditor, { TimeSeriesPoint, TimeSeriesConfig } from './GenericTimeSeriesEditor';
 
 interface MarkToMarketTabProps {
   contracts: Contract[];
@@ -12,191 +13,20 @@ interface MarkToMarketTabProps {
   marketPrices: { [key: string]: number[] };
 }
 
-interface MtMCalculation {
-  contractId: string;
-  contractName: string;
-  direction: 'buy' | 'sell';
-  category: string;
-  state: string;
-  contractType: string;
-  counterparty: string;
-  year: number;
-  yearType: 'CY' | 'FY';
-  volume: number; // Signed volume (negative for sell)
-  avgContractPrice: number;
-  avgMarketPrice: number;
-  contractRevenue: number;
-  marketValue: number;
-  mtmPnL: number;
-  volumeShape: string;
-  dataSource: string;
+interface PortfolioAggregation {
+  totalContracts: number;
+  totalVolume: number;
+  totalAbsVolume: number;
+  totalMtM: number;
+  totalContractRevenue: number;
+  totalMarketValue: number;
+  weightedAvgContractPrice: number;
+  weightedAvgMarketPrice: number;
 }
 
-// Volume calculation utilities
-const VolumeUtils = {
-  hasMonthlyData: (contract: Contract): boolean => {
-    return !!(contract.timeSeriesData && contract.timeSeriesData.length > 0);
-  },
-
-  getMonthlyVolumes: (contract: Contract, year: number): number[] => {
-    if (!contract.timeSeriesData) {
-      return VolumeUtils.calculateFromPercentages(contract);
-    }
-
-    const monthlyVolumes = new Array(12).fill(0);
-    
-    contract.timeSeriesData.forEach(data => {
-      const [dataYear, dataMonth] = data.period.split('-').map(Number);
-      
-      if (dataYear === year && dataMonth >= 1 && dataMonth <= 12) {
-        monthlyVolumes[dataMonth - 1] = data.volume;
-      }
-    });
-
-    return monthlyVolumes;
-  },
-
-  calculateFromPercentages: (contract: Contract): number[] => {
-    const volumeShapes = {
-      flat: [8.33, 8.33, 8.33, 8.33, 8.33, 8.33, 8.33, 8.33, 8.33, 8.33, 8.33, 8.33],
-      solar: [6.5, 7.2, 8.8, 9.5, 10.2, 8.9, 9.1, 9.8, 8.6, 7.4, 6.8, 7.2],
-      wind: [11.2, 10.8, 9.2, 7.8, 6.5, 5.9, 6.2, 7.1, 8.4, 9.6, 10.8, 11.5],
-      custom: [5.0, 6.0, 7.5, 9.0, 11.0, 12.5, 13.0, 12.0, 10.5, 8.5, 7.0, 6.0]
-    };
-
-    const percentages = volumeShapes[contract.volumeShape] || volumeShapes.flat;
-    return percentages.map(pct => (contract.annualVolume * pct) / 100);
-  },
-
-  getYearsCovered: (timeSeriesData: any[]): number[] => {
-    if (!timeSeriesData) return [];
-    
-    const years = new Set<number>();
-    timeSeriesData.forEach(data => {
-      const year = parseInt(data.period.split('-')[0]);
-      if (!isNaN(year)) {
-        years.add(year);
-      }
-    });
-    
-    return Array.from(years).sort();
-  }
-};
-
-// Legacy market price function for backward compatibility
-const getLegacyMarketPrice = (volumeShape: string, state: string, contractType: string, marketPrices: { [key: string]: number[] }): number[] => {
-  console.log(`🔍 Getting market price for: state=${state}, volumeShape=${volumeShape}, contractType=${contractType}`);
-  console.log('📊 Available market price keys:', Object.keys(marketPrices));
-  
-  // Handle Green certificates - match your database structure
-  if (contractType === 'Green') {
-    console.log('🟢 Looking for Green certificate prices...');
-    
-    const greenKeys = [
-      `${state} - baseload - green`,     
-      `${state} - solar - green`,        
-      `${state} - wind - green`,         
-      
-      ...(volumeShape.toLowerCase().includes('solar') ? [`${state} - solar - green`] : []),
-      ...(volumeShape.toLowerCase().includes('wind') ? [`${state} - wind - green`] : []),
-      
-      `${state} - green`,                
-      `${state}-green`,                  
-      `${state} green`,                  
-      
-      'NSW - baseload - green',
-      'VIC - baseload - green', 
-      'SA - baseload - green',
-      'WA - baseload - green',
-      'TAS - baseload - green',
-      
-      'green',
-      'Green',
-      'baseload - green',
-      'green - baseload',
-      
-      ...Object.keys(marketPrices).filter(key => 
-        key.toLowerCase().includes('green') || 
-        key.toLowerCase().includes('certificate') ||
-        key.toLowerCase().includes('rec')
-      )
-    ];
-    
-    const uniqueGreenKeys = [...new Set(greenKeys)];
-    
-    for (const key of uniqueGreenKeys) {
-      if (marketPrices[key] && marketPrices[key].length > 0) {
-        console.log(`✅ Found Green certificate prices using key: "${key}"`);
-        return marketPrices[key];
-      }
-    }
-    
-    console.warn('❌ No Green certificate prices found! Using default: $45/MWh');
-    return Array(12).fill(45);
-  }
-  
-  // Energy price logic
-  console.log('⚡ Looking for Energy prices...');
-  
-  let profileType = 'baseload';
-  if (volumeShape.toLowerCase().includes('solar')) {
-    profileType = 'solar';
-  } else if (volumeShape.toLowerCase().includes('wind')) {
-    profileType = 'wind';
-  }
-  
-  const energyKeys = [
-    `${state} - ${profileType} - Energy`,  
-    `${state} - ${profileType} - energy`,  
-    `${state} - ${profileType}`,           
-    `${state} - baseload - Energy`,        
-    `${state} - baseload - energy`,        
-    `${state} - baseload`,                 
-    `${state}`,                            
-  ];
-  
-  for (const key of energyKeys) {
-    if (marketPrices[key] && marketPrices[key].length > 0) {
-      console.log(`✅ Found Energy prices using key: "${key}"`);
-      return marketPrices[key];
-    }
-  }
-  
-  const stateKeys = Object.keys(marketPrices).filter(key => key.includes(state));
-  if (stateKeys.length > 0 && marketPrices[stateKeys[0]].length > 0) {
-    console.log(`⚠️ Using fallback state key: "${stateKeys[0]}"`);
-    return marketPrices[stateKeys[0]];
-  }
-  
-  console.warn(`❌ No market prices found for ${state} ${profileType} ${contractType}`);
-  return contractType === 'Green' ? Array(12).fill(45) : Array(12).fill(80);
-};
-
-// Price calculation utilities
-const calculateContractPrice = (contract: Contract, monthIndex: number, year: number): number => {
-  // Handle time series based pricing
-  if (contract.pricingType === 'timeseries' && contract.priceTimeSeries && contract.priceTimeSeries.length > 0) {
-    if (contract.priceInterval === 'monthly') {
-      return contract.priceTimeSeries[monthIndex] || contract.strikePrice;
-    } else if (contract.priceInterval === 'quarterly') {
-      const quarterIndex = Math.floor(monthIndex / 3);
-      return contract.priceTimeSeries[quarterIndex] || contract.strikePrice;
-    } else if (contract.priceInterval === 'yearly') {
-      return contract.priceTimeSeries[0] || contract.strikePrice;
-    }
-  }
-  
-  // Handle escalation based pricing
-  if (contract.pricingType === 'escalation' && contract.escalationRate && contract.referenceDate) {
-    const refYear = new Date(contract.referenceDate).getFullYear();
-    const yearsDiff = year - refYear;
-    const escalationFactor = Math.pow(1 + (contract.escalationRate / 100), yearsDiff + (monthIndex / 12));
-    return contract.strikePrice * escalationFactor;
-  }
-  
-  // Default to fixed price
-  return contract.strikePrice;
-};
+interface GroupedResults {
+  [groupKey: string]: MtMCalculationResult[];
+}
 
 export default function MarkToMarketTab({
   contracts,
@@ -205,249 +35,202 @@ export default function MarkToMarketTab({
   settings,
   marketPrices,
 }: MarkToMarketTabProps) {
+  // Core state
+  const [mtmResults, setMtmResults] = useState<MtMCalculationResult[]>([]);
+  const [isCalculating, setIsCalculating] = useState(false);
+  const [calculationError, setCalculationError] = useState<string | null>(null);
+  const [lastCalculationTime, setLastCalculationTime] = useState<Date | null>(null);
+
+  // Calculation options
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
   const [yearType, setYearType] = useState<'CY' | 'FY'>('CY');
+  const [priceCurve, setPriceCurve] = useState('Aurora Jan 2025');
+  const [marketPriceProfile, setMarketPriceProfile] = useState<'auto' | 'baseload' | 'solar' | 'wind'>('auto');
+  const [includeForecast, setIncludeForecast] = useState(true);
+
+  // Display options
   const [groupBy, setGroupBy] = useState<'none' | 'category' | 'state' | 'contractType' | 'direction'>('category');
   const [sortBy, setSortBy] = useState<'mtmPnL' | 'volume' | 'contractName'>('mtmPnL');
   const [filterDirection, setFilterDirection] = useState<'all' | 'buy' | 'sell'>('all');
-  const [showDebugInfo, setShowDebugInfo] = useState(false);
+  const [showTimeSeriesDetails, setShowTimeSeriesDetails] = useState(false);
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+  const [expandedContracts, setExpandedContracts] = useState<Set<string>>(new Set());
+
+  // Time series editor state
+  const [editingTimeSeriesContract, setEditingTimeSeriesContract] = useState<string | null>(null);
+  const [timeSeriesData, setTimeSeriesData] = useState<TimeSeriesPoint[]>([]);
 
   // Get available years from contracts
-  const getAvailableYears = (): number[] => {
+  const availableYears = useMemo(() => {
     const years = new Set<number>();
+    const currentYear = new Date().getFullYear();
     
+    // Add current year and next few years
+    for (let i = -2; i <= 5; i++) {
+      years.add(currentYear + i);
+    }
+    
+    // Add years from contract dates
     contracts.forEach(contract => {
-      if (VolumeUtils.hasMonthlyData(contract)) {
-        const timeSeriesYears = VolumeUtils.getYearsCovered(contract.timeSeriesData!);
-        timeSeriesYears.forEach(year => years.add(year));
-      } else {
-        if (contract.startDate && contract.endDate) {
-          const startDate = new Date(contract.startDate);
-          const endDate = new Date(contract.endDate);
-          
-          let currentDate = new Date(startDate);
-          while (currentDate <= endDate) {
-            let yearToAdd: number;
-            
-            if (yearType === 'FY') {
-              const month = currentDate.getMonth() + 1;
-              if (month >= 7) {
-                yearToAdd = currentDate.getFullYear() + 1;
-              } else {
-                yearToAdd = currentDate.getFullYear();
-              }
-            } else {
-              yearToAdd = currentDate.getFullYear();
-            }
-            
-            years.add(yearToAdd);
-            currentDate.setFullYear(currentDate.getFullYear() + 1);
-          }
+      if (contract.startDate && contract.endDate) {
+        const startYear = new Date(contract.startDate).getFullYear();
+        const endYear = new Date(contract.endDate).getFullYear();
+        
+        for (let year = startYear; year <= endYear; year++) {
+          years.add(year);
         }
+      }
+      
+      // Add years from time series data
+      if (contract.timeSeriesData) {
+        contract.timeSeriesData.forEach(ts => {
+          const year = parseInt(ts.period.split('-')[0]);
+          if (!isNaN(year)) {
+            years.add(year);
+          }
+        });
       }
     });
     
     return Array.from(years).sort((a, b) => a - b);
+  }, [contracts]);
+
+  // Perform MtM calculations
+  const calculateMtM = async () => {
+    setIsCalculating(true);
+    setCalculationError(null);
+    
+    try {
+      console.log(`🚀 Starting MtM calculation for ${yearType} ${selectedYear}`);
+      
+      const options: MtMCalculationOptions = {
+        selectedYear,
+        yearType,
+        priceCurve,
+        includeForecast,
+        marketPriceProfile
+      };
+      
+      const results = await mtmCalculationEngine.calculatePortfolioMtM(contracts, options);
+      
+      setMtmResults(results);
+      setLastCalculationTime(new Date());
+      
+      console.log(`✅ MtM calculation completed: ${results.length} contracts processed`);
+      
+    } catch (error) {
+      console.error('❌ MtM calculation failed:', error);
+      setCalculationError(error instanceof Error ? error.message : 'Unknown calculation error');
+    } finally {
+      setIsCalculating(false);
+    }
   };
 
-  // Calculate MtM for all contracts
-  const mtmCalculations = useMemo((): MtMCalculation[] => {
-    const calculations: MtMCalculation[] = [];
-    const activeContracts = contracts.filter(contract => contract.status === 'active');
+  // Auto-calculate when key parameters change
+  useEffect(() => {
+    if (contracts.length > 0) {
+      calculateMtM();
+    }
+  }, [selectedYear, yearType, priceCurve, marketPriceProfile, contracts]);
 
-    activeContracts.forEach(contract => {
-      let yearsToProcess: number[] = [];
-      
-      if (VolumeUtils.hasMonthlyData(contract)) {
-        const timeSeriesYears = VolumeUtils.getYearsCovered(contract.timeSeriesData!);
-        yearsToProcess = timeSeriesYears.filter(year => year === selectedYear);
-      } else {
-        if (contract.startDate && contract.endDate) {
-          const startDate = new Date(contract.startDate);
-          const endDate = new Date(contract.endDate);
-          
-          let currentDate = new Date(startDate);
-          while (currentDate <= endDate) {
-            let yearToCheck: number;
-            
-            if (yearType === 'FY') {
-              const month = currentDate.getMonth() + 1;
-              if (month >= 7) {
-                yearToCheck = currentDate.getFullYear() + 1;
-              } else {
-                yearToCheck = currentDate.getFullYear();
-              }
-            } else {
-              yearToCheck = currentDate.getFullYear();
-            }
-            
-            if (yearToCheck === selectedYear) {
-              yearsToProcess.push(yearToCheck);
-              break;
-            }
-            currentDate.setFullYear(currentDate.getFullYear() + 1);
-          }
-        }
-      }
-
-      yearsToProcess.forEach(year => {
-        // Get monthly volumes and prices for the year
-        const monthlyVolumes = VolumeUtils.getMonthlyVolumes(contract, year);
-        const marketPricesForProfile = getLegacyMarketPrice(
-          contract.volumeShape, 
-          contract.state, 
-          contract.contractType || 'Energy',
-          marketPrices
-        );
-
-        // Skip calculation if no market prices found
-        if (marketPricesForProfile.length === 0) {
-          console.warn(`Skipping ${contract.name}: No market prices found for ${contract.state} ${contract.volumeShape} ${contract.contractType || 'Energy'}`);
-          return;
-        }
-
-        let totalVolume = 0;
-        let totalContractValue = 0;
-        let totalMarketValue = 0;
-        let weightedContractPrice = 0;
-        let weightedMarketPrice = 0;
-
-        // Calculate month by month
-        monthlyVolumes.forEach((volume, monthIndex) => {
-          if (volume > 0) {
-            const contractPrice = calculateContractPrice(contract, monthIndex, year);
-            const marketPrice = marketPricesForProfile[monthIndex];
-
-            // Skip if no market price available for this month
-            if (!marketPrice || marketPrice <= 0) {
-              console.warn(`Skipping month ${monthIndex + 1} for ${contract.name}: No market price data`);
-              return;
-            }
-
-            totalVolume += volume;
-            totalContractValue += volume * contractPrice;
-            totalMarketValue += volume * marketPrice;
-          }
-        });
-
-        if (totalVolume > 0) {
-          weightedContractPrice = totalContractValue / totalVolume;
-          weightedMarketPrice = totalMarketValue / totalVolume;
-
-          // Apply direction sign to volume
-          const signedVolume = contract.direction === 'sell' ? -totalVolume : totalVolume;
-
-          // Calculate MtM based on direction
-          let mtmPnL = 0;
-          let contractRevenue = 0;
-          let marketValue = 0;
-
-          if (contract.direction === 'sell') {
-            // Sell: MtM = (Contract Price × Volume) - (Market Price × Volume)
-            contractRevenue = totalContractValue;
-            marketValue = totalMarketValue;
-            mtmPnL = contractRevenue - marketValue;
-          } else {
-            // Buy: MtM = (Market Price × Volume) - (Contract Price × Volume)
-            contractRevenue = totalContractValue;
-            marketValue = totalMarketValue;
-            mtmPnL = marketValue - contractRevenue;
-          }
-
-          calculations.push({
-            contractId: contract._id || contract.name,
-            contractName: contract.name,
-            direction: contract.direction || 'buy',
-            category: contract.category,
-            state: contract.state,
-            contractType: contract.contractType || 'Energy',
-            counterparty: contract.counterparty,
-            year,
-            yearType,
-            volume: signedVolume,
-            avgContractPrice: weightedContractPrice,
-            avgMarketPrice: weightedMarketPrice,
-            contractRevenue,
-            marketValue,
-            mtmPnL,
-            volumeShape: contract.volumeShape,
-            dataSource: VolumeUtils.hasMonthlyData(contract) ? 'Time Series' : 'Shape-based'
-          });
-        }
-      });
-    });
-
-    return calculations;
-  }, [contracts, selectedYear, yearType, marketPrices]);
-
-  // Filter calculations
-  const filteredCalculations = useMemo(() => {
-    let filtered = mtmCalculations;
+  // Filter and sort results
+  const filteredResults = useMemo(() => {
+    let filtered = mtmResults;
 
     if (filterDirection !== 'all') {
-      filtered = filtered.filter(calc => calc.direction === filterDirection);
+      filtered = filtered.filter(result => result.direction === filterDirection);
     }
 
     // Sort
     filtered.sort((a, b) => {
       switch (sortBy) {
         case 'mtmPnL':
-          return b.mtmPnL - a.mtmPnL;
+          return b.totalMtMPnL - a.totalMtMPnL;
         case 'volume':
-          return Math.abs(b.volume) - Math.abs(a.volume);
+          return Math.abs(b.totalVolume) - Math.abs(a.totalVolume);
         case 'contractName':
           return a.contractName.localeCompare(b.contractName);
         default:
-          return b.mtmPnL - a.mtmPnL;
+          return b.totalMtMPnL - a.totalMtMPnL;
       }
     });
 
     return filtered;
-  }, [mtmCalculations, filterDirection, sortBy]);
+  }, [mtmResults, filterDirection, sortBy]);
 
-  // Group calculations
-  const groupedCalculations = useMemo(() => {
+  // Group results
+  const groupedResults: GroupedResults = useMemo(() => {
     if (groupBy === 'none') {
-      return { 'All Contracts': filteredCalculations };
+      return { 'All Contracts': filteredResults };
     }
 
-    const groups: { [key: string]: MtMCalculation[] } = {};
+    const groups: GroupedResults = {};
 
-    filteredCalculations.forEach(calc => {
+    filteredResults.forEach(result => {
       let groupKey = '';
       switch (groupBy) {
         case 'category':
-          groupKey = calc.category;
+          groupKey = result.category;
           break;
         case 'state':
-          groupKey = calc.state;
+          groupKey = result.state;
           break;
         case 'contractType':
-          groupKey = calc.contractType;
+          groupKey = result.contractType;
           break;
         case 'direction':
-          groupKey = calc.direction.toUpperCase();
+          groupKey = result.direction.toUpperCase();
           break;
       }
 
       if (!groups[groupKey]) {
         groups[groupKey] = [];
       }
-      groups[groupKey].push(calc);
+      groups[groupKey].push(result);
     });
 
     return groups;
-  }, [filteredCalculations, groupBy]);
+  }, [filteredResults, groupBy]);
 
-  // Calculate group aggregations
-  const getGroupAggregation = (calculations: MtMCalculation[]) => {
-    return calculations.reduce((acc, calc) => ({
-      totalVolume: acc.totalVolume + calc.volume,
-      totalAbsVolume: acc.totalAbsVolume + Math.abs(calc.volume),
-      totalMtM: acc.totalMtM + calc.mtmPnL,
-      totalContractRevenue: acc.totalContractRevenue + calc.contractRevenue,
-      totalMarketValue: acc.totalMarketValue + calc.marketValue,
+  // Calculate portfolio aggregation
+  const portfolioAggregation: PortfolioAggregation = useMemo(() => {
+    return filteredResults.reduce((acc, result) => ({
+      totalContracts: acc.totalContracts + 1,
+      totalVolume: acc.totalVolume + result.totalVolume,
+      totalAbsVolume: acc.totalAbsVolume + result.totalAbsVolume,
+      totalMtM: acc.totalMtM + result.totalMtMPnL,
+      totalContractRevenue: acc.totalContractRevenue + result.totalContractRevenue,
+      totalMarketValue: acc.totalMarketValue + result.totalMarketValue,
+      weightedAvgContractPrice: 0, // Will calculate after
+      weightedAvgMarketPrice: 0 // Will calculate after
+    }), {
+      totalContracts: 0,
+      totalVolume: 0,
+      totalAbsVolume: 0,
+      totalMtM: 0,
+      totalContractRevenue: 0,
+      totalMarketValue: 0,
+      weightedAvgContractPrice: 0,
+      weightedAvgMarketPrice: 0
+    });
+  }, [filteredResults]);
+
+  // Calculate weighted averages
+  portfolioAggregation.weightedAvgContractPrice = portfolioAggregation.totalAbsVolume > 0 
+    ? portfolioAggregation.totalContractRevenue / portfolioAggregation.totalAbsVolume 
+    : 0;
+  portfolioAggregation.weightedAvgMarketPrice = portfolioAggregation.totalAbsVolume > 0 
+    ? portfolioAggregation.totalMarketValue / portfolioAggregation.totalAbsVolume 
+    : 0;
+
+  // Group aggregation helper
+  const getGroupAggregation = (results: MtMCalculationResult[]) => {
+    return results.reduce((acc, result) => ({
+      totalVolume: acc.totalVolume + result.totalVolume,
+      totalAbsVolume: acc.totalAbsVolume + result.totalAbsVolume,
+      totalMtM: acc.totalMtM + result.totalMtMPnL,
+      totalContractRevenue: acc.totalContractRevenue + result.totalContractRevenue,
+      totalMarketValue: acc.totalMarketValue + result.totalMarketValue,
       count: acc.count + 1
     }), {
       totalVolume: 0,
@@ -459,10 +242,7 @@ export default function MarkToMarketTab({
     });
   };
 
-  // Overall portfolio aggregation
-  const portfolioAggregation = getGroupAggregation(filteredCalculations);
-
-  // Toggle group expansion
+  // Toggle functions
   const toggleGroupExpansion = (groupName: string) => {
     const newExpanded = new Set(expandedGroups);
     if (newExpanded.has(groupName)) {
@@ -473,17 +253,61 @@ export default function MarkToMarketTab({
     setExpandedGroups(newExpanded);
   };
 
-  // Expand all groups
-  const expandAllGroups = () => {
-    setExpandedGroups(new Set(Object.keys(groupedCalculations)));
+  const toggleContractExpansion = (contractId: string) => {
+    const newExpanded = new Set(expandedContracts);
+    if (newExpanded.has(contractId)) {
+      newExpanded.delete(contractId);
+    } else {
+      newExpanded.add(contractId);
+    }
+    setExpandedContracts(newExpanded);
   };
 
-  // Collapse all groups  
+  const expandAllGroups = () => {
+    setExpandedGroups(new Set(Object.keys(groupedResults)));
+  };
+
   const collapseAllGroups = () => {
     setExpandedGroups(new Set());
   };
 
-  const availableYears = getAvailableYears();
+  // Time series editor functions
+  const openTimeSeriesEditor = (result: MtMCalculationResult) => {
+    const timeSeriesPoints: TimeSeriesPoint[] = result.timeSeriesData.map(point => ({
+      timestamp: `${point.period}-01T00:00:00Z`,
+      value: point.marketPrice,
+      metadata: {
+        period: point.period,
+        contractVolume: point.contractVolume,
+        contractPrice: point.contractPrice,
+        mtmPnL: point.mtmPnL
+      }
+    }));
+    
+    setTimeSeriesData(timeSeriesPoints);
+    setEditingTimeSeriesContract(result.contractId);
+  };
+
+  const closeTimeSeriesEditor = () => {
+    setEditingTimeSeriesContract(null);
+    setTimeSeriesData([]);
+  };
+
+  const handleTimeSeriesDataChange = (newData: TimeSeriesPoint[]) => {
+    setTimeSeriesData(newData);
+    // Here you could implement saving the changes back to the contract
+    console.log('Time series data updated:', newData);
+  };
+
+  const timeSeriesConfig: TimeSeriesConfig = {
+    label: 'Market Price',
+    unit: 'MWh',
+    valueType: 'currency',
+    precision: 2,
+    defaultValue: 0,
+    aggregationMethod: 'average',
+    allowedIntervals: ['monthly', 'quarterly', 'yearly']
+  };
 
   return (
     <div className="space-y-6">
@@ -493,15 +317,28 @@ export default function MarkToMarketTab({
           <div>
             <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-3">
               💹 Mark-to-Market Analysis
+              <span className="text-sm font-normal text-gray-500">
+                (Powered by MtM Calculation Engine)
+              </span>
             </h2>
             <p className="text-gray-600 mt-2">
-              Comprehensive MtM calculations with contract-level breakdowns and aggregations
+              Time-series based MtM calculations with integrated market price service
             </p>
+          </div>
+          
+          <div className="flex gap-3">
+            <button
+              onClick={calculateMtM}
+              disabled={isCalculating}
+              className="bg-blue-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+            >
+              {isCalculating ? '⏳ Calculating...' : '🔄 Recalculate'}
+            </button>
           </div>
         </div>
 
-        {/* Controls */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
+        {/* Calculation Options */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4 mb-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Year Type</label>
             <select
@@ -524,6 +361,31 @@ export default function MarkToMarketTab({
               {availableYears.map(year => (
                 <option key={year} value={year}>{yearType} {year}</option>
               ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Price Curve</label>
+            <select
+              value={priceCurve}
+              onChange={(e) => setPriceCurve(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="Aurora Jan 2025">Aurora Jan 2025</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Market Price Profile</label>
+            <select
+              value={marketPriceProfile}
+              onChange={(e) => setMarketPriceProfile(e.target.value as any)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="auto">Auto-detect</option>
+              <option value="baseload">Baseload</option>
+              <option value="solar">Solar</option>
+              <option value="wind">Wind</option>
             </select>
           </div>
 
@@ -554,90 +416,56 @@ export default function MarkToMarketTab({
               <option value="sell">Sell Only</option>
             </select>
           </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Sort By</label>
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as any)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="mtmPnL">MtM P&L</option>
-              <option value="volume">Volume</option>
-              <option value="contractName">Contract Name</option>
-            </select>
-          </div>
-
-          <div className="flex items-end">
-            <div className="text-sm text-gray-600">
-              {filteredCalculations.length} of {mtmCalculations.length} contracts
-            </div>
-          </div>
         </div>
 
-        {/* Debug Information Panel */}
-        <div className="mt-4 pt-4 border-t border-gray-200">
+        {/* Additional Options */}
+        <div className="bg-gray-50 rounded-lg p-4">
           <div className="flex justify-between items-center">
-            <button
-              onClick={() => setShowDebugInfo(!showDebugInfo)}
-              className="text-sm text-blue-600 hover:text-blue-800 flex items-center gap-2"
-            >
-              🔍 {showDebugInfo ? 'Hide' : 'Show'} Market Price Debug Info
-            </button>
-            <div className="text-xs text-gray-500">
-              Available market price keys: {Object.keys(marketPrices).length}
+            <div className="flex gap-6">
+              <label className="flex items-center text-sm">
+                <input
+                  type="checkbox"
+                  checked={includeForecast}
+                  onChange={(e) => setIncludeForecast(e.target.checked)}
+                  className="mr-2"
+                />
+                Include Forecast Periods
+              </label>
+              <label className="flex items-center text-sm">
+                <input
+                  type="checkbox"
+                  checked={showTimeSeriesDetails}
+                  onChange={(e) => setShowTimeSeriesDetails(e.target.checked)}
+                  className="mr-2"
+                />
+                Show Time Series Details
+              </label>
             </div>
-          </div>
-          
-          {showDebugInfo && (
-            <div className="mt-4 bg-gray-50 rounded-lg p-4">
-              <h4 className="font-medium text-gray-800 mb-3">Available Market Price Keys:</h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 text-xs">
-                {Object.keys(marketPrices).map(key => (
-                  <div key={key} className="bg-white rounded px-2 py-1 border">
-                    <span className="font-mono text-blue-600">{key}</span>
-                    <span className="text-gray-500 ml-2">
-                      ({marketPrices[key]?.length || 0} points)
-                    </span>
-                  </div>
-                ))}
-              </div>
-              
-              {filteredCalculations.length > 0 && (
-                <div className="mt-4">
-                  <h5 className="font-medium text-gray-800 mb-2">Contract Market Price Mapping:</h5>
-                  <div className="space-y-1 text-xs">
-                    {filteredCalculations.slice(0, 5).map((calc, index) => {
-                      const contract = contracts.find(c => c.name === calc.contractName);
-                      if (!contract) return null;
-                      
-                      return (
-                        <div key={index} className="flex justify-between bg-white rounded px-2 py-1">
-                          <span className="text-gray-700">
-                            {calc.contractName} ({contract.state} {contract.volumeShape} {contract.contractType || 'Energy'})
-                          </span>
-                          <span className="font-mono text-blue-600">
-                            Avg: ${calc.avgMarketPrice.toFixed(2)}
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
+            
+            <div className="text-xs text-gray-500">
+              {lastCalculationTime && (
+                <>Last calculated: {lastCalculationTime.toLocaleString()}</>
               )}
             </div>
-          )}
+          </div>
         </div>
+
+        {/* Error Display */}
+        {calculationError && (
+          <div className="mt-4 bg-red-50 border border-red-200 rounded-lg p-4">
+            <p className="text-red-800 font-medium">Calculation Error: {calculationError}</p>
+          </div>
+        )}
       </div>
 
       {/* Portfolio Summary */}
       <div className="bg-white rounded-xl p-6 shadow-md border border-gray-200">
         <h3 className="text-lg font-semibold text-gray-800 mb-4">Portfolio Summary ({yearType} {selectedYear})</h3>
         
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
           <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
             <div className="text-sm text-blue-600 font-medium">Active Contracts</div>
-            <div className="text-2xl font-bold text-blue-800">{portfolioAggregation.count}</div>
+            <div className="text-2xl font-bold text-blue-800">{portfolioAggregation.totalContracts}</div>
           </div>
 
           <div className="bg-purple-50 rounded-lg p-4 border border-purple-200">
@@ -668,51 +496,56 @@ export default function MarkToMarketTab({
           </div>
 
           <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-            <div className="text-sm text-gray-600 font-medium">Avg MtM per MWh</div>
+            <div className="text-sm text-gray-600 font-medium">Avg Contract Price</div>
             <div className="text-2xl font-bold text-gray-800">
-              ${portfolioAggregation.totalAbsVolume > 0 
-                ? (portfolioAggregation.totalMtM / portfolioAggregation.totalAbsVolume).toFixed(2) 
-                : '0.00'}
+              ${portfolioAggregation.weightedAvgContractPrice.toFixed(2)}
+            </div>
+          </div>
+
+          <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+            <div className="text-sm text-gray-600 font-medium">Avg Market Price</div>
+            <div className="text-2xl font-bold text-gray-800">
+              ${portfolioAggregation.weightedAvgMarketPrice.toFixed(2)}
             </div>
           </div>
         </div>
       </div>
 
-      {/* Grouped Results */}
-      <div className="space-y-6">
-        {/* Group Controls */}
-        {groupBy !== 'none' && Object.keys(groupedCalculations).length > 1 && (
-          <div className="bg-white rounded-xl p-4 shadow-md border border-gray-200">
-            <div className="flex justify-between items-center">
-              <div className="text-sm text-gray-600">
-                {Object.keys(groupedCalculations).length} groups found
-              </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={expandAllGroups}
-                  className="text-sm bg-blue-100 text-blue-700 px-3 py-1 rounded hover:bg-blue-200 transition-colors"
-                >
-                  ➕ Expand All
-                </button>
-                <button
-                  onClick={collapseAllGroups}
-                  className="text-sm bg-gray-100 text-gray-700 px-3 py-1 rounded hover:bg-gray-200 transition-colors"
-                >
-                  ➖ Collapse All
-                </button>
-              </div>
+      {/* Group Controls */}
+      {groupBy !== 'none' && Object.keys(groupedResults).length > 1 && (
+        <div className="bg-white rounded-xl p-4 shadow-md border border-gray-200">
+          <div className="flex justify-between items-center">
+            <div className="text-sm text-gray-600">
+              {Object.keys(groupedResults).length} groups found
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={expandAllGroups}
+                className="text-sm bg-blue-100 text-blue-700 px-3 py-1 rounded hover:bg-blue-200 transition-colors"
+              >
+                ➕ Expand All
+              </button>
+              <button
+                onClick={collapseAllGroups}
+                className="text-sm bg-gray-100 text-gray-700 px-3 py-1 rounded hover:bg-gray-200 transition-colors"
+              >
+                ➖ Collapse All
+              </button>
             </div>
           </div>
-        )}
+        </div>
+      )}
 
-        {Object.entries(groupedCalculations).map(([groupName, calculations]) => {
-          const groupAgg = getGroupAggregation(calculations);
+      {/* Grouped Results */}
+      <div className="space-y-6">
+        {Object.entries(groupedResults).map(([groupName, results]) => {
+          const groupAgg = getGroupAggregation(results);
           const isExpanded = expandedGroups.has(groupName);
-          const canExpand = groupBy !== 'none' && calculations.length > 1;
+          const canExpand = groupBy !== 'none' && results.length > 1;
           
           return (
             <div key={groupName} className="bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden">
-              {/* Group Header with Summary */}
+              {/* Group Header */}
               <div 
                 className={`p-6 ${canExpand ? 'cursor-pointer hover:bg-gray-50' : ''} border-b border-gray-100`}
                 onClick={() => canExpand && toggleGroupExpansion(groupName)}
@@ -733,36 +566,18 @@ export default function MarkToMarketTab({
                       <div className={`font-semibold ${groupAgg.totalVolume < 0 ? 'text-red-600' : 'text-green-600'}`}>
                         {groupAgg.totalVolume.toLocaleString()} MWh
                       </div>
-                      <div className="text-xs text-gray-400">
-                        ({groupAgg.totalAbsVolume.toLocaleString()} gross)
-                      </div>
                     </div>
                     <div className="text-center">
                       <div className="text-xs text-gray-500 uppercase tracking-wide">MtM P&L</div>
                       <div className={`text-lg font-bold ${groupAgg.totalMtM >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                         ${groupAgg.totalMtM.toLocaleString()}
                       </div>
-                      <div className="text-xs text-gray-400">
-                        ${groupAgg.totalAbsVolume > 0 ? (groupAgg.totalMtM / groupAgg.totalAbsVolume).toFixed(2) : '0.00'}/MWh
-                      </div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-xs text-gray-500 uppercase tracking-wide">Avg Contract Price</div>
-                      <div className="font-semibold text-gray-800">
-                        ${groupAgg.totalAbsVolume > 0 ? (groupAgg.totalContractRevenue / groupAgg.totalAbsVolume).toFixed(2) : '0.00'}
-                      </div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-xs text-gray-500 uppercase tracking-wide">Avg Market Price</div>
-                      <div className="font-semibold text-gray-800">
-                        ${groupAgg.totalAbsVolume > 0 ? (groupAgg.totalMarketValue / groupAgg.totalAbsVolume).toFixed(2) : '0.00'}
-                      </div>
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* Individual Contracts (Expandable) */}
+              {/* Individual Contracts */}
               {(isExpanded || !canExpand) && (
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
@@ -770,58 +585,150 @@ export default function MarkToMarketTab({
                       <tr className="bg-gray-50 border-b border-gray-200">
                         <th className="text-left p-3 font-semibold text-gray-700">Contract</th>
                         <th className="text-left p-3 font-semibold text-gray-700">Direction</th>
-                        <th className="text-left p-3 font-semibold text-gray-700">Category</th>
-                        <th className="text-left p-3 font-semibold text-gray-700">State</th>
                         <th className="text-left p-3 font-semibold text-gray-700">Volume (MWh)</th>
-                        <th className="text-left p-3 font-semibold text-gray-700">Contract Price</th>
-                        <th className="text-left p-3 font-semibold text-gray-700">Market Price</th>
+                        <th className="text-left p-3 font-semibold text-gray-700">Avg Contract Price</th>
+                        <th className="text-left p-3 font-semibold text-gray-700">Avg Market Price</th>
                         <th className="text-left p-3 font-semibold text-gray-700">MtM P&L</th>
                         <th className="text-left p-3 font-semibold text-gray-700">Data Source</th>
+                        <th className="text-left p-3 font-semibold text-gray-700">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {calculations.map((calc, index) => (
-                        <tr key={index} className="border-b border-gray-100 hover:bg-gray-50">
-                          <td className="p-3">
-                            <div className="font-medium text-gray-900">{calc.contractName}</div>
-                            <div className="text-xs text-gray-500">{calc.counterparty}</div>
-                          </td>
-                          <td className="p-3">
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium uppercase ${
-                              calc.direction === 'buy' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                            }`}>
-                              {calc.direction}
-                            </span>
-                          </td>
-                          <td className="p-3 text-gray-700">{calc.category}</td>
-                          <td className="p-3 text-gray-700">{calc.state}</td>
-                          <td className="p-3">
-                            <div className={`font-medium ${calc.volume < 0 ? 'text-red-600' : 'text-green-600'}`}>
-                              {calc.volume.toLocaleString()}
-                            </div>
-                            <div className="text-xs text-gray-500">{calc.volumeShape}</div>
-                          </td>
-                          <td className="p-3 font-medium">${calc.avgContractPrice.toFixed(2)}</td>
-                          <td className="p-3 font-medium">${calc.avgMarketPrice.toFixed(2)}</td>
-                          <td className="p-3">
-                            <div className={`font-semibold ${
-                              calc.mtmPnL >= 0 ? 'text-green-600' : 'text-red-600'
-                            }`}>
-                              ${calc.mtmPnL.toLocaleString()}
-                            </div>
-                            <div className="text-xs text-gray-500">
-                              ${(Math.abs(calc.volume) > 0 ? calc.mtmPnL / Math.abs(calc.volume) : 0).toFixed(2)}/MWh
-                            </div>
-                          </td>
-                          <td className="p-3">
-                            <span className={`px-2 py-1 rounded-full text-xs ${
-                              calc.dataSource === 'Time Series' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'
-                            }`}>
-                              {calc.dataSource}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
+                      {results.map((result, index) => {
+                        const isContractExpanded = expandedContracts.has(result.contractId);
+                        
+                        return (
+                          <React.Fragment key={result.contractId}>
+                            <tr className="border-b border-gray-100 hover:bg-gray-50">
+                              <td className="p-3">
+                                <div className="flex items-center gap-2">
+                                  {showTimeSeriesDetails && result.timeSeriesData.length > 0 && (
+                                    <button
+                                      onClick={() => toggleContractExpansion(result.contractId)}
+                                      className="text-sm text-gray-500 hover:text-gray-700"
+                                    >
+                                      {isContractExpanded ? '🔽' : '▶️'}
+                                    </button>
+                                  )}
+                                  <div>
+                                    <div className="font-medium text-gray-900">{result.contractName}</div>
+                                    <div className="text-xs text-gray-500">{result.counterparty}</div>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="p-3">
+                                <span className={`px-2 py-1 rounded-full text-xs font-medium uppercase ${
+                                  result.direction === 'buy' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                                }`}>
+                                  {result.direction}
+                                </span>
+                              </td>
+                              <td className="p-3">
+                                <div className={`font-medium ${result.totalVolume < 0 ? 'text-red-600' : 'text-green-600'}`}>
+                                  {result.totalVolume.toLocaleString()}
+                                </div>
+                                <div className="text-xs text-gray-500">{result.periodsCalculated} periods</div>
+                              </td>
+                              <td className="p-3 font-medium">${result.weightedAvgContractPrice.toFixed(2)}</td>
+                              <td className="p-3 font-medium">${result.weightedAvgMarketPrice.toFixed(2)}</td>
+                              <td className="p-3">
+                                <div className={`font-semibold ${
+                                  result.totalMtMPnL >= 0 ? 'text-green-600' : 'text-red-600'
+                                }`}>
+                                  ${result.totalMtMPnL.toLocaleString()}
+                                </div>
+                                <div className="text-xs text-gray-500">
+                                  ${(result.totalAbsVolume > 0 ? result.totalMtMPnL / result.totalAbsVolume : 0).toFixed(2)}/MWh
+                                </div>
+                              </td>
+                              <td className="p-3">
+                                <div className="space-y-1">
+                                  <span className={`px-2 py-1 rounded-full text-xs ${
+                                    result.volumeDataSource === 'time_series' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'
+                                  }`}>
+                                    {result.volumeDataSource === 'time_series' ? 'Time Series' : 'Shape-based'}
+                                  </span>
+                                  <div className="text-xs text-gray-500">{result.marketPriceProfile}</div>
+                                </div>
+                              </td>
+                              <td className="p-3">
+                                <div className="flex gap-1">
+                                  <button
+                                    onClick={() => openTimeSeriesEditor(result)}
+                                    className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded hover:bg-blue-200 transition-colors"
+                                    title="View Market Price Time Series"
+                                  >
+                                    📊 TS
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      const contract = contracts.find(c => c._id === result.contractId || c.name === result.contractName);
+                                      setSelectedContract(contract || null);
+                                    }}
+                                    className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded hover:bg-gray-200 transition-colors"
+                                    title="View Contract Details"
+                                  >
+                                    🔍 View
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                            
+                            {/* Time Series Breakdown */}
+                            {showTimeSeriesDetails && isContractExpanded && result.timeSeriesData.length > 0 && (
+                              <tr>
+                                <td colSpan={8} className="p-0">
+                                  <div className="bg-gray-50 border-t border-gray-200">
+                                    <div className="p-4">
+                                      <h4 className="text-sm font-semibold text-gray-800 mb-3">
+                                        📈 Time Series Breakdown - {result.contractName}
+                                      </h4>
+                                      <div className="overflow-x-auto">
+                                        <table className="w-full text-xs">
+                                          <thead>
+                                            <tr className="bg-gray-100">
+                                              <th className="text-left p-2 font-medium">Period</th>
+                                              <th className="text-left p-2 font-medium">Volume (MWh)</th>
+                                              <th className="text-left p-2 font-medium">Contract Price</th>
+                                              <th className="text-left p-2 font-medium">Market Price</th>
+                                              <th className="text-left p-2 font-medium">Contract Revenue</th>
+                                              <th className="text-left p-2 font-medium">Market Value</th>
+                                              <th className="text-left p-2 font-medium">Period MtM</th>
+                                              <th className="text-left p-2 font-medium">Cumulative MtM</th>
+                                            </tr>
+                                          </thead>
+                                          <tbody>
+                                            {result.timeSeriesData.map((point, pointIndex) => (
+                                              <tr key={point.period} className="border-b border-gray-200 hover:bg-gray-100">
+                                                <td className="p-2 font-medium">{point.period}</td>
+                                                <td className="p-2">{point.contractVolume.toLocaleString()}</td>
+                                                <td className="p-2">${point.contractPrice.toFixed(2)}</td>
+                                                <td className="p-2">${point.marketPrice.toFixed(2)}</td>
+                                                <td className="p-2">${point.contractRevenue.toLocaleString()}</td>
+                                                <td className="p-2">${point.marketValue.toLocaleString()}</td>
+                                                <td className={`p-2 font-medium ${
+                                                  point.mtmPnL >= 0 ? 'text-green-600' : 'text-red-600'
+                                                }`}>
+                                                  ${point.mtmPnL.toLocaleString()}
+                                                </td>
+                                                <td className={`p-2 font-medium ${
+                                                  point.cumulativeMtM >= 0 ? 'text-green-600' : 'text-red-600'
+                                                }`}>
+                                                  ${point.cumulativeMtM.toLocaleString()}
+                                                </td>
+                                              </tr>
+                                            ))}
+                                          </tbody>
+                                        </table>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </td>
+                              </tr>
+                            )}
+                          </React.Fragment>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -831,24 +738,113 @@ export default function MarkToMarketTab({
         })}
       </div>
 
-      {filteredCalculations.length === 0 && (
+      {/* No Results Message */}
+      {filteredResults.length === 0 && !isCalculating && (
         <div className="bg-white rounded-xl p-12 shadow-md border border-gray-200 text-center">
           <div className="text-4xl mb-4">📊</div>
           <h3 className="text-lg font-semibold text-gray-800 mb-2">No MtM Data Available</h3>
           <p className="text-gray-600">
-            No active contracts found for {yearType} {selectedYear} with available market price data. 
-            Please check your contracts, market price data, or select a different year.
+            No active contracts found for {yearType} {selectedYear} or calculation failed. 
+            Please check your contracts and try recalculating.
           </p>
           <div className="mt-4 text-sm text-gray-500">
-            <p>Contracts are skipped when:</p>
+            <p>Possible reasons:</p>
             <ul className="list-disc list-inside mt-2">
-              <li>No matching market price curves are found</li>
-              <li>Market price data is incomplete or zero</li>
-              <li>Contract has no volume for the selected year</li>
+              <li>No active contracts for the selected year</li>
+              <li>Market price data unavailable</li>
+              <li>Contract volume data missing</li>
+              <li>Network connectivity issues</li>
             </ul>
           </div>
         </div>
       )}
+
+      {/* Loading State */}
+      {isCalculating && (
+        <div className="bg-white rounded-xl p-12 shadow-md border border-gray-200 text-center">
+          <div className="text-4xl mb-4">⏳</div>
+          <h3 className="text-lg font-semibold text-gray-800 mb-2">Calculating Mark-to-Market...</h3>
+          <p className="text-gray-600">
+            Processing {contracts.filter(c => c.status === 'active').length} active contracts using the MtM Calculation Engine
+          </p>
+          <div className="mt-4">
+            <div className="animate-pulse bg-gray-200 h-2 rounded w-1/2 mx-auto"></div>
+          </div>
+        </div>
+      )}
+
+      {/* Time Series Editor Modal */}
+      {editingTimeSeriesContract && (
+        <TimeSeriesEditor
+          data={timeSeriesData}
+          config={timeSeriesConfig}
+          onDataChange={handleTimeSeriesDataChange}
+          onClose={closeTimeSeriesEditor}
+        />
+      )}
+
+      {/* Debug Information */}
+      <div className="bg-white rounded-xl p-6 shadow-md border border-gray-200">
+        <h3 className="text-lg font-semibold text-gray-800 mb-4">
+          🔧 Calculation Engine Information
+        </h3>
+        
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div>
+            <h4 className="font-semibold text-gray-800 mb-3">Calculation Features:</h4>
+            <ul className="text-sm text-gray-600 space-y-1">
+              <li>• Time-series based volume calculations</li>
+              <li>• Integrated Market Price Service</li>
+              <li>• Period-by-period MtM breakdown</li>
+              <li>• Shape-based fallback calculations</li>
+              <li>• Parallel contract processing</li>
+              <li>• Real-time error handling</li>
+            </ul>
+          </div>
+
+          <div>
+            <h4 className="font-semibold text-gray-800 mb-3">Data Sources:</h4>
+            <ul className="text-sm text-gray-600 space-y-1">
+              <li>• Contract time series data</li>
+              <li>• Market price service API</li>
+              <li>• Volume shape algorithms</li>
+              <li>• Price escalation calculations</li>
+              <li>• MongoDB price curves</li>
+              <li>• Intelligent fallback data</li>
+            </ul>
+          </div>
+
+          <div>
+            <h4 className="font-semibold text-gray-800 mb-3">Performance Metrics:</h4>
+            <ul className="text-sm text-gray-600 space-y-1">
+              <li>• Active Contracts: {contracts.filter(c => c.status === 'active').length}</li>
+              <li>• Successful Calculations: {mtmResults.length}</li>
+              <li>• Calculation Time: {lastCalculationTime ? `${Date.now() - lastCalculationTime.getTime()}ms` : 'N/A'}</li>
+              <li>• Market Price Profile: {marketPriceProfile}</li>
+              <li>• Time Series Details: {showTimeSeriesDetails ? 'Enabled' : 'Disabled'}</li>
+              <li>• Error State: {calculationError ? 'Yes' : 'None'}</li>
+            </ul>
+          </div>
+        </div>
+
+        <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <h4 className="font-semibold text-blue-800 mb-2">💡 New MtM Calculation Engine Features:</h4>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-blue-700">
+            <div>
+              <strong>Period-by-Period Analysis:</strong> Detailed monthly breakdown with cumulative tracking
+            </div>
+            <div>
+              <strong>Smart Volume Detection:</strong> Automatic fallback from time-series to shape-based calculations
+            </div>
+            <div>
+              <strong>Market Price Integration:</strong> Direct integration with your Market Price Service
+            </div>
+            <div>
+              <strong>Time Series Editor:</strong> Interactive editing of market price time series data
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
