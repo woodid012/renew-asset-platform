@@ -137,7 +137,7 @@ export class MarketPriceService {
   /**
    * Detect the time resolution from the data
    */
-  private detectTimeResolution(timeSeriesData: TimeSeriesPoint[]): string {
+  private detectTimeResolution(timeSeriesData: TimeSeriesPoint[]): PriceCurveParams['timeResolution'] {
     if (timeSeriesData.length < 2) return 'unknown';
     
     const sortedData = timeSeriesData.sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime());
@@ -217,14 +217,14 @@ export class MarketPriceService {
     if (period.includes('-') && period.length <= 7) {
       // Monthly format: "2024-01"
       const [year, month] = period.split('-').map(Number);
-      return priceData.find(point => point.year === year && point.month === month);
+      return priceData.find(point => point.year === year && point.month === month) || null;
     }
     
     if (period.includes('Q')) {
       // Quarterly format: "2024-Q1"
       const [year, quarterStr] = period.split('-');
       const quarter = parseInt(quarterStr.replace('Q', ''));
-      return priceData.find(point => point.year === parseInt(year) && point.quarter === quarter);
+      return priceData.find(point => point.year === parseInt(year) && point.quarter === quarter) || null;
     }
     
     return null;
@@ -261,7 +261,7 @@ export class MarketPriceService {
    * Get time tolerance for matching based on resolution
    */
   private getTimeTolerance(timeResolution: string): number {
-    const tolerances = {
+    const tolerances: { [key: string]: number } = {
       '30min': 30 * 60 * 1000,      // 30 minutes
       'hourly': 60 * 60 * 1000,     // 1 hour
       'daily': 24 * 60 * 60 * 1000, // 1 day
@@ -408,7 +408,7 @@ export class MarketPriceService {
         state: request.state,
         startDate: request.startDate,
         endDate: request.endDate,
-        timeResolution: request.timeResolution || 'auto'
+        timeResolution: (request.timeResolution || 'auto') as PriceCurveParams['timeResolution']
       });
 
       if (!priceData.success) {
@@ -542,7 +542,7 @@ export class MarketPriceService {
   /**
    * Generate fallback time series data
    */
-  private generateFallbackTimeSeries(basePrice: number, resolution: string): TimeSeriesPoint[] {
+  private generateFallbackTimeSeries(basePrice: number): TimeSeriesPoint[] {
     const timeSeries: TimeSeriesPoint[] = [];
     const startDate = new Date('2025-01-01');
     
@@ -573,7 +573,7 @@ export class MarketPriceService {
     states.forEach(state => {
       const basePrice = contractType === 'Green' ? 45 : 80;
       const key = contractType === 'Green' ? `${state} - baseload - green` : state;
-      result[key] = this.generateFallbackTimeSeries(basePrice, 'monthly');
+      result[key] = this.generateFallbackTimeSeries(basePrice);
     });
     
     return result;
