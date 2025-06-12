@@ -32,9 +32,54 @@ interface MtMCalculation {
 }
 
 // Market price mapping based on volume shape and contract type
+// Updated getMarketPriceProfile function for MarkToMarketTab.tsx
+// This should replace the existing function around line 40
+
 const getMarketPriceProfile = (volumeShape: string, state: string, contractType: string, marketPrices: { [key: string]: number[] }): number[] => {
-  // Determine contract type suffix (Energy vs Green)
-  const typeKey = contractType === 'Green' ? 'green' : 'energy';
+  // Handle Green certificates differently - they're typically uniform across states/profiles
+  if (contractType === 'Green') {
+    console.log('Looking for Green certificate prices...');
+    
+    // Green certificate price lookup order (most to least specific)
+    const greenKeys = [
+      'green',           // Simple green key
+      'Green',           // Capitalized green key  
+      'green - baseload', // Green with profile
+      'Green - baseload',
+      'green - solar',
+      'Green - solar',
+      'green - wind', 
+      'Green - wind',
+      'green - all',
+      'Green - all',
+      // State-specific fallbacks (in case some states have different green prices)
+      `${state} - green`,
+      `${state} - Green`,
+      `green - ${state}`,
+      `Green - ${state}`,
+      // Generic fallbacks for any green-related key
+      ...Object.keys(marketPrices).filter(key => 
+        key.toLowerCase().includes('green') || 
+        key.toLowerCase().includes('certificate') ||
+        key.toLowerCase().includes('rec')
+      )
+    ];
+    
+    // Try each green key in order
+    for (const key of greenKeys) {
+      if (marketPrices[key] && marketPrices[key].length > 0) {
+        console.log(`Using Green certificate price key: ${key}`);
+        return marketPrices[key];
+      }
+    }
+    
+    // If no green prices found, use default green certificate prices
+    console.warn('No Green certificate prices found in market data, using default Green certificate prices');
+    return Array(12).fill(45); // Default green certificate price ~$45/MWh
+  }
+  
+  // Energy price logic (existing logic for Energy contracts)
+  const typeKey = 'energy'; // Energy contracts don't need type suffix in lookup
   
   // Determine profile based on volume shape
   let profileType = 'baseload'; // Default profile
@@ -58,7 +103,7 @@ const getMarketPriceProfile = (volumeShape: string, state: string, contractType:
   // Try to find matching market price data
   for (const key of possibleKeys) {
     if (marketPrices[key] && marketPrices[key].length > 0) {
-      console.log(`Using market price key: ${key} for ${state} ${profileType} ${contractType}`);
+      console.log(`Using Energy market price key: ${key} for ${state} ${profileType} ${contractType}`);
       return marketPrices[key];
     }
   }

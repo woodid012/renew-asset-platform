@@ -46,10 +46,11 @@ interface VolumeShapeData {
 const tabs = [
   //{ id: 'summary', label: 'Contract Summary' },
   { id: 'input', label: 'Contract Input' },
+    { id: 'time-series', label: 'Time Series Output' },
   { id: 'price-curve', label: 'Price Curves' },
   { id: 'mark-to-market', label: 'Mark to Market' }, // KEEP existing MtM tab
   //{ id: 'variables', label: 'Variables Creation' }, // NEW tab
-  { id: 'time-series', label: 'Time Series Output' },
+
   { id: 'settings', label: 'Settings' },
 ];
 const defaultSettings: SettingsData = {
