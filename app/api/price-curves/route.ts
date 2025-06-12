@@ -5,7 +5,7 @@ let client: MongoClient | undefined;
 let db: Db | undefined;
 
 async function connectToDatabase() {
-  if (!client || !db) { // Check for db as well, ensure client is connected
+  if (!client || !db) {
     try {
       if (!process.env.MONGODB_URI) {
         throw new Error('MONGODB_URI environment variable is not set.');
@@ -16,60 +16,312 @@ async function connectToDatabase() {
       console.log('Connected to MongoDB');
     } catch (error) {
       console.error('MongoDB connection error:', error);
-      // If connection fails, reset client and db so next request can retry
       client = undefined;
       db = undefined;
-      throw error; // Re-throw error to be caught by the handler
+      throw error;
     }
   }
-  // Ensure db is returned, as client alone is not enough
   if (!db) {
-    // This case should ideally not be reached if client.connect succeeded
-    // but as a safeguard:
     throw new Error("Database not initialized after connection attempt.");
   }
   return { client, db };
 }
 
 interface PriceCurveRecord {
+  _id?: any;
   profile: string;
   type: string;
   state: string;
-  time: string; // Assuming time is a string, adjust if it's a different type (e.g., ISODate string)
+  time: string; // e.g., "1/07/2024" or ISO date string
   price: number;
   curve: string;
-  date: Date; // MongoDB driver typically converts BSON Dates to JS Date objects
+  date: Date; // MongoDB Date object
   year: number;
   month: number; // 1-12
   month_name: string;
+  // Additional time granularity fields that might exist
+  day?: number;
+  hour?: number;
+  minute?: number;
+  quarter?: number;
+  week?: number;
+  uploadedAt?: Date;
+  updatedAt?: Date;
 }
 
-// Type alias for the shape of the data after projection for metadata
-type ProjectedMetadata = Pick<PriceCurveRecord, 'year' | 'profile' | 'type' | 'state'>;
+interface TimeSeriesPoint {
+  time: string;
+  price: number;
+  date: Date;
+  year: number;
+  month: number;
+  monthName: string;
+  day?: number;
+  hour?: number;
+  minute?: number;
+  quarter?: number;
+  week?: number;
+}
+
+interface EnhancedPriceCurveResponse {
+  success: boolean;
+  marketPrices: { [seriesKey: string]: TimeSeriesPoint[] };
+  timeLabels: string[];
+  isTimeSeries: boolean;
+  metadata: {
+    curve: string;
+    profile: string;
+    type: string;
+    year: number | string;
+    state?: string;
+    availableYears: number[];
+    availableProfiles: string[];
+    availableTypes: string[];
+    availableStates: string[];
+    recordCount: number;
+    timePoints: number;
+    seriesCount: number;
+    timeResolution: string;
+    startDate: string;
+    endDate: string;
+    dataFrequency: string;
+    interval?: string;
+  };
+  query?: any; // For debugging
+}
+
+/**
+ * Time Series Utilities for handling different time resolutions
+ */
+class TimeSeriesUtils {
+  /**
+   * Detect time resolution from data points
+   */
+  static detectTimeResolution(records: PriceCurveRecord[]): string {
+    if (records.length < 2) return 'unknown';
+    
+    const sortedRecords = records.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    const timeDiffs: number[] = [];
+    
+    for (let i = 1; i < Math.min(10, sortedRecords.length); i++) {
+      const diff = new Date(sortedRecords[i].date).getTime() - new Date(sortedRecords[i-1].date).getTime();
+      timeDiffs.push(diff);
+    }
+    
+    const avgDiff = timeDiffs.reduce((sum, diff) => sum + diff, 0) / timeDiffs.length;
+    const minutes = avgDiff / (1000 * 60);
+    
+    if (minutes <= 35) return '30min';
+    if (minutes <= 65) return 'hourly';
+    if (minutes <= 1500) return 'daily';
+    if (minutes <= 10500) return 'weekly';
+    if (minutes <= 45000) return 'monthly';
+    if (minutes <= 135000) return 'quarterly';
+    return 'yearly';
+  }
+
+  /**
+   * Generate time labels based on resolution and data
+   */
+  static generateTimeLabels(records: PriceCurveRecord[], timeResolution: string): string[] {
+    const uniqueTimes = new Set<string>();
+    
+    records.forEach(record => {
+      let label: string;
+      const date = new Date(record.date);
+      
+      switch (timeResolution) {
+        case '30min':
+        case 'hourly':
+          label = date.toISOString().substring(0, 16); // YYYY-MM-DDTHH:MM
+          break;
+        case 'daily':
+          label = date.toISOString().substring(0, 10); // YYYY-MM-DD
+          break;
+        case 'weekly':
+          const weekStart = new Date(date);
+          weekStart.setDate(date.getDate() - date.getDay());
+          label = `Week ${weekStart.toISOString().substring(0, 10)}`;
+          break;
+        case 'monthly':
+          label = `${record.month_name} ${record.year}`;
+          break;
+        case 'quarterly':
+          const quarter = Math.ceil(record.month / 3);
+          label = `Q${quarter} ${record.year}`;
+          break;
+        case 'yearly':
+          label = record.year.toString();
+          break;
+        default:
+          label = record.time;
+      }
+      
+      uniqueTimes.add(label);
+    });
+    
+    return Array.from(uniqueTimes).sort();
+  }
+
+  /**
+   * Create series key for grouping data
+   */
+  static createSeriesKey(record: PriceCurveRecord, includeProfile: boolean = true): string {
+    const parts = [record.state];
+    
+    if (includeProfile && record.profile !== 'baseload') {
+      parts.push(record.profile);
+    }
+    
+    if (record.type !== 'Energy') {
+      parts.push(record.type.toLowerCase());
+    }
+    
+    return parts.join(' - ');
+  }
+
+  /**
+   * Convert database record to TimeSeriesPoint
+   */
+  static recordToTimeSeriesPoint(record: PriceCurveRecord): TimeSeriesPoint {
+    const date = new Date(record.date);
+    
+    return {
+      time: record.time,
+      price: record.price,
+      date: date,
+      year: record.year,
+      month: record.month,
+      monthName: record.month_name,
+      day: record.day,
+      hour: record.hour,
+      minute: record.minute,
+      quarter: record.quarter || Math.ceil(record.month / 3),
+      week: record.week
+    };
+  }
+
+  /**
+   * Filter records by date range
+   */
+  static filterByDateRange(
+    records: PriceCurveRecord[], 
+    startDate?: string, 
+    endDate?: string
+  ): PriceCurveRecord[] {
+    if (!startDate && !endDate) return records;
+    
+    return records.filter(record => {
+      const recordDate = new Date(record.date);
+      
+      if (startDate && recordDate < new Date(startDate)) return false;
+      if (endDate && recordDate > new Date(endDate)) return false;
+      
+      return true;
+    });
+  }
+
+  /**
+   * Aggregate data for different time resolutions
+   */
+  static aggregateByResolution(
+    records: PriceCurveRecord[], 
+    targetResolution: string
+  ): PriceCurveRecord[] {
+    if (targetResolution === 'auto') return records;
+    
+    const grouped = new Map<string, PriceCurveRecord[]>();
+    
+    records.forEach(record => {
+      const groupKey = this.getAggregationKey(record, targetResolution);
+      if (!grouped.has(groupKey)) {
+        grouped.set(groupKey, []);
+      }
+      grouped.get(groupKey)!.push(record);
+    });
+    
+    const aggregated: PriceCurveRecord[] = [];
+    
+    grouped.forEach((groupRecords, key) => {
+      const avgPrice = groupRecords.reduce((sum, r) => sum + r.price, 0) / groupRecords.length;
+      const firstRecord = groupRecords[0];
+      
+      aggregated.push({
+        ...firstRecord,
+        price: avgPrice,
+        time: key
+      });
+    });
+    
+    return aggregated;
+  }
+
+  /**
+   * Get aggregation key for grouping records
+   */
+  private static getAggregationKey(record: PriceCurveRecord, resolution: string): string {
+    const date = new Date(record.date);
+    
+    switch (resolution) {
+      case 'daily':
+        return date.toISOString().substring(0, 10);
+      case 'weekly':
+        const weekStart = new Date(date);
+        weekStart.setDate(date.getDate() - date.getDay());
+        return weekStart.toISOString().substring(0, 10);
+      case 'monthly':
+        return `${record.year}-${record.month.toString().padStart(2, '0')}`;
+      case 'quarterly':
+        const quarter = Math.ceil(record.month / 3);
+        return `${record.year}-Q${quarter}`;
+      case 'yearly':
+        return record.year.toString();
+      default:
+        return record.time;
+    }
+  }
+}
 
 export async function GET(request: NextRequest) {
   try {
-    const { db: connectedDb } = await connectToDatabase(); // Renamed to avoid conflict
-    const collection = connectedDb.collection<PriceCurveRecord>('price_curves'); // Specify collection type
+    const { db: connectedDb } = await connectToDatabase();
+    const collection = connectedDb.collection<PriceCurveRecord>('price_curves');
     
     const { searchParams } = new URL(request.url);
+    
+    // Enhanced parameters
     const curve = searchParams.get('curve') || 'Aurora Jan 2025';
-    const yearParam = searchParams.get('year'); // Keep as string or null
+    const yearParam = searchParams.get('year');
     const profile = searchParams.get('profile') || 'baseload';
     const type = searchParams.get('type') || 'Energy';
+    const state = searchParams.get('state'); // New: specific state filter
+    const startDate = searchParams.get('startDate'); // New: date range start
+    const endDate = searchParams.get('endDate'); // New: date range end
+    const timeResolution = searchParams.get('timeResolution') || 'auto'; // New: target resolution
+    const includeMetadata = searchParams.get('includeMetadata') !== 'false';
     
-    console.log(`Fetching price curves for: curve=${curve}, year=${yearParam || 'all'}, profile=${profile}, type=${type}`);
+    console.log(`🔍 Enhanced price curve query:`, {
+      curve, year: yearParam || 'all', profile, type, state: state || 'all',
+      startDate, endDate, timeResolution
+    });
     
-    // Build query
-    const query: any = { // Using 'any' for query flexibility, can be tightened
+    // Build base query
+    const query: any = {
       curve: curve,
-      type: type
+      type: type // Use exact type from request (keep original case)
     };
     
+    // Add profile filter (allow 'all' to get multiple profiles)
     if (profile && profile.toLowerCase() !== 'all') {
       query.profile = profile;
     }
     
+    // Add state filter (allow 'all' to get multiple states)
+    if (state && state.toLowerCase() !== 'all') {
+      query.state = state;
+    }
+    
+    // Add year filter
     let yearToFilter: number | null = null;
     if (yearParam && yearParam.toLowerCase() !== 'all') {
       const parsedYear = parseInt(yearParam, 10);
@@ -77,12 +329,28 @@ export async function GET(request: NextRequest) {
         query.year = parsedYear;
         yearToFilter = parsedYear;
       } else {
-        console.warn(`Invalid year parameter received: ${yearParam}. Ignoring year filter.`);
+        console.warn(`Invalid year parameter: ${yearParam}`);
       }
     }
     
-    // Fetch data
-    const priceCurveData = await collection.find(query).sort({ state: 1, month: 1 }).toArray();
+    // Add date range filter if provided
+    if (startDate || endDate) {
+      query.date = {};
+      if (startDate) {
+        query.date.$gte = new Date(startDate);
+      }
+      if (endDate) {
+        query.date.$lte = new Date(endDate);
+      }
+    }
+    
+    console.log('📊 MongoDB query:', JSON.stringify(query, null, 2));
+    
+    // Fetch data with sorting
+    const priceCurveData = await collection
+      .find(query)
+      .sort({ state: 1, profile: 1, date: 1 })
+      .toArray();
     
     if (priceCurveData.length === 0) {
       return NextResponse.json({ 
@@ -92,121 +360,241 @@ export async function GET(request: NextRequest) {
       }, { status: 404 });
     }
     
-    const transformedData: { [state: string]: number[] } = {};
-    let timeLabels: string[] = [];
+    console.log(`📈 Found ${priceCurveData.length} price curve records`);
     
-    const uniqueStatesSet = new Set<string>(priceCurveData.map((record: PriceCurveRecord) => record.state));
-    const states: string[] = Array.from(uniqueStatesSet).sort();
-        
-    if (!yearToFilter) { // "all" years selected or no year specified
-      const sortedData = priceCurveData.sort((a: PriceCurveRecord, b: PriceCurveRecord) => {
-        if (a.year !== b.year) return a.year - b.year;
-        return a.month - b.month;
-      });
-      
-      const uniqueYearMonths = [...new Set(sortedData.map((record: PriceCurveRecord) => `${record.year}-${record.month.toString().padStart(2, '0')}`))].sort();
-      timeLabels = uniqueYearMonths.map((dateStr) => { 
-        const [yr, mnth] = dateStr.split('-');
-        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-        return `${monthNames[parseInt(mnth, 10) - 1]} ${yr}`;
-      });
-      
-      states.forEach(state => {
-        const stateData: number[] = [];
-        uniqueYearMonths.forEach(yearMonthKey => {
-          const [targetYearStr, targetMonthStr] = yearMonthKey.split('-');
-          const targetYear = parseInt(targetYearStr, 10);
-          const targetMonth = parseInt(targetMonthStr, 10);
-          
-          const recordsForPeriod = priceCurveData.filter((record: PriceCurveRecord) => 
-            record.state === state && 
-            record.year === targetYear && 
-            record.month === targetMonth
-          );
-          
-          if (recordsForPeriod.length > 0) {
-            const average = recordsForPeriod.reduce((sum: number, record: PriceCurveRecord) => sum + record.price, 0) / recordsForPeriod.length;
-            stateData.push(parseFloat(average.toFixed(2)));
-          } else {
-            stateData.push(0);
-          }
-        });
-        transformedData[state] = stateData;
-      });
-      
-    } else { // Specific year selected
-      timeLabels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      
-      states.forEach(state => {
-        const monthlyAverages: number[] = Array(12).fill(0);
-        
-        for (let month = 1; month <= 12; month++) {
-          const recordsForMonth = priceCurveData.filter((record: PriceCurveRecord) => 
-            record.state === state &&
-            record.year === yearToFilter &&
-            record.month === month
-          );
-          
-          if (recordsForMonth.length > 0) {
-            const average = recordsForMonth.reduce((sum: number, record: PriceCurveRecord) => sum + record.price, 0) / recordsForMonth.length;
-            monthlyAverages[month - 1] = parseFloat(average.toFixed(2));
-          }
-        }
-        transformedData[state] = monthlyAverages;
-      });
-    }
+    // Apply additional date filtering if needed
+    const filteredData = TimeSeriesUtils.filterByDateRange(priceCurveData, startDate, endDate);
     
-    // Metadata: Explicitly type the projection result.
-    const allDataForCurveAndType = await connectedDb.collection<PriceCurveRecord>('price_curves')
-                                        .find({ curve: curve, type: type })
-                                        .project<ProjectedMetadata>({ year: 1, profile: 1, type: 1, state: 1 }) // Specify projected type
-                                        .toArray();
-
-    // These map calls should now work correctly as allDataForCurveAndType is ProjectedMetadata[]
-    // and ProjectedMetadata is assignable to Pick<PriceCurveRecord, 'year'> (and profile, type respectively).
-    const availableYears = [...new Set(allDataForCurveAndType.map((record: Pick<PriceCurveRecord, 'year'>) => record.year))].sort((a, b) => a - b);
-    const availableProfiles = [...new Set(allDataForCurveAndType.map((record: Pick<PriceCurveRecord, 'profile'>) => record.profile))].sort();
-    const availableTypes = [...new Set(allDataForCurveAndType.map((record: Pick<PriceCurveRecord, 'type'>) => record.type))].sort();
+    // Detect or use specified time resolution
+    const detectedResolution = TimeSeriesUtils.detectTimeResolution(filteredData);
+    const actualResolution = timeResolution === 'auto' ? detectedResolution : timeResolution;
     
-    console.log(`Returning data for ${Object.keys(transformedData).length} states`);
+    console.log(`⏰ Time resolution: detected=${detectedResolution}, using=${actualResolution}`);
     
-    return NextResponse.json({
-      success: true,
-      marketPrices: transformedData,
-      timeLabels: timeLabels,
-      isTimeSeries: !yearToFilter,
-      metadata: {
-        curve: curve,
-        profile: profile,
-        type: type,
-        year: yearToFilter ? yearToFilter.toString() : 'all',
-        availableYears: availableYears,
-        availableProfiles: availableProfiles,
-        availableTypes: availableTypes,
-        availableStates: states,
-        recordCount: priceCurveData.length,
-        totalRecordsForCurveType: allDataForCurveAndType.length,
-        timePoints: timeLabels.length
+    // Aggregate data if needed
+    const processedData = TimeSeriesUtils.aggregateByResolution(filteredData, actualResolution);
+    
+    // Group data by series (state, profile, type combinations)
+    const seriesData: { [seriesKey: string]: TimeSeriesPoint[] } = {};
+    const timeLabelsSet = new Set<string>();
+    
+    processedData.forEach(record => {
+      const seriesKey = TimeSeriesUtils.createSeriesKey(record, profile === 'all');
+      
+      if (!seriesData[seriesKey]) {
+        seriesData[seriesKey] = [];
       }
+      
+      const timeSeriesPoint = TimeSeriesUtils.recordToTimeSeriesPoint(record);
+      seriesData[seriesKey].push(timeSeriesPoint);
+      
+      // Add to time labels for metadata
+      timeLabelsSet.add(timeSeriesPoint.time);
     });
     
-  } catch (error: any) {
-    console.error('Error fetching price curves:', error);
-    if (error.message && error.message.includes('Mongo')) {
-        client = undefined;
-        db = undefined;
+    // Sort each series by time
+    Object.keys(seriesData).forEach(key => {
+      seriesData[key].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    });
+    
+    // Generate time labels
+    const timeLabels = TimeSeriesUtils.generateTimeLabels(processedData, actualResolution);
+    
+    // Calculate date range from actual data
+    const sortedDates = processedData.map(r => r.date).sort((a, b) => a.getTime() - b.getTime());
+    const dataStartDate = sortedDates[0]?.toISOString().split('T')[0] || startDate || '2025-01-01';
+    const dataEndDate = sortedDates[sortedDates.length - 1]?.toISOString().split('T')[0] || endDate || '2025-12-31';
+    
+    // Gather metadata if requested
+    let metadata: any = {
+      curve,
+      profile,
+      type,
+      year: yearToFilter ? yearToFilter.toString() : 'all',
+      state: state || 'all',
+      recordCount: processedData.length,
+      timePoints: timeLabels.length,
+      seriesCount: Object.keys(seriesData).length,
+      timeResolution: actualResolution,
+      startDate: dataStartDate,
+      endDate: dataEndDate,
+      dataFrequency: actualResolution,
+      availableYears: [],
+      availableProfiles: [],
+      availableTypes: [],
+      availableStates: []
+    };
+    
+    if (includeMetadata) {
+      console.log('📊 Gathering comprehensive metadata...');
+      
+      // Get comprehensive metadata from all available data for this curve
+      const metadataQuery = { curve: curve };
+      const allData = await connectedDb.collection<PriceCurveRecord>('price_curves')
+        .find(metadataQuery)
+        .project({ year: 1, profile: 1, type: 1, state: 1 })
+        .toArray();
+      
+      metadata.availableYears = [...new Set(allData.map(r => r.year))].sort((a, b) => a - b);
+      metadata.availableProfiles = [...new Set(allData.map(r => r.profile))].sort();
+      metadata.availableTypes = [...new Set(allData.map(r => r.type))].sort();
+      metadata.availableStates = [...new Set(allData.map(r => r.state))].sort();
     }
+    
+    const response: EnhancedPriceCurveResponse = {
+      success: true,
+      marketPrices: seriesData,
+      timeLabels: timeLabels,
+      isTimeSeries: true,
+      metadata: metadata
+    };
+    
+    console.log(`✅ Returning enhanced price curve data:`, {
+      seriesCount: response.metadata.seriesCount,
+      timePoints: response.metadata.timePoints,
+      timeResolution: response.metadata.timeResolution,
+      dateRange: `${response.metadata.startDate} to ${response.metadata.endDate}`
+    });
+    
+    return NextResponse.json(response);
+    
+  } catch (error: any) {
+    console.error('❌ Error in enhanced price curves API:', error);
+    
+    // Reset connection on MongoDB errors
+    if (error.message && error.message.includes('Mongo')) {
+      client = undefined;
+      db = undefined;
+    }
+    
     return NextResponse.json({ 
       success: false, 
-      error: 'Failed to fetch price curves',
+      error: 'Failed to fetch enhanced price curves',
       details: error instanceof Error ? error.message : String(error)
     }, { status: 500 });
   }
 }
 
 export async function POST(request: NextRequest) {
+  try {
+    const { db: connectedDb } = await connectToDatabase();
+    const collection = connectedDb.collection<PriceCurveRecord>('price_curves');
+    
+    const body = await request.json();
+    
+    // Handle bulk insert of time series data
+    if (Array.isArray(body)) {
+      console.log(`📊 Bulk inserting ${body.length} price curve records`);
+      
+      // Validate and enhance records
+      const processedRecords = body.map(record => {
+        const date = new Date(record.time || record.date);
+        
+        return {
+          ...record,
+          date: date,
+          year: record.year || date.getFullYear(),
+          month: record.month || (date.getMonth() + 1),
+          month_name: record.month_name || date.toLocaleString('default', { month: 'long' }),
+          day: record.day || date.getDate(),
+          hour: record.hour || date.getHours(),
+          minute: record.minute || date.getMinutes(),
+          quarter: record.quarter || Math.ceil((date.getMonth() + 1) / 3),
+          uploadedAt: new Date(),
+          updatedAt: new Date()
+        };
+      });
+      
+      const result = await collection.insertMany(processedRecords);
+      
+      return NextResponse.json({
+        success: true,
+        message: `Successfully inserted ${result.insertedCount} price curve records`,
+        insertedCount: result.insertedCount,
+        insertedIds: Object.values(result.insertedIds)
+      });
+    }
+    
+    // Handle single record insert
+    const record = body;
+    const date = new Date(record.time || record.date);
+    
+    const processedRecord = {
+      ...record,
+      date: date,
+      year: record.year || date.getFullYear(),
+      month: record.month || (date.getMonth() + 1),
+      month_name: record.month_name || date.toLocaleString('default', { month: 'long' }),
+      day: record.day || date.getDate(),
+      hour: record.hour || date.getHours(),
+      minute: record.minute || date.getMinutes(),
+      quarter: record.quarter || Math.ceil((date.getMonth() + 1) / 3),
+      uploadedAt: new Date(),
+      updatedAt: new Date()
+    };
+    
+    const result = await collection.insertOne(processedRecord);
+    
+    return NextResponse.json({
+      success: true,
+      message: 'Successfully inserted price curve record',
+      insertedId: result.insertedId
+    });
+    
+  } catch (error: any) {
+    console.error('❌ Error inserting price curve data:', error);
+    
+    return NextResponse.json({
+      success: false,
+      error: 'Failed to insert price curve data',
+      details: error instanceof Error ? error.message : String(error)
+    }, { status: 500 });
+  }
+}
+
+export async function PUT(request: NextRequest) {
   return NextResponse.json({ 
     success: false, 
-    error: 'POST method not supported for this endpoint. Use GET to fetch price curves or the Python upload script for data submission.' 
+    error: 'PUT method not supported. Use POST for inserting price curve data.' 
   }, { status: 405 });
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const { db: connectedDb } = await connectToDatabase();
+    const collection = connectedDb.collection<PriceCurveRecord>('price_curves');
+    
+    const { searchParams } = new URL(request.url);
+    const curve = searchParams.get('curve');
+    const confirmDelete = searchParams.get('confirm') === 'true';
+    
+    if (!confirmDelete) {
+      return NextResponse.json({ 
+        error: 'Delete operation requires confirm=true parameter for safety' 
+      }, { status: 400 });
+    }
+    
+    if (!curve) {
+      return NextResponse.json({ 
+        error: 'Curve name is required for deletion' 
+      }, { status: 400 });
+    }
+    
+    const result = await collection.deleteMany({ curve: curve });
+    
+    return NextResponse.json({
+      success: true,
+      message: `Successfully deleted ${result.deletedCount} records for curve: ${curve}`,
+      deletedCount: result.deletedCount
+    });
+    
+  } catch (error: any) {
+    console.error('❌ Error deleting price curve data:', error);
+    
+    return NextResponse.json({
+      success: false,
+      error: 'Failed to delete price curve data',
+      details: error instanceof Error ? error.message : String(error)
+    }, { status: 500 });
+  }
 }
