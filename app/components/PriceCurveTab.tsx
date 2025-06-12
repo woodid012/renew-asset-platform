@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
+import { fetchPriceCurves, clearPriceCache, marketPriceService, PriceCurveParams, PriceCurveMetadata } from '@/app/services/marketPriceService';
 
 // Dynamic import for Chart.js to avoid SSR issues
 const Chart = dynamic(() => import('react-chartjs-2').then((mod) => mod.Line), { 
@@ -35,21 +36,6 @@ ChartJS.register(
 interface PriceCurveTabProps {
   marketPrices: { [key: string]: number[] };
   updateMarketPrices: (newPrices: { [key: string]: number[] }) => void;
-}
-
-interface PriceCurveMetadata {
-  curve: string;
-  profile: string;
-  type: string;
-  year: number | string;
-  availableYears: number[];
-  availableProfiles: string[];
-  availableTypes: string[];
-  availableStates: string[];
-  recordCount: number;
-  timePoints: number;
-  seriesCount: number;
-  interval?: string;
 }
 
 export default function PriceCurveTab({
@@ -94,49 +80,25 @@ export default function PriceCurveTab({
     }
   };
 
-  // Convert UI display types to database types
-  const getDbType = (uiType: string): string => {
-    switch (uiType) {
-      case 'Green':
-        return 'green';  // Convert UI "Green" to database "green"
-      case 'Energy':
-        return 'Energy'; // Keep Energy as-is
-      default:
-        return uiType.toLowerCase(); // Default to lowercase for safety
-    }
-  };
-
-  // Fetch price curve data from MongoDB
+  // Fetch price curve data using the new service
   const fetchPriceCurveData = async () => {
     setIsLoading(true);
     setError(null);
     
     try {
-      const dbType = getDbType(selectedType);
+      console.log(`🚀 Fetching price curves via service: ${selectedType} - ${selectedProfile} - ${selectedYear}`);
       
-      const params = new URLSearchParams({
+      const params: PriceCurveParams = {
         curve: selectedCurve,
+        year: selectedYear,
         profile: selectedProfile,
-        type: dbType, // Use the database-compatible type
+        type: selectedType,
         interval: selectedInterval,
         cpiRate: cpiRate,
         refYear: refYear
-      });
+      };
       
-      // Only add year if it's not "all"
-      if (selectedYear !== 'all') {
-        params.append('year', selectedYear);
-      }
-      
-      console.log(`Fetching price curves: UI type="${selectedType}" -> DB type="${dbType}"`);
-      
-      const response = await fetch(`/api/price-curves?${params}`);
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      const result = await response.json();
+      const result = await fetchPriceCurves(params);
       
       if (result.success) {
         updateMarketPrices(result.marketPrices);
@@ -145,53 +107,29 @@ export default function PriceCurveTab({
         setIsTimeSeries(result.isTimeSeries || false);
         setCpiSettings(result.cpiSettings);
         
-        console.log('Successfully fetched price curve data:', result.metadata);
+        console.log('✅ Successfully loaded price curve data:', {
+          seriesCount: result.metadata.seriesCount,
+          recordCount: result.metadata.recordCount,
+          timePoints: result.metadata.timePoints
+        });
         
         // Clear any previous errors
         setError(null);
       } else {
         setError(result.error || 'Failed to fetch price curve data');
-        console.error('API Error:', result);
+        console.error('❌ API Error:', result.error);
+        
+        // Still update with fallback data if available
+        if (result.marketPrices && Object.keys(result.marketPrices).length > 0) {
+          updateMarketPrices(result.marketPrices);
+          setTimeLabels(result.timeLabels || months);
+          setIsTimeSeries(result.isTimeSeries || false);
+          setMetadata(result.metadata);
+        }
       }
     } catch (err) {
-      console.error('Network Error:', err);
-      
-      // Enhanced error handling with type-specific fallbacks
-      if (err instanceof Error && err.message.includes('404')) {
-        setError('Price curves API not found. Please create the API route at /api/price-curves/route.ts');
-      } else {
-        const errorMessage = selectedType === 'Green' 
-          ? 'Network error while fetching Green certificate data. Using fallback data.'
-          : 'Network error while fetching price curve data. Using fallback data.';
-        setError(errorMessage);
-      }
-      
-      // Provide type-specific fallback data
-      if (Object.keys(marketPrices).length === 0) {
-        let fallbackPrices;
-        
-        if (selectedType === 'Green') {
-          // Green certificate fallback prices (typically $20-60/MWh)
-          fallbackPrices = {
-            NSW: [45, 42, 38, 35, 40, 48, 52, 55, 50, 44, 41, 47],
-            VIC: [43, 40, 36, 33, 38, 46, 50, 53, 48, 42, 39, 45],
-            QLD: [47, 44, 40, 37, 42, 50, 54, 57, 52, 46, 43, 49],
-            SA: [49, 46, 42, 39, 44, 52, 56, 59, 54, 48, 45, 51],
-            WA: [41, 38, 34, 31, 36, 44, 48, 51, 46, 40, 37, 43]
-          };
-        } else {
-          // Energy fallback prices
-          fallbackPrices = {
-            NSW: [85.20, 78.50, 72.30, 69.80, 75.60, 82.40, 89.70, 91.20, 86.50, 79.30, 74.80, 81.60],
-            VIC: [82.10, 76.20, 70.50, 67.90, 73.20, 79.80, 86.30, 88.50, 83.70, 76.80, 72.40, 78.90],
-            QLD: [88.50, 81.70, 75.80, 73.20, 78.90, 85.60, 92.10, 94.30, 89.20, 82.40, 77.60, 84.80],
-            SA: [91.20, 84.60, 78.30, 75.70, 81.50, 88.90, 95.80, 98.20, 92.60, 85.30, 80.10, 87.40],
-            WA: [79.80, 73.50, 67.90, 65.40, 71.20, 77.60, 83.90, 86.10, 81.40, 74.70, 70.20, 76.50]
-          };
-        }
-        
-        updateMarketPrices(fallbackPrices);
-      }
+      console.error('🚨 Network Error:', err);
+      setError(err instanceof Error ? err.message : 'Unknown error occurred');
     } finally {
       setIsLoading(false);
     }
@@ -203,218 +141,217 @@ export default function PriceCurveTab({
   }, [selectedYear, selectedProfile, selectedType, selectedCurve, selectedInterval, cpiRate, refYear]);
 
   // Create chart data for price curves with interval aggregation
-// Replace the createPriceCurveData function in PriceCurveTab.tsx (around line 150-200)
-
-const createPriceCurveData = () => {
-  const seriesKeys = Object.keys(marketPrices);
-  let chartLabels = isTimeSeries ? timeLabels : months;
-  let aggregatedData: { [key: string]: number[] } = {};
-  
-  console.log('🎯 Creating chart data with keys:', seriesKeys);
-  console.log('🎯 Selected type:', selectedType, 'Selected profile:', selectedProfile);
-  
-  // Apply interval aggregation to chart data
-  if (selectedInterval !== 'auto' && selectedInterval !== 'M') {
-    // Aggregate data based on selected interval
-    seriesKeys.forEach(seriesKey => {
-      const originalData = marketPrices[seriesKey] || [];
-      const aggregated: number[] = [];
-      
-      if (selectedInterval === 'Q') {
-        // Quarterly aggregation - ensure we process all quarters
-        const numQuarters = Math.ceil(originalData.length / 3);
-        for (let q = 0; q < numQuarters; q++) {
-          const startIdx = q * 3;
-          const endIdx = Math.min(startIdx + 3, originalData.length);
-          const quarterData = originalData.slice(startIdx, endIdx).filter(val => val > 0);
-          
-          if (quarterData.length > 0) {
-            const avg = quarterData.reduce((sum, val) => sum + val, 0) / quarterData.length;
-            aggregated.push(avg);
-          } else {
-            aggregated.push(0);
-          }
-        }
-      } else if (selectedInterval === 'Y') {
-        // Yearly aggregation - ensure we process all years
-        const numYears = Math.ceil(originalData.length / 12);
-        for (let y = 0; y < numYears; y++) {
-          const startIdx = y * 12;
-          const endIdx = Math.min(startIdx + 12, originalData.length);
-          const yearData = originalData.slice(startIdx, endIdx).filter(val => val > 0);
-          
-          if (yearData.length > 0) {
-            const avg = yearData.reduce((sum, val) => sum + val, 0) / yearData.length;
-            aggregated.push(avg);
-          } else {
-            aggregated.push(0);
-          }
-        }
-      }
-      
-      aggregatedData[seriesKey] = aggregated;
-    });
+  const createPriceCurveData = () => {
+    const seriesKeys = Object.keys(marketPrices);
+    let chartLabels = isTimeSeries ? timeLabels : months;
+    let aggregatedData: { [key: string]: number[] } = {};
     
-    // Generate aggregated labels based on the first series data length
-    if (seriesKeys.length > 0) {
-      const firstSeriesLength = aggregatedData[seriesKeys[0]]?.length || 0;
-      const newLabels: string[] = [];
-      
-      if (selectedInterval === 'Q') {
-        for (let i = 0; i < firstSeriesLength; i++) {
-          if (isTimeSeries && timeLabels.length > i * 3) {
-            // Extract year from time series label
-            const originalLabel = timeLabels[i * 3] || '';
-            const yearMatch = originalLabel.match(/\d{4}/);
-            const year = yearMatch ? yearMatch[0] : '';
-            newLabels.push(`Q${(i % 4) + 1} ${year}`);
-          } else {
-            newLabels.push(`Q${(i % 4) + 1}`);
-          }
-        }
-      } else if (selectedInterval === 'Y') {
-        for (let i = 0; i < firstSeriesLength; i++) {
-          if (isTimeSeries && timeLabels.length > i * 12) {
-            // Extract year from time series label
-            const originalLabel = timeLabels[i * 12] || '';
-            const yearMatch = originalLabel.match(/\d{4}/);
-            newLabels.push(yearMatch ? yearMatch[0] : `Year ${i + 1}`);
-          } else {
-            newLabels.push(`Year ${i + 1}`);
-          }
-        }
-      }
-      
-      chartLabels = newLabels;
-    }
-  } else {
-    // Use original data for monthly or auto
-    aggregatedData = marketPrices;
-  }
-  
-  // Generate colors for different profiles and types
-  const getSeriesColor = (seriesKey: string, index: number) => {
-    const lowerKey = seriesKey.toLowerCase();
+    console.log('🎯 Creating chart data with keys:', seriesKeys);
+    console.log('🎯 Selected type:', selectedType, 'Selected profile:', selectedProfile);
     
-    // Color coding based on content
-    if (lowerKey.includes('green')) {
-      if (lowerKey.includes('solar')) return '#10b981'; // Green for solar green certificates
-      if (lowerKey.includes('wind')) return '#059669';  // Darker green for wind green certificates  
-      return '#34d399'; // Light green for baseload green certificates
+    // Apply interval aggregation to chart data
+    if (selectedInterval !== 'auto' && selectedInterval !== 'M') {
+      // Aggregate data based on selected interval
+      seriesKeys.forEach(seriesKey => {
+        const originalData = marketPrices[seriesKey] || [];
+        const aggregated: number[] = [];
+        
+        if (selectedInterval === 'Q') {
+          // Quarterly aggregation - ensure we process all quarters
+          const numQuarters = Math.ceil(originalData.length / 3);
+          for (let q = 0; q < numQuarters; q++) {
+            const startIdx = q * 3;
+            const endIdx = Math.min(startIdx + 3, originalData.length);
+            const quarterData = originalData.slice(startIdx, endIdx).filter(val => val > 0);
+            
+            if (quarterData.length > 0) {
+              const avg = quarterData.reduce((sum, val) => sum + val, 0) / quarterData.length;
+              aggregated.push(avg);
+            } else {
+              aggregated.push(0);
+            }
+          }
+        } else if (selectedInterval === 'Y') {
+          // Yearly aggregation - ensure we process all years
+          const numYears = Math.ceil(originalData.length / 12);
+          for (let y = 0; y < numYears; y++) {
+            const startIdx = y * 12;
+            const endIdx = Math.min(startIdx + 12, originalData.length);
+            const yearData = originalData.slice(startIdx, endIdx).filter(val => val > 0);
+            
+            if (yearData.length > 0) {
+              const avg = yearData.reduce((sum, val) => sum + val, 0) / yearData.length;
+              aggregated.push(avg);
+            } else {
+              aggregated.push(0);
+            }
+          }
+        }
+        
+        aggregatedData[seriesKey] = aggregated;
+      });
+      
+      // Generate aggregated labels based on the first series data length
+      if (seriesKeys.length > 0) {
+        const firstSeriesLength = aggregatedData[seriesKeys[0]]?.length || 0;
+        const newLabels: string[] = [];
+        
+        if (selectedInterval === 'Q') {
+          for (let i = 0; i < firstSeriesLength; i++) {
+            if (isTimeSeries && timeLabels.length > i * 3) {
+              // Extract year from time series label
+              const originalLabel = timeLabels[i * 3] || '';
+              const yearMatch = originalLabel.match(/\d{4}/);
+              const year = yearMatch ? yearMatch[0] : '';
+              newLabels.push(`Q${(i % 4) + 1} ${year}`);
+            } else {
+              newLabels.push(`Q${(i % 4) + 1}`);
+            }
+          }
+        } else if (selectedInterval === 'Y') {
+          for (let i = 0; i < firstSeriesLength; i++) {
+            if (isTimeSeries && timeLabels.length > i * 12) {
+              // Extract year from time series label
+              const originalLabel = timeLabels[i * 12] || '';
+              const yearMatch = originalLabel.match(/\d{4}/);
+              newLabels.push(yearMatch ? yearMatch[0] : `Year ${i + 1}`);
+            } else {
+              newLabels.push(`Year ${i + 1}`);
+            }
+          }
+        }
+        
+        chartLabels = newLabels;
+      }
+    } else {
+      // Use original data for monthly or auto
+      aggregatedData = marketPrices;
     }
     
-    if (lowerKey.includes('solar')) return '#f59e0b'; // Orange for solar energy
-    if (lowerKey.includes('wind')) return '#3b82f6';   // Blue for wind energy
-    if (lowerKey.includes('baseload')) return '#6366f1'; // Indigo for baseload energy
-    
-    // Fallback colors by state
-    const stateColors: { [key: string]: string } = {
-      'nsw': '#667eea',
-      'vic': '#764ba2', 
-      'qld': '#f093fb',
-      'sa': '#4facfe',
-      'wa': '#43e97b'
+    // Generate colors for different profiles and types
+    const getSeriesColor = (seriesKey: string, index: number) => {
+      const lowerKey = seriesKey.toLowerCase();
+      
+      // Color coding based on content
+      if (lowerKey.includes('green')) {
+        if (lowerKey.includes('solar')) return '#10b981'; // Green for solar green certificates
+        if (lowerKey.includes('wind')) return '#059669';  // Darker green for wind green certificates  
+        return '#34d399'; // Light green for baseload green certificates
+      }
+      
+      if (lowerKey.includes('solar')) return '#f59e0b'; // Orange for solar energy
+      if (lowerKey.includes('wind')) return '#3b82f6';   // Blue for wind energy
+      if (lowerKey.includes('baseload')) return '#6366f1'; // Indigo for baseload energy
+      
+      // Fallback colors by state
+      const stateColors: { [key: string]: string } = {
+        'nsw': '#667eea',
+        'vic': '#764ba2', 
+        'qld': '#f093fb',
+        'sa': '#4facfe',
+        'wa': '#43e97b'
+      };
+      
+      for (const [state, color] of Object.entries(stateColors)) {
+        if (lowerKey.includes(state)) return color;
+      }
+      
+      // Final fallback
+      const colors = ['#667eea', '#764ba2', '#f093fb', '#4facfe', '#43e97b'];
+      return colors[index % colors.length];
     };
     
-    for (const [state, color] of Object.entries(stateColors)) {
-      if (lowerKey.includes(state)) return color;
-    }
-    
-    // Final fallback
-    const colors = ['#667eea', '#764ba2', '#f093fb', '#4facfe', '#43e97b'];
-    return colors[index % colors.length];
-  };
-  
-  if (showAll) {
-    // When showing all, filter by selected state and show different profiles/types
-    let filteredSeries = seriesKeys;
-    
-    // For Green certificates, we need to look for keys that include the state and "green"
-    if (selectedType === 'Green') {
-      filteredSeries = seriesKeys.filter(key => 
-        key.toLowerCase().includes(selectedState.toLowerCase()) && 
-        key.toLowerCase().includes('green')
-      );
+    if (showAll) {
+      // When showing all, filter by selected state and show different profiles/types
+      let filteredSeries = seriesKeys;
       
-      console.log('🟢 Filtered Green certificate series for', selectedState, ':', filteredSeries);
-    } else {
-      // For Energy, use existing logic
-      filteredSeries = seriesKeys.filter(key => 
-        key.includes(selectedState) && !key.toLowerCase().includes('green')
-      );
-      
-      console.log('⚡ Filtered Energy series for', selectedState, ':', filteredSeries);
-    }
-    
-    const datasets = filteredSeries.map((seriesKey, index) => {
-      // Create better labels for the legend
-      let label = seriesKey;
-      if (seriesKey.includes(' - ')) {
-        const parts = seriesKey.split(' - ');
-        if (parts.length >= 2) {
-          // For "QLD - baseload - green" -> "Baseload Green"
-          // For "NSW - solar - Energy" -> "Solar Energy"
-          const profile = parts[1];
-          const type = parts[2] || selectedType;
-          label = `${profile.charAt(0).toUpperCase() + profile.slice(1)} ${type.charAt(0).toUpperCase() + type.slice(1)}`;
-        }
+      // For Green certificates, we need to look for keys that include the state and "green"
+      if (selectedType === 'Green') {
+        filteredSeries = seriesKeys.filter(key => 
+          key.toLowerCase().includes(selectedState.toLowerCase()) && 
+          key.toLowerCase().includes('green')
+        );
+        
+        console.log('🟢 Filtered Green certificate series for', selectedState, ':', filteredSeries);
+      } else {
+        // For Energy, use existing logic
+        filteredSeries = seriesKeys.filter(key => 
+          key.includes(selectedState) && !key.toLowerCase().includes('green')
+        );
+        
+        console.log('⚡ Filtered Energy series for', selectedState, ':', filteredSeries);
       }
+      
+      const datasets = filteredSeries.map((seriesKey, index) => {
+        // Create better labels for the legend
+        let label = seriesKey;
+        if (seriesKey.includes(' - ')) {
+          const parts = seriesKey.split(' - ');
+          if (parts.length >= 2) {
+            // For "QLD - baseload - green" -> "Baseload Green"
+            // For "NSW - solar - Energy" -> "Solar Energy"
+            const profile = parts[1];
+            const type = parts[2] || selectedType;
+            label = `${profile.charAt(0).toUpperCase() + profile.slice(1)} ${type.charAt(0).toUpperCase() + type.slice(1)}`;
+          }
+        }
+        
+        return {
+          label: label,
+          data: aggregatedData[seriesKey] || [],
+          borderColor: getSeriesColor(seriesKey, index),
+          backgroundColor: getSeriesColor(seriesKey, index) + '20',
+          borderWidth: 3,
+          tension: 0.1,
+          pointBackgroundColor: getSeriesColor(seriesKey, index),
+          pointBorderColor: getSeriesColor(seriesKey, index),
+          pointBorderWidth: 2,
+          pointRadius: 4,
+        };
+      });
+
+      return {
+        labels: chartLabels,
+        datasets: datasets
+      };
+    } else {
+      // Single series view - find the best match for selected state and type
+      let selectedSeries: string;
+      
+      if (selectedType === 'Green') {
+        // Look for Green certificate data for the selected state
+        selectedSeries = seriesKeys.find(key => 
+          key.toLowerCase().includes(selectedState.toLowerCase()) && 
+          key.toLowerCase().includes('green')
+        ) || seriesKeys.find(key => key.toLowerCase().includes('green')) || seriesKeys[0];
+      } else {
+        // Look for Energy data for the selected state
+        selectedSeries = seriesKeys.find(key => 
+          key.includes(selectedState) && !key.toLowerCase().includes('green')
+        ) || seriesKeys.find(key => key.includes(selectedState)) || seriesKeys[0];
+      }
+      
+      console.log('📊 Selected series for single view:', selectedSeries);
       
       return {
-        label: label,
-        data: aggregatedData[seriesKey] || [],
-        borderColor: getSeriesColor(seriesKey, index),
-        backgroundColor: getSeriesColor(seriesKey, index) + '20',
-        borderWidth: 3,
-        tension: 0.1,
-        pointBackgroundColor: getSeriesColor(seriesKey, index),
-        pointBorderColor: getSeriesColor(seriesKey, index),
-        pointBorderWidth: 2,
-        pointRadius: 4,
+        labels: chartLabels,
+        datasets: [{
+          label: selectedSeries,
+          data: aggregatedData[selectedSeries] || [],
+          borderColor: getSeriesColor(selectedSeries, 0),
+          backgroundColor: getSeriesColor(selectedSeries, 0) + '20',
+          borderWidth: 3,
+          tension: 0.1,
+          pointBackgroundColor: getSeriesColor(selectedSeries, 0),
+          pointBorderColor: getSeriesColor(selectedSeries, 0),
+          pointBorderWidth: 2,
+          pointRadius: 5,
+          fill: true,
+        }]
       };
-    });
-
-    return {
-      labels: chartLabels,
-      datasets: datasets
-    };
-  } else {
-    // Single series view - find the best match for selected state and type
-    let selectedSeries: string;
-    
-    if (selectedType === 'Green') {
-      // Look for Green certificate data for the selected state
-      selectedSeries = seriesKeys.find(key => 
-        key.toLowerCase().includes(selectedState.toLowerCase()) && 
-        key.toLowerCase().includes('green')
-      ) || seriesKeys.find(key => key.toLowerCase().includes('green')) || seriesKeys[0];
-    } else {
-      // Look for Energy data for the selected state
-      selectedSeries = seriesKeys.find(key => 
-        key.includes(selectedState) && !key.toLowerCase().includes('green')
-      ) || seriesKeys.find(key => key.includes(selectedState)) || seriesKeys[0];
     }
-    
-    console.log('📊 Selected series for single view:', selectedSeries);
-    
-    return {
-      labels: chartLabels,
-      datasets: [{
-        label: selectedSeries,
-        data: aggregatedData[selectedSeries] || [],
-        borderColor: getSeriesColor(selectedSeries, 0),
-        backgroundColor: getSeriesColor(selectedSeries, 0) + '20',
-        borderWidth: 3,
-        tension: 0.1,
-        pointBackgroundColor: getSeriesColor(selectedSeries, 0),
-        pointBorderColor: getSeriesColor(selectedSeries, 0),
-        pointBorderWidth: 2,
-        pointRadius: 5,
-        fill: true,
-      }]
-    };
-  }
-};
+  };
+
   const chartOptions = {
     responsive: true,
     maintainAspectRatio: false,
@@ -483,12 +420,21 @@ const createPriceCurveData = () => {
     return validPrices.reduce((sum, price) => sum + price, 0) / validPrices.length;
   };
 
+  // Clear cache function
+  const handleClearCache = () => {
+    clearPriceCache();
+    fetchPriceCurveData(); // Refresh after clearing cache
+  };
+
   return (
     <div className="space-y-8">
       {/* Controls Panel */}
       <div className="bg-white rounded-xl p-6 shadow-md border border-gray-200">
         <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-3">
           📈 Price Curve Data Controls
+          <span className="text-sm font-normal text-gray-500">
+            (Powered by Market Price Service)
+          </span>
         </h2>
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4 mb-6">
@@ -596,7 +542,7 @@ const createPriceCurveData = () => {
         {/* CPI Escalation Controls */}
         <div className="bg-gray-50 rounded-lg p-4 mb-6">
           <h3 className="text-lg font-semibold text-gray-800 mb-4">🔢 CPI Escalation Settings</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
               <label htmlFor="cpiRate" className="block text-sm font-medium text-gray-700 mb-2">
                 CPI Rate (% per annum)
@@ -633,6 +579,14 @@ const createPriceCurveData = () => {
                   <div><strong>Status:</strong> {cpiSettings.escalationApplied ? 'Escalated' : 'Not Applied'}</div>
                 </div>
               )}
+            </div>
+            <div className="flex items-end">
+              <button 
+                onClick={handleClearCache}
+                className="w-full bg-gray-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-gray-600 transition-all duration-200 text-sm"
+              >
+                🧹 Clear Cache
+              </button>
             </div>
           </div>
         </div>
@@ -679,6 +633,7 @@ const createPriceCurveData = () => {
         {error && (
           <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
             <p className="text-red-800 font-medium">Error: {error}</p>
+            <p className="text-red-600 text-sm mt-1">Using fallback data where available</p>
           </div>
         )}
 
@@ -695,6 +650,12 @@ const createPriceCurveData = () => {
             </p>
           </div>
         )}
+
+        {/* Service Status */}
+        <div className="mt-4 text-xs text-gray-500">
+          Cache Status: {marketPriceService.getCacheStats().size} entries | 
+          Service Instance: {marketPriceService.constructor.name}
+        </div>
       </div>
 
       {/* Chart Panel */}
@@ -721,8 +682,8 @@ const createPriceCurveData = () => {
         </h2>
         <div className="prose prose-gray max-w-none">
           <p className="text-gray-600 leading-relaxed mb-4">
-            These nominal price curves are sourced from your MongoDB database with CPI escalation applied. 
-            All prices are escalated to nominal values using the specified CPI rate and reference year.
+            These nominal price curves are sourced from your MongoDB database via the Market Price Service 
+            with CPI escalation applied. All prices are escalated to nominal values using the specified CPI rate and reference year.
           </p>
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
@@ -733,6 +694,7 @@ const createPriceCurveData = () => {
                 <li>• Aurora Jan 2025 forecast data</li>
                 <li>• Multiple profile types (baseload, solar, wind)</li>
                 <li>• Energy and green certificate prices</li>
+                <li>• Market Price Service with intelligent caching</li>
               </ul>
             </div>
 
@@ -747,13 +709,32 @@ const createPriceCurveData = () => {
             </div>
 
             <div>
-              <h4 className="font-semibold text-gray-800 mb-3">Usage:</h4>
+              <h4 className="font-semibold text-gray-800 mb-3">Service Features:</h4>
               <ul className="text-sm text-gray-600 space-y-1">
-                <li>• Contract mark-to-market valuations</li>
-                <li>• Risk assessment and scenario analysis</li>
-                <li>• Time series output generation</li>
-                <li>• Portfolio optimization with nominal prices</li>
+                <li>• Intelligent price matching algorithm</li>
+                <li>• 5-minute response caching</li>
+                <li>• Automatic fallback data</li>
+                <li>• Contract mark-to-market integration</li>
+                <li>• Type conversion (UI ↔ Database)</li>
               </ul>
+            </div>
+          </div>
+          
+          <div className="mt-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+            <h4 className="font-semibold text-yellow-800 mb-2">💡 New Market Price Service Features:</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-yellow-700">
+              <div>
+                <strong>Unified API:</strong> Same service powers both Price Curves and Mark-to-Market calculations
+              </div>
+              <div>
+                <strong>Smart Caching:</strong> Reduces API calls and improves performance
+              </div>
+              <div>
+                <strong>Error Resilience:</strong> Automatic fallback to default prices when API unavailable
+              </div>
+              <div>
+                <strong>Debug Tools:</strong> Cache status and detailed logging for troubleshooting
+              </div>
             </div>
           </div>
         </div>

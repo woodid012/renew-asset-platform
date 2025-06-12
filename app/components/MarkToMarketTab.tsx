@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { Contract, SettingsData } from '@/app/types';
+import { getContractPrice, ContractPriceRequest } from '@/app/services/marketPriceService';
 
 interface MarkToMarketTabProps {
   contracts: Contract[];
@@ -31,146 +32,6 @@ interface MtMCalculation {
   dataSource: string;
 }
 
-// Convert UI contract types to database types (keeping for future use)
-const getDbContractType = (uiType: string): string => {
-  switch (uiType) {
-    case 'Green':
-      return 'green';  // Convert UI "Green" to database "green"
-    case 'Energy':
-      return 'Energy'; // Keep Energy as-is
-    default:
-      return uiType.toLowerCase(); // Default to lowercase for safety
-  }
-};
-
-// Market price mapping based on volume shape and contract type
-// Fixed getMarketPriceProfile function for MarkToMarketTab.tsx
-// This should replace the existing function around line 40
-
-// Updated getMarketPriceProfile function that matches your database structure
-// Replace the existing function in MarkToMarketTab.tsx
-
-// Updated getMarketPriceProfile function that matches your database structure
-// Replace the existing function in MarkToMarketTab.tsx
-
-const getMarketPriceProfile = (volumeShape: string, state: string, contractType: string, marketPrices: { [key: string]: number[] }): number[] => {
-  console.log(`🔍 Getting market price for: state=${state}, volumeShape=${volumeShape}, contractType=${contractType}`);
-  console.log('📊 Available market price keys:', Object.keys(marketPrices));
-  
-  // Handle Green certificates - match your database structure
-  if (contractType === 'Green') {
-    console.log('🟢 Looking for Green certificate prices...');
-    
-    // Your database has: state="QLD", profile="solar"/"baseload", type="green"
-    // API should create keys like: "QLD - solar - green", "QLD - baseload - green"
-    
-    const greenKeys = [
-      // Exact matches for your database structure
-      `${state} - baseload - green`,     // e.g., "QLD - baseload - green"
-      `${state} - solar - green`,        // e.g., "QLD - solar - green" 
-      `${state} - wind - green`,         // e.g., "QLD - wind - green"
-      
-      // Try with volume shape if it's solar/wind
-      ...(volumeShape.toLowerCase().includes('solar') ? [`${state} - solar - green`] : []),
-      ...(volumeShape.toLowerCase().includes('wind') ? [`${state} - wind - green`] : []),
-      
-      // Generic fallbacks for the state
-      `${state} - green`,                // e.g., "QLD - green"
-      `${state}-green`,                  // e.g., "QLD-green"
-      `${state} green`,                  // e.g., "QLD green"
-      
-      // Try other states if current state not found
-      'NSW - baseload - green',
-      'VIC - baseload - green', 
-      'SA - baseload - green',
-      'WA - baseload - green',
-      'TAS - baseload - green',
-      
-      // Generic green keys
-      'green',
-      'Green',
-      'baseload - green',
-      'green - baseload',
-      
-      // Search for any key containing green
-      ...Object.keys(marketPrices).filter(key => 
-        key.toLowerCase().includes('green') || 
-        key.toLowerCase().includes('certificate') ||
-        key.toLowerCase().includes('rec')
-      )
-    ];
-    
-    // Remove duplicates while preserving order
-    const uniqueGreenKeys = [...new Set(greenKeys)];
-    
-    console.log('🔍 Trying Green certificate keys in order:', uniqueGreenKeys.slice(0, 5));
-    
-    // Try each green key in order
-    for (const key of uniqueGreenKeys) {
-      if (marketPrices[key] && marketPrices[key].length > 0) {
-        console.log(`✅ Found Green certificate prices using key: "${key}"`);
-        console.log(`📈 Price range: $${Math.min(...marketPrices[key])}-$${Math.max(...marketPrices[key])}/MWh`);
-        return marketPrices[key];
-      }
-    }
-    
-    // Debug: Show what we actually have vs what we're looking for
-    console.warn('❌ No Green certificate prices found!');
-    console.warn('🔍 Looking for keys like:', `"${state} - baseload - green"`);
-    console.warn('📋 Available keys containing "green":', 
-      Object.keys(marketPrices).filter(k => k.toLowerCase().includes('green'))
-    );
-    console.warn('📋 All available keys:', Object.keys(marketPrices));
-    
-    // Use default green certificate price
-    console.warn('⚡ Using default Green certificate price: $45/MWh');
-    return Array(12).fill(45);
-  }
-  
-  // Energy price logic - match your database structure
-  console.log('⚡ Looking for Energy prices...');
-  
-  // Determine profile based on volume shape
-  let profileType = 'baseload'; // Default profile
-  
-  if (volumeShape.toLowerCase().includes('solar')) {
-    profileType = 'solar';
-  } else if (volumeShape.toLowerCase().includes('wind')) {
-    profileType = 'wind';
-  }
-  
-  // Build energy market price keys - your database has type="Energy" (capitalized)
-  const energyKeys = [
-    `${state} - ${profileType} - Energy`,  // e.g., "QLD - solar - Energy"
-    `${state} - ${profileType} - energy`,  // e.g., "QLD - solar - energy" 
-    `${state} - ${profileType}`,           // e.g., "QLD - solar"
-    `${state} - baseload - Energy`,        // fallback to baseload
-    `${state} - baseload - energy`,        
-    `${state} - baseload`,                 
-    `${state}`,                            // e.g., "QLD"
-  ];
-  
-  console.log('🔍 Trying Energy keys:', energyKeys.slice(0, 3));
-  
-  // Try to find matching energy market price data
-  for (const key of energyKeys) {
-    if (marketPrices[key] && marketPrices[key].length > 0) {
-      console.log(`✅ Found Energy prices using key: "${key}"`);
-      return marketPrices[key];
-    }
-  }
-  
-  // Ultimate fallback - try any state data
-  const stateKeys = Object.keys(marketPrices).filter(key => key.includes(state));
-  if (stateKeys.length > 0 && marketPrices[stateKeys[0]].length > 0) {
-    console.log(`⚠️ Using fallback state key: "${stateKeys[0]}"`);
-    return marketPrices[stateKeys[0]];
-  }
-  
-  // Last resort fallback
-  console.warn(`❌ No market prices found for ${state} ${profileType} ${contractType}`);
-  return contractType === 'Green' ? Array(12).fill(45) : Array(12).fill(80);
-};
 // Volume calculation utilities
 const VolumeUtils = {
   hasMonthlyData: (contract: Contract): boolean => {
@@ -222,8 +83,97 @@ const VolumeUtils = {
   }
 };
 
+// Legacy market price function for backward compatibility
+const getLegacyMarketPrice = (volumeShape: string, state: string, contractType: string, marketPrices: { [key: string]: number[] }): number[] => {
+  console.log(`🔍 Getting market price for: state=${state}, volumeShape=${volumeShape}, contractType=${contractType}`);
+  console.log('📊 Available market price keys:', Object.keys(marketPrices));
+  
+  // Handle Green certificates - match your database structure
+  if (contractType === 'Green') {
+    console.log('🟢 Looking for Green certificate prices...');
+    
+    const greenKeys = [
+      `${state} - baseload - green`,     
+      `${state} - solar - green`,        
+      `${state} - wind - green`,         
+      
+      ...(volumeShape.toLowerCase().includes('solar') ? [`${state} - solar - green`] : []),
+      ...(volumeShape.toLowerCase().includes('wind') ? [`${state} - wind - green`] : []),
+      
+      `${state} - green`,                
+      `${state}-green`,                  
+      `${state} green`,                  
+      
+      'NSW - baseload - green',
+      'VIC - baseload - green', 
+      'SA - baseload - green',
+      'WA - baseload - green',
+      'TAS - baseload - green',
+      
+      'green',
+      'Green',
+      'baseload - green',
+      'green - baseload',
+      
+      ...Object.keys(marketPrices).filter(key => 
+        key.toLowerCase().includes('green') || 
+        key.toLowerCase().includes('certificate') ||
+        key.toLowerCase().includes('rec')
+      )
+    ];
+    
+    const uniqueGreenKeys = [...new Set(greenKeys)];
+    
+    for (const key of uniqueGreenKeys) {
+      if (marketPrices[key] && marketPrices[key].length > 0) {
+        console.log(`✅ Found Green certificate prices using key: "${key}"`);
+        return marketPrices[key];
+      }
+    }
+    
+    console.warn('❌ No Green certificate prices found! Using default: $45/MWh');
+    return Array(12).fill(45);
+  }
+  
+  // Energy price logic
+  console.log('⚡ Looking for Energy prices...');
+  
+  let profileType = 'baseload';
+  if (volumeShape.toLowerCase().includes('solar')) {
+    profileType = 'solar';
+  } else if (volumeShape.toLowerCase().includes('wind')) {
+    profileType = 'wind';
+  }
+  
+  const energyKeys = [
+    `${state} - ${profileType} - Energy`,  
+    `${state} - ${profileType} - energy`,  
+    `${state} - ${profileType}`,           
+    `${state} - baseload - Energy`,        
+    `${state} - baseload - energy`,        
+    `${state} - baseload`,                 
+    `${state}`,                            
+  ];
+  
+  for (const key of energyKeys) {
+    if (marketPrices[key] && marketPrices[key].length > 0) {
+      console.log(`✅ Found Energy prices using key: "${key}"`);
+      return marketPrices[key];
+    }
+  }
+  
+  const stateKeys = Object.keys(marketPrices).filter(key => key.includes(state));
+  if (stateKeys.length > 0 && marketPrices[stateKeys[0]].length > 0) {
+    console.log(`⚠️ Using fallback state key: "${stateKeys[0]}"`);
+    return marketPrices[stateKeys[0]];
+  }
+  
+  console.warn(`❌ No market prices found for ${state} ${profileType} ${contractType}`);
+  return contractType === 'Green' ? Array(12).fill(45) : Array(12).fill(80);
+};
+
 // Price calculation utilities
-const getContractPrice = (contract: Contract, monthIndex: number, year: number): number => {
+const calculateContractPrice = (contract: Contract, monthIndex: number, year: number): number => {
   // Handle time series based pricing
   if (contract.pricingType === 'timeseries' && contract.priceTimeSeries && contract.priceTimeSeries.length > 0) {
     if (contract.priceInterval === 'monthly') {
@@ -344,10 +294,10 @@ export default function MarkToMarketTab({
       yearsToProcess.forEach(year => {
         // Get monthly volumes and prices for the year
         const monthlyVolumes = VolumeUtils.getMonthlyVolumes(contract, year);
-        const marketPricesForProfile = getMarketPriceProfile(
+        const marketPricesForProfile = getLegacyMarketPrice(
           contract.volumeShape, 
           contract.state, 
-          contract.contractType || 'Energy',  // Pass the UI contract type 
+          contract.contractType || 'Energy',
           marketPrices
         );
 
@@ -366,7 +316,7 @@ export default function MarkToMarketTab({
         // Calculate month by month
         monthlyVolumes.forEach((volume, monthIndex) => {
           if (volume > 0) {
-            const contractPrice = getContractPrice(contract, monthIndex, year);
+            const contractPrice = calculateContractPrice(contract, monthIndex, year);
             const marketPrice = marketPricesForProfile[monthIndex];
 
             // Skip if no market price available for this month
