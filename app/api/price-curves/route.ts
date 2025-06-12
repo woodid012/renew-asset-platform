@@ -73,7 +73,7 @@ interface EnhancedPriceCurveResponse {
     profile: string;
     type: string;
     year: number | string;
-    state?: string;
+    state: string;
     availableYears: number[];
     availableProfiles: string[];
     availableTypes: string[];
@@ -295,10 +295,14 @@ export async function GET(request: NextRequest) {
     const profile = searchParams.get('profile') || 'baseload';
     const type = searchParams.get('type') || 'Energy';
     const state = searchParams.get('state'); // New: specific state filter
-    const startDate = searchParams.get('startDate'); // New: date range start
-    const endDate = searchParams.get('endDate'); // New: date range end
+    const startDateParam = searchParams.get('startDate'); // New: date range start
+    const endDateParam = searchParams.get('endDate'); // New: date range end
     const timeResolution = searchParams.get('timeResolution') || 'auto'; // New: target resolution
     const includeMetadata = searchParams.get('includeMetadata') !== 'false';
+    
+    // Convert null to undefined for TypeScript compatibility
+    const startDate = startDateParam || undefined;
+    const endDate = endDateParam || undefined;
     
     console.log(`🔍 Enhanced price curve query:`, {
       curve, year: yearParam || 'all', profile, type, state: state || 'all',
