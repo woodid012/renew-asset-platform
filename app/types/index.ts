@@ -4,6 +4,7 @@ export interface TimeSeriesDataPoint {
   period: string; // YYYY-MM format
   volume: number; // MWh
   date?: Date;
+  lwpPercentage?: number; // LWP percentage from your database (e.g., 0.98 = 98%)
 }
 
 export interface SettingsData {
@@ -70,6 +71,7 @@ export interface Contract {
   dataSource?: 'manual' | 'csv_import' | 'api_import';
   yearsCovered?: number[];
   totalVolume?: number;
+  
 
   // Time-based pricing
   timeBasedPricing?: {

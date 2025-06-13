@@ -111,8 +111,33 @@ export class StreamlinedMtMEngine {
   /**
    * NEW: Get LWP percentage for a specific period
    */
-  private getLWPPercentageForPeriod(contract: Contract, monthIndex: number): number {
-    // Future: Use lwpTimeSeries if available
+/**
+   * NEW: Get LWP percentage for a specific period
+   */
+  private getLWPPercentageForPeriod(contract: Contract, monthIndex: number, year: number): number {
+    // PRIORITY 1: Read from timeSeriesData if available (your database structure)
+    if (contract.timeSeriesData && contract.timeSeriesData.length > 0) {
+      const targetPeriod = `${year}-${(monthIndex + 1).toString().padStart(2, '0')}`;
+      
+      // Find exact period match
+      const periodData = contract.timeSeriesData.find(data => 
+        data.period === targetPeriod || data.period === `${targetPeriod}-01`
+      );
+      
+      if (periodData && (periodData as any).lwpPercentage !== undefined) {
+        const lwpValue = (periodData as any).lwpPercentage;
+        
+        // Smart conversion: if value is less than 10, assume it's already a percentage multiplier
+        // e.g., 0.98 = 98%, 1.03 = 103%, but 95 = 95%
+        if (lwpValue < 10) {
+          return lwpValue * 100;
+        } else {
+          return lwpValue;
+        }
+      }
+    }
+
+    // PRIORITY 2: Use lwpTimeSeries if available (future enhancement)
     if (contract.lwpTimeSeries && contract.lwpTimeSeries.length > 0) {
       if (contract.lwpInterval === 'monthly') {
         return contract.lwpTimeSeries[monthIndex] || (contract.lwpPercentage || 100);
@@ -124,10 +149,20 @@ export class StreamlinedMtMEngine {
       }
     }
 
-    // Default: Use single LWP percentage or 100%
-    return contract.lwpPercentage || 100;
-  }
+    // PRIORITY 3: Use single LWP percentage from contract
+    if (contract.lwpPercentage !== undefined) {
+      // Apply same smart conversion logic
+      const lwpValue = contract.lwpPercentage;
+      if (lwpValue < 10) {
+        return lwpValue * 100;
+      } else {
+        return lwpValue;
+      }
+    }
 
+    // DEFAULT: 100% (no LWP adjustment)
+    return 100;
+  }
   /**
    * NEW: Calculate Load Weighted Price
    */
