@@ -146,7 +146,7 @@ export default function PriceCurvesTab() {
         setAvailableStates(result.availableStates || ['NSW', 'VIC', 'QLD', 'SA']);
         setAvailableTypes(result.availableTypes || ['Energy']);
         setAvailableScenarios(result.availableScenarios || ['Central']);
-        setAvailableYears([...result.financialYears.map(String), 'all'] || ['2025', 'all']);
+        setAvailableYears(result.financialYears ? [...result.financialYears.map(String), 'all'] : ['2025', 'all']);
       }
     } catch (err) {
       console.error('Error fetching options:', err);
