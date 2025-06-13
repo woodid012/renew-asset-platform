@@ -1,12 +1,12 @@
 // /api/price-curves/route.js
-import { MongoClient } from 'mongodb';
+import { MongoClient, Db } from 'mongodb'; // Import Db type
 import { NextResponse } from 'next/server';
 
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://ProjectHalo:5apsFwxTlqN8WHQR@cluster0.quuwlhb.mongodb.net/energy_contracts?retryWrites=true&w=majority&appName=Cluster0';
 const MONGODB_DB = process.env.MONGODB_DB || 'energy_contracts';
 
-let cachedClient = null;
-let cachedDb = null;
+let cachedClient: MongoClient | null = null; // Explicitly type cachedClient
+let cachedDb: Db | null = null; // Explicitly type cachedDb
 
 async function connectToDatabase() {
   if (cachedClient && cachedDb) {
@@ -15,38 +15,38 @@ async function connectToDatabase() {
 
   const client = new MongoClient(MONGODB_URI);
   await client.connect();
-  
+
   const db = client.db(MONGODB_DB);
-  
+
   cachedClient = client;
   cachedDb = db;
-  
+
   return { client, db };
 }
 
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
-    
+
     // Extract query parameters
     const state = searchParams.get('state'); // Region from CSV
     const type = searchParams.get('type'); // ContracType from CSV
     const year = searchParams.get('year'); // FY from CSV
     const scenario = searchParams.get('scenario') || 'Central'; // Scenario from CSV
     const curve = searchParams.get('curve') || 'Aurora Jan 2025 Intervals';
-    
+
     console.log('Price Curves API - Query params:', {
       state, type, year, scenario, curve
     });
 
     const { db } = await connectToDatabase();
-    
+
     // Build MongoDB query for price_curves_intervals collection
     const query = {
       curve: curve,
       Scenario: scenario
     };
-    
+
     if (state) query.state = state; // Region mapped to state
     if (type) query.type = type; // ContracType
     if (year && year !== 'all') {
@@ -58,7 +58,7 @@ export async function GET(request) {
     // Query price_curves_intervals collection only
     const collection = db.collection('price_curves_intervals');
     const data = await collection.find(query).sort({ date: 1 }).toArray();
-    
+
     console.log(`Found ${data.length} records`);
 
     // Transform data for response
@@ -80,14 +80,14 @@ export async function GET(request) {
 
     // Group by series (combination of state and type)
     const marketPrices = {};
-    
+
     transformedData.forEach(record => {
       const seriesKey = `${record.state}-${record.type}`;
-      
+
       if (!marketPrices[seriesKey]) {
         marketPrices[seriesKey] = [];
       }
-      
+
       marketPrices[seriesKey].push(record);
     });
 
@@ -124,9 +124,9 @@ export async function GET(request) {
       message: `Found ${totalRecords} records across ${Object.keys(marketPrices).length} series`
     });
 
-  } catch (error) {
+  } catch (error: any) { // Explicitly type error as 'any' for simpler handling
     console.error('Price Curves API Error:', error);
-    
+
     return NextResponse.json({
       success: false,
       error: error.message,
