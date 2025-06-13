@@ -6,7 +6,7 @@ import Head from 'next/head';
 
 // Import tab components
 import { Contract, SettingsData } from './types';
-import VariablesCreationTab from './components/VariablesCreationTab'; // NEW IMPORT
+
 import ContractSummaryTab from './components/ContractSummaryTab';
 import ContractInputTab from './components/ContractInputTab';
 import PriceCurveTab from './components/PriceCurveTab'; // This component
@@ -48,7 +48,6 @@ const tabs = [
   { id: 'price-curve', label: 'Price Curves' },
   { id: 'mark-to-market', label: 'Mark to Market' },
   { id: 'time-series', label: 'Time Series Output' },
-  //{ id: 'variables', label: 'Variables Creation' }
   { id: 'settings', label: 'Settings' },
 ];
 
@@ -345,14 +344,6 @@ export default function EnergyContractManagement() {
               setIsLoading={setIsLoading}
               marketPrices={marketPrices}
               volumeShapes={volumeShapes}
-            />
-          )}
-
-          {activeTab === 'variables' && (
-            <VariablesCreationTab
-              contracts={contracts}
-              marketPrices={marketPrices}
-              settings={settings}
             />
           )}
 

@@ -30,7 +30,9 @@ const mockContracts = [
     volumeShape: 'solar' as const,
     status: 'active' as const,
     pricingType: 'fixed' as const,
-    lwpPercentage: 95 // NEW: 95% LWP
+    lwpPercentage: 95, // NEW: 95% LWP
+    indexation: null,
+    referenceDate: null
   },
   {
     _id: '2',
@@ -49,7 +51,9 @@ const mockContracts = [
     volumeShape: 'flat' as const,
     status: 'active' as const,
     pricingType: 'fixed' as const,
-    lwpPercentage: 98 // NEW: 98% LWP
+    lwpPercentage: 98, // NEW: 98% LWP
+    indexation: null,
+    referenceDate: null
   },
   {
     _id: '3',
@@ -69,7 +73,9 @@ const mockContracts = [
     status: 'active' as const,
     pricingType: 'escalation' as const,
     escalationRate: 2.5,
-    lwpPercentage: 100 // NEW: 100% LWP (default)
+    lwpPercentage: 100, // NEW: 100% LWP (default)
+    indexation: null,
+    referenceDate: null
   },
   {
     _id: '4',
@@ -88,7 +94,9 @@ const mockContracts = [
     volumeShape: 'flat' as const,
     status: 'active' as const,
     pricingType: 'fixed' as const,
-    lwpPercentage: 105 // NEW: 105% LWP
+    lwpPercentage: 105, // NEW: 105% LWP
+    indexation: null,
+    referenceDate: null
   }
 ];
 
