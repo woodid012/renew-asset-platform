@@ -1,14 +1,15 @@
+// app/page.tsx
 'use client';
 
 import { useState, useEffect } from 'react';
 import Head from 'next/head';
 
 // Import tab components
-import { Contract, SettingsData } from './types'; 
+import { Contract, SettingsData } from './types';
 import VariablesCreationTab from './components/VariablesCreationTab'; // NEW IMPORT
 import ContractSummaryTab from './components/ContractSummaryTab';
 import ContractInputTab from './components/ContractInputTab';
-import PriceCurveTab from './components/PriceCurveTab';
+import PriceCurveTab from './components/PriceCurveTab'; // This component
 import MarkToMarketTab from './components/MarkToMarketTab';
 import TimeSeriesOutputTab from './components/TimeSeriesOutputTab';
 import SettingsTab from './components/SettingsTab';
@@ -196,30 +197,30 @@ const updateContract = async (updatedContract: Contract) => {
 
       if (response.ok) {
         const updated = await response.json();
-        
+
         // FIXED: Proper state update to replace the contract in the array
-        setContracts(prev => 
+        setContracts(prev =>
           prev.map(contract => {
             // Match by _id first, then id as fallback
             const isMatch = (contract._id && updated._id && contract._id === updated._id) ||
                           (contract.id && updated.id && contract.id === updated.id) ||
                           (contract.name === updated.name); // fallback to name
-            
+
             return isMatch ? updated : contract;
           })
         );
-        
+
         // Update selected contract if it matches
         if (selectedContract) {
           const isSelectedMatch = (selectedContract._id && updated._id && selectedContract._id === updated._id) ||
                                 (selectedContract.id && updated.id && selectedContract.id === updated.id) ||
                                 (selectedContract.name === updated.name);
-          
+
           if (isSelectedMatch) {
             setSelectedContract(updated);
           }
         }
-        
+
         return updated;
       } else {
         const errorData = await response.json();
@@ -344,12 +345,12 @@ const updateContract = async (updatedContract: Contract) => {
         <div className="min-h-96">
           {activeTab === 'summary' && <ContractSummaryTab {...commonProps} />}
           {activeTab === 'input' && <ContractInputTab {...commonProps} />}
-          {activeTab === 'price-curve' && <PriceCurveTab {...commonProps} />}
-          {activeTab === 'mark-to-market' && <MarkToMarketTab {...commonProps} />}
+          {activeTab === 'price-curve' && <PriceCurveTab />} {/* REMOVED ...commonProps */}
+          {activeTab === 'mark-to-market' && <MarkToMarketTab />} {/* REMOVED ...commonProps */}
           {activeTab === 'time-series' && <TimeSeriesOutputTab {...commonProps} />}
           {activeTab === 'settings' && (
-            <SettingsTab 
-              settings={settings} 
+            <SettingsTab
+              settings={settings}
               updateSettings={updateSettings}
             />
           )}
