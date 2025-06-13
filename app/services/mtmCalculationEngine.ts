@@ -57,96 +57,20 @@ export interface MtMCalculationOptions {
 export class MtMCalculationEngine {
   
   /**
-   * Calculate Mark-to-Market for a single contract
+   * Calculate Mark-to-Market for a single contract - now uses bulk fetching
    */
   async calculateContractMtM(
     contract: Contract, 
     options: MtMCalculationOptions
   ): Promise<MtMCalculationResult | null> {
     
-    try {
-      console.log(`🧮 Starting MtM calculation for contract: ${contract.name}`);
-      
-      // Step 1: Generate time periods for the calculation
-      const periods = this.generateCalculationPeriods(contract, options);
-      if (periods.length === 0) {
-        console.warn(`⚠️ No valid periods found for contract: ${contract.name}`);
-        return null;
-      }
-      
-      // Step 2: Get market price data from the service
-      const marketPriceProfile = this.determineMarketPriceProfile(contract, options);
-      const marketPriceData = await this.getMarketPriceData(contract, marketPriceProfile, options);
-      
-      if (!marketPriceData.success) {
-        console.error(`❌ Failed to get market price data for ${contract.name}: ${marketPriceData.error}`);
-        return null;
-      }
-      
-      // Step 3: Calculate period-by-period MtM
-      const timeSeriesData: MtMTimeSeriesPoint[] = [];
-      let cumulativeMtM = 0;
-      
-      for (const period of periods) {
-        const periodData = await this.calculatePeriodMtM(
-          contract, 
-          period, 
-          marketPriceData.marketPrice, 
-          options
-        );
-        
-        if (periodData) {
-          cumulativeMtM += periodData.mtmPnL;
-          periodData.cumulativeMtM = cumulativeMtM;
-          timeSeriesData.push(periodData);
-        }
-      }
-      
-      // Step 4: Calculate summary metrics
-      const summary = this.calculateSummaryMetrics(timeSeriesData, contract);
-      
-      // Step 5: Build the final result
-      const result: MtMCalculationResult = {
-        contractId: contract._id || contract.name,
-        contractName: contract.name,
-        direction: contract.direction || 'buy',
-        category: contract.category,
-        state: contract.state,
-        contractType: contract.contractType || 'Energy',
-        counterparty: contract.counterparty,
-        yearType: options.yearType,
-        
-        timeSeriesData,
-        
-        totalVolume: summary.totalVolume,
-        totalAbsVolume: summary.totalAbsVolume,
-        weightedAvgContractPrice: summary.weightedAvgContractPrice,
-        weightedAvgMarketPrice: summary.weightedAvgMarketPrice,
-        totalContractRevenue: summary.totalContractRevenue,
-        totalMarketValue: summary.totalMarketValue,
-        totalMtMPnL: summary.totalMtMPnL,
-        
-        volumeDataSource: contract.timeSeriesData ? 'time_series' : 'shape_based',
-        priceDataSource: marketPriceData.dataSource,
-        marketPriceProfile: marketPriceData.priceProfile,
-        
-        periodsCalculated: timeSeriesData.length,
-        firstPeriod: periods[0],
-        lastPeriod: periods[periods.length - 1],
-        calculationDate: new Date()
-      };
-      
-      console.log(`✅ MtM calculation completed for ${contract.name}: $${summary.totalMtMPnL.toLocaleString()}`);
-      return result;
-      
-    } catch (error) {
-      console.error(`🚨 Error calculating MtM for contract ${contract.name}:`, error);
-      return null;
-    }
+    // Single contract calculation now uses the bulk method
+    const results = await this.calculatePortfolioMtM([contract], options);
+    return results.length > 0 ? results[0] : null;
   }
   
   /**
-   * Calculate MtM for multiple contracts
+   * Calculate MtM for multiple contracts - fetch all market data at once
    */
   async calculatePortfolioMtM(
     contracts: Contract[], 
@@ -155,28 +79,27 @@ export class MtMCalculationEngine {
     
     console.log(`🚀 Starting portfolio MtM calculation for ${contracts.length} contracts`);
     
-    const results: MtMCalculationResult[] = [];
     const activeContracts = contracts.filter(c => c.status === 'active');
     
-    // Process contracts in parallel with some concurrency control
-    const batchSize = 5;
-    for (let i = 0; i < activeContracts.length; i += batchSize) {
-      const batch = activeContracts.slice(i, i + batchSize);
-      
-      const batchPromises = batch.map(contract => 
-        this.calculateContractMtM(contract, options)
-      );
-      
-      const batchResults = await Promise.all(batchPromises);
-      
-      // Add successful calculations to results
-      batchResults.forEach(result => {
-        if (result) {
-          results.push(result);
-        }
-      });
-      
-      console.log(`📊 Completed batch ${Math.floor(i/batchSize) + 1}/${Math.ceil(activeContracts.length/batchSize)}`);
+    // Step 1: Fetch all market price data at once
+    console.log(`📊 Fetching all market price data for ${options.selectedYear}...`);
+    const allMarketPrices = await this.fetchAllMarketPrices(activeContracts, options);
+    
+    if (Object.keys(allMarketPrices).length === 0) {
+      console.error('❌ No market price data available for any contracts');
+      return [];
+    }
+    
+    console.log(`✅ Fetched market prices for ${Object.keys(allMarketPrices).length} price series`);
+    
+    // Step 2: Process all contracts using the cached market data
+    const results: MtMCalculationResult[] = [];
+    
+    for (const contract of activeContracts) {
+      const result = await this.calculateContractMtMWithCachedPrices(contract, options, allMarketPrices);
+      if (result) {
+        results.push(result);
+      }
     }
     
     console.log(`✅ Portfolio MtM calculation completed: ${results.length}/${activeContracts.length} contracts processed`);
@@ -259,7 +182,6 @@ export class MtMCalculationEngine {
     // For Energy contracts: Only use solar/wind profiles for actual Solar/Wind Offtake contracts
     if ((contract.contractType || 'Energy') === 'Energy') {
       const category = contract.category.toLowerCase();
-      const volumeShape = contract.volumeShape.toLowerCase();
       
       // Only use solar profile for Solar Offtake contracts
       if (category.includes('solar') && category.includes('offtake')) {
@@ -274,7 +196,7 @@ export class MtMCalculationEngine {
       }
       
       // Default to baseload for all other Energy contracts
-      console.log(`⚡ Using baseload profile for Energy contract: ${contract.name} (category: ${contract.category})`);
+      console.log(`⚡ Using baseload profile for Energy contract: ${contract.name}`);
       return 'baseload';
     }
     
@@ -299,188 +221,272 @@ export class MtMCalculationEngine {
   }
   
   /**
-   * Get market price data using the market price service
+   * Fetch all market price data at once for the portfolio
    */
-  private async getMarketPriceData(contract: Contract, profile: string, options: MtMCalculationOptions) {
+  private async fetchAllMarketPrices(
+    contracts: Contract[], 
+    options: MtMCalculationOptions
+  ): Promise<{ [key: string]: number[] }> {
+    
+    // Get unique combinations of state/profile/type needed
+    const uniquePriceSeries = new Set<string>();
+    
+    contracts.forEach(contract => {
+      const profile = this.determineMarketPriceProfile(contract, options);
+      const contractType = contract.contractType || 'Energy';
+      const key = `${contract.state}-${profile}-${contractType}`;
+      uniquePriceSeries.add(key);
+    });
+    
+    console.log(`🔍 Need to fetch ${uniquePriceSeries.size} unique price series:`, Array.from(uniquePriceSeries));
+    
+    // Fetch all price data at once using the price curves API
     try {
-      console.log(`🔍 Getting market price data for contract ${contract.name}:`, {
-        state: contract.state,
-        contractType: contract.contractType || 'Energy',
-        volumeShape: contract.volumeShape,
-        profile: profile,
-        year: options.selectedYear,
-        curve: options.priceCurve || 'Aurora Jan 2025'
-      });
-
-      const request: ContractPriceRequest = {
-        state: contract.state,
-        contractType: (contract.contractType || 'Energy') as 'Energy' | 'Green',
-        volumeShape: contract.volumeShape,
-        year: options.selectedYear,
+      const queryParams = new URLSearchParams({
         curve: options.priceCurve || 'Aurora Jan 2025',
-        profile: profile
-      };
+        year: options.selectedYear.toString(),
+        state: 'all', // Get all states
+        profile: 'all', // Get all profiles  
+        type: 'Energy' // Start with Energy
+      });
       
-      const result = await marketPriceService.getContractMarketPrice(request);
+      console.log(`🌐 Fetching all Energy prices: /api/price-curves?${queryParams}`);
+      const energyResponse = await fetch(`/api/price-curves?${queryParams}`);
+      const energyData = await energyResponse.json();
       
-      if (!result.success) {
-        console.error(`❌ Market price service failed for ${contract.name}:`, result.error);
+      // Also fetch Green prices if needed
+      const needsGreen = contracts.some(c => (c.contractType || 'Energy') === 'Green');
+      let greenData = { success: false, marketPrices: {} };
+      
+      if (needsGreen) {
+        const greenParams = new URLSearchParams({
+          curve: options.priceCurve || 'Aurora Jan 2025',
+          year: options.selectedYear.toString(),
+          state: 'all',
+          profile: 'all',
+          type: 'Green'
+        });
         
-        // Try direct API call as fallback
-        console.log(`🔄 Attempting direct API fallback for ${contract.name}`);
-        const fallbackResult = await this.getMarketPriceDataDirect(contract, profile, options);
-        return fallbackResult;
+        console.log(`🟢 Fetching all Green prices: /api/price-curves?${greenParams}`);
+        const greenResponse = await fetch(`/api/price-curves?${greenParams}`);
+        greenData = await greenResponse.json();
       }
       
-      console.log(`✅ Market price data retrieved for ${contract.name}: ${result.marketPrice.length} data points`);
+      // Combine and convert all price data
+      const allMarketPrices: { [key: string]: number[] } = {};
+      
+      if (energyData.success && energyData.marketPrices) {
+        Object.entries(energyData.marketPrices).forEach(([seriesKey, timeSeriesData]: [string, any]) => {
+          if (Array.isArray(timeSeriesData)) {
+            allMarketPrices[seriesKey] = this.convertToMonthlyArray(timeSeriesData);
+          }
+        });
+      }
+      
+      if (greenData.success && greenData.marketPrices) {
+        Object.entries(greenData.marketPrices).forEach(([seriesKey, timeSeriesData]: [string, any]) => {
+          if (Array.isArray(timeSeriesData)) {
+            allMarketPrices[seriesKey] = this.convertToMonthlyArray(timeSeriesData);
+          }
+        });
+      }
+      
+      console.log(`✅ Fetched ${Object.keys(allMarketPrices).length} price series in total`);
+      return allMarketPrices;
+      
+    } catch (error) {
+      console.error('❌ Error fetching all market prices:', error);
+      return {};
+    }
+  }
+
+  /**
+   * Convert time series data to 12-month array
+   */
+  private convertToMonthlyArray(timeSeriesData: any[]): number[] {
+    const monthlyPrices = new Array(12).fill(0);
+    
+    timeSeriesData.forEach(point => {
+      if (point.month >= 1 && point.month <= 12) {
+        monthlyPrices[point.month - 1] = point.price || 0;
+      }
+    });
+    
+    return monthlyPrices;
+  }
+
+  /**
+   * Calculate contract MtM using pre-fetched market prices
+   */
+  private async calculateContractMtMWithCachedPrices(
+    contract: Contract,
+    options: MtMCalculationOptions,
+    allMarketPrices: { [key: string]: number[] }
+  ): Promise<MtMCalculationResult | null> {
+    
+    try {
+      console.log(`🧮 Calculating MtM for contract: ${contract.name}`);
+      
+      // Step 1: Generate time periods
+      const periods = this.generateCalculationPeriods(contract, options);
+      if (periods.length === 0) {
+        console.warn(`⚠️ No valid periods found for contract: ${contract.name}`);
+        return null;
+      }
+      
+      // Step 2: Find the right market prices from cached data
+      const marketPriceProfile = this.determineMarketPriceProfile(contract, options);
+      const monthlyMarketPrices = this.findMarketPricesInCache(
+        contract, 
+        marketPriceProfile, 
+        allMarketPrices
+      );
+      
+      if (monthlyMarketPrices.length === 0) {
+        console.error(`❌ No cached market price data found for ${contract.name}`);
+        return null;
+      }
+      
+      // Step 3: Calculate period-by-period MtM
+      const timeSeriesData: MtMTimeSeriesPoint[] = [];
+      let cumulativeMtM = 0;
+      
+      for (const period of periods) {
+        const periodData = this.calculatePeriodMtM(
+          contract, 
+          period, 
+          monthlyMarketPrices, 
+          options
+        );
+        
+        if (periodData) {
+          cumulativeMtM += periodData.mtmPnL;
+          periodData.cumulativeMtM = cumulativeMtM;
+          timeSeriesData.push(periodData);
+        }
+      }
+      
+      // Step 4: Calculate summary metrics
+      const summary = this.calculateSummaryMetrics(timeSeriesData, contract);
+      
+      // Step 5: Build the final result
+      const result: MtMCalculationResult = {
+        contractId: contract._id || contract.name,
+        contractName: contract.name,
+        direction: contract.direction || 'buy',
+        category: contract.category,
+        state: contract.state,
+        contractType: contract.contractType || 'Energy',
+        counterparty: contract.counterparty,
+        yearType: options.yearType,
+        
+        timeSeriesData,
+        
+        totalVolume: summary.totalVolume,
+        totalAbsVolume: summary.totalAbsVolume,
+        weightedAvgContractPrice: summary.weightedAvgContractPrice,
+        weightedAvgMarketPrice: summary.weightedAvgMarketPrice,
+        totalContractRevenue: summary.totalContractRevenue,
+        totalMarketValue: summary.totalMarketValue,
+        totalMtMPnL: summary.totalMtMPnL,
+        
+        volumeDataSource: contract.timeSeriesData ? 'time_series' : 'shape_based',
+        priceDataSource: 'Cached Market Prices',
+        marketPriceProfile: marketPriceProfile,
+        
+        periodsCalculated: timeSeriesData.length,
+        firstPeriod: periods[0],
+        lastPeriod: periods[periods.length - 1],
+        calculationDate: new Date()
+      };
+      
+      console.log(`✅ MtM calculation completed for ${contract.name}: ${summary.totalMtMPnL.toLocaleString()}`);
       return result;
       
     } catch (error) {
-      console.error(`🚨 Error getting market price data for ${contract.name}:`, error);
-      
-      // Try direct API call as fallback
-      console.log(`🔄 Attempting direct API fallback after error for ${contract.name}`);
-      return await this.getMarketPriceDataDirect(contract, profile, options);
+      console.error(`🚨 Error calculating MtM for contract ${contract.name}:`, error);
+      return null;
     }
   }
 
   /**
-   * Direct API call fallback for market price data
+   * Find market prices for a contract in the cached data
    */
-  private async getMarketPriceDataDirect(contract: Contract, profile: string, options: MtMCalculationOptions) {
-    try {
-      // Build query parameters exactly like your working URL
-      const queryParams = new URLSearchParams({
-        type: contract.contractType || 'Energy', // Use original type, not converted
-        profile: profile,
-        year: options.selectedYear.toString(),
-        curve: options.priceCurve || 'Aurora Jan 2025'
-      });
-      
-      const apiUrl = `/api/price-curves?${queryParams.toString()}`;
-      console.log(`🌐 Direct API call: ${apiUrl}`);
-      
-      const response = await fetch(apiUrl);
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      
-      if (!data.success) {
-        throw new Error(data.error || 'API returned unsuccessful response');
-      }
-      
-      // Convert the price curves response to the expected format
-      const stateKey = this.findBestStateKey(data.marketPrices, contract.state, contract.contractType || 'Energy', profile);
-      const marketPrice = data.marketPrices[stateKey] || [];
-      
-      if (marketPrice.length === 0) {
-        throw new Error(`No market price data found for ${contract.state}`);
-      }
-      
-      // Calculate average price
-      const validPrices = marketPrice.filter(price => price > 0);
-      const averagePrice = validPrices.length > 0 
-        ? validPrices.reduce((sum, price) => sum + price, 0) / validPrices.length 
-        : 0;
-      
-      console.log(`✅ Direct API success for ${contract.name}: Found ${marketPrice.length} prices, avg: ${averagePrice.toFixed(2)}`);
-      
-      return {
-        success: true,
-        marketPrice,
-        averagePrice,
-        priceProfile: profile,
-        dataSource: 'Direct API Call'
-      };
-      
-    } catch (error) {
-      console.error(`❌ Direct API call failed for ${contract.name}:`, error);
-      
-      // Final fallback to hardcoded prices
-      const fallbackPrice = (contract.contractType || 'Energy') === 'Green' ? 45 : 80;
-      const fallbackPrices = Array(12).fill(fallbackPrice);
-      
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Direct API call failed',
-        marketPrice: fallbackPrices,
-        averagePrice: fallbackPrice,
-        priceProfile: 'fallback',
-        dataSource: 'Fallback Data'
-      };
-    }
-  }
-
-  /**
-   * Find the best state key from available market price keys
-   */
-  private findBestStateKey(marketPrices: { [key: string]: number[] }, state: string, contractType: string, profile: string): string {
-    const keys = Object.keys(marketPrices);
-    console.log(`🔍 Finding best state key for ${state} ${contractType} ${profile} from:`, keys);
+  private findMarketPricesInCache(
+    contract: Contract,
+    profile: string,
+    allMarketPrices: { [key: string]: number[] }
+  ): number[] {
     
-    // Handle Green certificates
+    const contractType = contract.contractType || 'Energy';
+    const seriesKeys = Object.keys(allMarketPrices);
+    
+    console.log(`🔍 Finding cached prices for ${contract.state} ${profile} ${contractType}`);
+    
     if (contractType === 'Green') {
+      // Green certificate price matching
       const greenKeys = [
-        `${state} - ${profile} - green`,
-        `${state} - baseload - green`,
-        `${state} - green`,
-        `${state}-green`,
+        `${contract.state} - ${profile} - green`,
+        `${contract.state} - baseload - green`,
+        `${contract.state} - green`,
+        `${contract.state}-green`,
         // Try other states
-        ...['NSW', 'VIC', 'QLD', 'SA', 'WA'].map(s => `${s} - baseload - green`),
-        // Generic green keys
-        ...keys.filter(key => key.toLowerCase().includes('green'))
+        'NSW - baseload - green',
+        'VIC - baseload - green',
+        'QLD - baseload - green',
+        'SA - baseload - green',
+        // Generic
+        'green',
+        'Green'
       ];
       
       for (const key of greenKeys) {
-        if (marketPrices[key] && marketPrices[key].length > 0) {
-          console.log(`✅ Found Green key: "${key}"`);
-          return key;
+        if (allMarketPrices[key] && allMarketPrices[key].length === 12) {
+          console.log(`✅ Found cached Green prices: "${key}"`);
+          return allMarketPrices[key];
         }
       }
     } else {
-      // Handle Energy prices
+      // Energy price matching
       const energyKeys = [
-        `${state} - ${profile} - Energy`,
-        `${state} - ${profile} - energy`,
-        `${state} - ${profile}`,
-        `${state} - baseload - Energy`,
-        `${state} - baseload`,
-        `${state}`,
+        `${contract.state} - ${profile} - Energy`,
+        `${contract.state} - ${profile}`,
+        `${contract.state} - baseload - Energy`,
+        `${contract.state} - baseload`,
+        `${contract.state}`,
         // Try other states
-        ...['NSW', 'VIC', 'QLD', 'SA', 'WA'].map(s => `${s} - baseload - Energy`)
+        'NSW - baseload - Energy',
+        'VIC - baseload - Energy', 
+        'QLD - baseload - Energy',
+        'SA - baseload - Energy',
+        'NSW',
+        'VIC',
+        'QLD',
+        'SA'
       ];
       
       for (const key of energyKeys) {
-        if (marketPrices[key] && marketPrices[key].length > 0) {
-          console.log(`✅ Found Energy key: "${key}"`);
-          return key;
+        if (allMarketPrices[key] && allMarketPrices[key].length === 12) {
+          console.log(`✅ Found cached Energy prices: "${key}"`);
+          return allMarketPrices[key];
         }
       }
     }
     
-    // Last resort: first available key
-    const firstKey = keys.find(key => marketPrices[key] && marketPrices[key].length > 0);
-    if (firstKey) {
-      console.log(`⚠️ Using fallback key: "${firstKey}"`);
-      return firstKey;
-    }
-    
-    console.warn(`❌ No suitable key found for ${state} ${contractType} ${profile}`);
-    return keys[0] || '';
+    console.warn(`❌ No cached prices found for ${contract.state} ${profile} ${contractType}`);
+    console.log(`Available keys:`, seriesKeys);
+    return [];
   }
   
   /**
-   * Calculate MtM for a specific period
+   * Calculate MtM for a specific period (simplified)
    */
-  private async calculatePeriodMtM(
+  private calculatePeriodMtM(
     contract: Contract,
     period: string,
-    marketPrices: number[],
+    monthlyMarketPrices: number[],
     options: MtMCalculationOptions
-  ): Promise<MtMTimeSeriesPoint | null> {
+  ): MtMTimeSeriesPoint | null {
     
     // Get volume for this period
     const volume = this.getVolumeForPeriod(contract, period, options);
@@ -494,9 +500,9 @@ export class MtMCalculationEngine {
     // Get market price for this period
     const [year, month] = period.split('-').map(Number);
     const monthIndex = month - 1; // Convert to 0-based index
-    const marketPrice = marketPrices[monthIndex] || marketPrices[0] || 0;
+    const marketPrice = monthlyMarketPrices[monthIndex];
     
-    if (marketPrice <= 0) {
+    if (!marketPrice || marketPrice <= 0) {
       console.warn(`⚠️ No market price data for period ${period}`);
       return null;
     }
@@ -613,8 +619,7 @@ export class MtMCalculationEngine {
       };
     }
     
-    const totalVolume = timeSeriesData.reduce((sum, point) => sum + point.contractVolume, 0);
-    const totalAbsVolume = Math.abs(totalVolume);
+    const totalAbsVolume = timeSeriesData.reduce((sum, point) => sum + Math.abs(point.contractVolume), 0);
     const totalContractRevenue = timeSeriesData.reduce((sum, point) => sum + point.contractRevenue, 0);
     const totalMarketValue = timeSeriesData.reduce((sum, point) => sum + point.marketValue, 0);
     const totalMtMPnL = timeSeriesData.reduce((sum, point) => sum + point.mtmPnL, 0);
