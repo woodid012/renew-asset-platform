@@ -99,7 +99,7 @@ const defaultSettings: SettingsData = {
 };
 
 export default function EnergyContractManagement() {
-  const [activeTab, setActiveTab] = useState('summary');
+  const [activeTab, setActiveTab] = useState('input');
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [selectedContract, setSelectedContract] = useState<Contract | null>(null);
   const [timeSeriesData, setTimeSeriesData] = useState<TimeSeriesRow[]>([]);
@@ -343,7 +343,7 @@ const updateContract = async (updatedContract: Contract) => {
 
         {/* Tab Content */}
         <div className="min-h-96">
-          {activeTab === 'summary' && <ContractSummaryTab {...commonProps} />}
+         
           {activeTab === 'input' && <ContractInputTab {...commonProps} />}
           {activeTab === 'price-curve' && <PriceCurveTab />} {/* REMOVED ...commonProps */}
           {activeTab === 'mark-to-market' && <MarkToMarketTab />} {/* REMOVED ...commonProps */}
