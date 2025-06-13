@@ -8,34 +8,42 @@ interface PricePoint {
   year: number;
   month: number;
   monthName: string;
+  state: string;
+  type: string;
+  financialYear: number;
+  calendarYear: number;
+  scenario: string;
+  period: string;
+  curve: string;
 }
 
 interface TimeSeriesData {
   month: string;
-  [key: string]: string | number; // For dynamic state/profile data
+  [key: string]: string | number; // For dynamic state/type data
 }
 
-export default function PriceCurveViewer() {
+export default function PriceCurvesTab() {
   const [priceData, setPriceData] = useState<{ [key: string]: PricePoint[] }>({});
   const [timeSeriesData, setTimeSeriesData] = useState<TimeSeriesData[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   
   // Chart configuration
-  const [viewMode, setViewMode] = useState<'states' | 'profiles'>('states');
-  const [selectedProfile, setSelectedProfile] = useState('baseload');
+  const [viewMode, setViewMode] = useState<'states' | 'types'>('states');
   const [selectedState, setSelectedState] = useState('NSW');
-  const [selectedType, setSelectedType] = useState<'Energy' | 'Green'>('Energy');
-  const [selectedCurve, setSelectedCurve] = useState('Aurora Jan 2025');
+  const [selectedType, setSelectedType] = useState('Energy');
   const [selectedYear, setSelectedYear] = useState('all');
+  const [selectedScenario, setSelectedScenario] = useState('Central');
+  const [selectedCurve, setSelectedCurve] = useState('Aurora Jan 2025 Intervals');
   const [timeInterval, setTimeInterval] = useState<'monthly' | 'quarterly' | 'yearly'>('yearly');
   const [showRawData, setShowRawData] = useState(false);
 
-  const states = ['NSW', 'VIC', 'QLD', 'SA'];
-  const profiles = ['baseload', 'solar', 'wind'];
-  const types = ['Energy', 'Green'];
-  const curves = ['Aurora Jan 2025'];
-  const years = ['2025', '2026', '2027', '2028', '2029', '2030', '2035', '2040', '2045', '2050', 'all'];
+  // Available options (will be populated from API response)
+  const [availableStates, setAvailableStates] = useState(['NSW', 'VIC', 'QLD', 'SA']);
+  const [availableTypes, setAvailableTypes] = useState(['Energy']);
+  const [availableScenarios, setAvailableScenarios] = useState(['Central']);
+  const [availableYears, setAvailableYears] = useState(['2025', '2026', '2027', '2028', '2029', '2030', 'all']);
+
   const timeIntervals = [
     { value: 'monthly', label: 'Monthly' },
     { value: 'quarterly', label: 'Quarterly' },
@@ -51,76 +59,65 @@ export default function PriceCurveViewer() {
     WA: '#8B5CF6'   // Purple
   };
 
-  const profileColors = {
-    baseload: '#3B82F6', // Blue
-    solar: '#F59E0B',    // Yellow
-    wind: '#10B981',     // Green
-    green: '#8B5CF6'     // Purple (for Green type)
+  const typeColors = {
+    Energy: '#3B82F6', // Blue
+    Green: '#10B981',  // Green
+    gas: '#F59E0B',    // Yellow
+    coal: '#6B7280'    // Gray
   };
 
-  // Fetch price data for multiple series
+  // Fetch price data
   const fetchPriceData = async () => {
     setLoading(true);
     setError('');
     
     try {
       const allData: { [key: string]: PricePoint[] } = {};
-      const yearsToFetch = selectedYear === 'all' 
-        ? ['2025', '2026', '2027', '2028', '2029', '2030', '2035', '2040', '2045', '2050'] 
-        : [selectedYear];
       
       if (viewMode === 'states') {
-        // Fetch data for all states with selected profile
-        for (const state of states) {
-          for (const year of yearsToFetch) {
-            const params = new URLSearchParams({
-              curve: selectedCurve,
-              state: state,
-              profile: selectedProfile,
-              type: selectedType,
-              year: year
+        // Fetch data for all states with selected type
+        for (const state of availableStates) {
+          const params = new URLSearchParams({
+            state: state,
+            type: selectedType,
+            year: selectedYear,
+            scenario: selectedScenario,
+            curve: selectedCurve
+          });
+          
+          console.log(`Fetching data for ${state}:`, `/api/price-curves?${params}`);
+          
+          const response = await fetch(`/api/price-curves?${params}`);
+          const result = await response.json();
+          
+          if (result.success && result.marketPrices) {
+            // Combine all series for this state
+            Object.entries(result.marketPrices).forEach(([seriesKey, points]) => {
+              allData[`${state}`] = points as PricePoint[];
             });
-            
-            console.log(`Fetching data for ${state} ${year}:`, `/api/price-curves?${params}`);
-            
-            const response = await fetch(`/api/price-curves?${params}`);
-            const result = await response.json();
-            
-            if (result.success && result.marketPrices) {
-              // Combine all series for this state
-              Object.entries(result.marketPrices).forEach(([seriesKey, points]) => {
-                const key = `${state}_${seriesKey}_${year}`;
-                allData[key] = points as PricePoint[];
-              });
-            }
           }
         }
       } else {
-        // Fetch data for all profiles with selected state
-        const allProfiles = selectedType === 'Green' ? ['green'] : profiles;
-        
-        for (const profile of allProfiles) {
-          for (const year of yearsToFetch) {
-            const params = new URLSearchParams({
-              curve: selectedCurve,
-              state: selectedState,
-              profile: profile,
-              type: selectedType,
-              year: year
+        // Fetch data for all types with selected state
+        for (const type of availableTypes) {
+          const params = new URLSearchParams({
+            state: selectedState,
+            type: type,
+            year: selectedYear,
+            scenario: selectedScenario,
+            curve: selectedCurve
+          });
+          
+          console.log(`Fetching data for ${type}:`, `/api/price-curves?${params}`);
+          
+          const response = await fetch(`/api/price-curves?${params}`);
+          const result = await response.json();
+          
+          if (result.success && result.marketPrices) {
+            // Combine all series for this type
+            Object.entries(result.marketPrices).forEach(([seriesKey, points]) => {
+              allData[`${type}`] = points as PricePoint[];
             });
-            
-            console.log(`Fetching data for ${profile} ${year}:`, `/api/price-curves?${params}`);
-            
-            const response = await fetch(`/api/price-curves?${params}`);
-            const result = await response.json();
-            
-            if (result.success && result.marketPrices) {
-              // Combine all series for this profile
-              Object.entries(result.marketPrices).forEach(([seriesKey, points]) => {
-                const key = `${profile}_${seriesKey}_${year}`;
-                allData[key] = points as PricePoint[];
-              });
-            }
           }
         }
       }
@@ -139,23 +136,38 @@ export default function PriceCurveViewer() {
     }
   };
 
-  // Transform price data to time series format with time interval aggregation
+  // Fetch available options from API
+  const fetchAvailableOptions = async () => {
+    try {
+      const response = await fetch('/api/price-curves?curve=' + selectedCurve);
+      const result = await response.json();
+      
+      if (result.success) {
+        setAvailableStates(result.availableStates || ['NSW', 'VIC', 'QLD', 'SA']);
+        setAvailableTypes(result.availableTypes || ['Energy']);
+        setAvailableScenarios(result.availableScenarios || ['Central']);
+        setAvailableYears([...result.financialYears.map(String), 'all'] || ['2025', 'all']);
+      }
+    } catch (err) {
+      console.error('Error fetching options:', err);
+    }
+  };
+
+  // Transform price data to time series format
   const transformToTimeSeriesData = (data: { [key: string]: PricePoint[] }): TimeSeriesData[] => {
     const allDataPoints: { [identifier: string]: { date: Date, price: number }[] } = {};
     
     // Collect all data points by identifier
     Object.entries(data).forEach(([seriesKey, points]) => {
       points.forEach(point => {
-        // Extract state or profile from series key (remove year suffix if present)
-        const keyParts = seriesKey.split('_');
-        const identifier = keyParts[0]; // NSW, VIC, baseload, solar, etc.
+        const identifier = seriesKey; // NSW, VIC, Energy, etc.
         
         if (!allDataPoints[identifier]) {
           allDataPoints[identifier] = [];
         }
         
         allDataPoints[identifier].push({
-          date: new Date(point.year, point.month - 1), // month is 1-indexed
+          date: new Date(point.date),
           price: point.price
         });
       });
@@ -173,7 +185,7 @@ export default function PriceCurveViewer() {
     const minDate = new Date(Math.min(...allDates.map(d => d.getTime())));
     const maxDate = new Date(Math.max(...allDates.map(d => d.getTime())));
     
-    // Generate time intervals based on selection
+    // Generate time intervals
     const timePoints: { date: Date, label: string }[] = [];
     
     if (timeInterval === 'monthly') {
@@ -237,7 +249,7 @@ export default function PriceCurveViewer() {
         
         if (relevantPoints.length > 0) {
           const average = relevantPoints.reduce((sum, price) => sum + price, 0) / relevantPoints.length;
-          dataPoint[identifier] = Math.round(average * 100) / 100; // Round to 2 decimal places
+          dataPoint[identifier] = Math.round(average * 100) / 100;
         }
       });
       
@@ -245,16 +257,40 @@ export default function PriceCurveViewer() {
     });
     
     return timeSeriesData.filter(point => 
-      Object.keys(point).length > 1 // Keep only points that have data beyond just the month label
+      Object.keys(point).length > 1
     );
   };
 
+  // Get line configuration for chart
+  const getLineConfig = () => {
+    if (viewMode === 'states') {
+      return availableStates.map(state => ({
+        key: state,
+        color: stateColors[state as keyof typeof stateColors] || '#6B7280',
+        name: state
+      }));
+    } else {
+      return availableTypes.map(type => ({
+        key: type,
+        color: typeColors[type as keyof typeof typeColors] || '#6B7280',
+        name: type
+      }));
+    }
+  };
+
+  // Load available options on mount
+  useEffect(() => {
+    fetchAvailableOptions();
+  }, [selectedCurve]);
+
   // Fetch data when parameters change
   useEffect(() => {
-    fetchPriceData();
-  }, [viewMode, selectedProfile, selectedState, selectedType, selectedCurve, selectedYear]);
+    if (availableStates.length > 0 && availableTypes.length > 0) {
+      fetchPriceData();
+    }
+  }, [viewMode, selectedState, selectedType, selectedYear, selectedScenario, selectedCurve, availableStates, availableTypes]);
 
-  // Re-aggregate when time interval changes (without refetching)
+  // Re-aggregate when time interval changes
   useEffect(() => {
     if (Object.keys(priceData).length > 0) {
       const chartData = transformToTimeSeriesData(priceData);
@@ -262,67 +298,32 @@ export default function PriceCurveViewer() {
     }
   }, [timeInterval, priceData]);
 
-  // Get line configuration for chart
-  const getLineConfig = () => {
-    if (viewMode === 'states') {
-      return states.map(state => ({
-        key: state,
-        color: stateColors[state as keyof typeof stateColors],
-        name: state
-      }));
-    } else {
-      const profiles = selectedType === 'Green' ? ['green'] : ['baseload', 'solar', 'wind'];
-      return profiles.map(profile => ({
-        key: profile,
-        color: profileColors[profile as keyof typeof profileColors],
-        name: profile.charAt(0).toUpperCase() + profile.slice(1)
-      }));
-    }
-  };
-
   const lineConfig = getLineConfig();
 
   return (
     <div className="max-w-7xl mx-auto p-6 space-y-6">
       <div className="bg-white rounded-lg shadow-md p-6">
         <h1 className="text-2xl font-bold text-gray-800 mb-6">
-          📈 Price Curve Time Series Viewer
+          📈 Price Curves Viewer
         </h1>
         
         {/* Controls */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-7 gap-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4 mb-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               View Mode
             </label>
             <select
               value={viewMode}
-              onChange={(e) => setViewMode(e.target.value as 'states' | 'profiles')}
+              onChange={(e) => setViewMode(e.target.value as 'states' | 'types')}
               className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
             >
               <option value="states">Compare States</option>
-              <option value="profiles">Compare Profiles</option>
+              <option value="types">Compare Types</option>
             </select>
           </div>
           
-          {viewMode === 'states' && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Profile
-              </label>
-              <select
-                value={selectedProfile}
-                onChange={(e) => setSelectedProfile(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-              >
-                <option value="baseload">Baseload</option>
-                <option value="solar">Solar</option>
-                <option value="wind">Wind</option>
-              </select>
-            </div>
-          )}
-          
-          {viewMode === 'profiles' && (
+          {viewMode === 'types' && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 State
@@ -332,8 +333,25 @@ export default function PriceCurveViewer() {
                 onChange={(e) => setSelectedState(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
               >
-                {states.map(state => (
+                {availableStates.map(state => (
                   <option key={state} value={state}>{state}</option>
+                ))}
+              </select>
+            </div>
+          )}
+          
+          {viewMode === 'states' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Type
+              </label>
+              <select
+                value={selectedType}
+                onChange={(e) => setSelectedType(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+              >
+                {availableTypes.map(type => (
+                  <option key={type} value={type}>{type}</option>
                 ))}
               </select>
             </div>
@@ -341,46 +359,32 @@ export default function PriceCurveViewer() {
           
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Type
-            </label>
-            <select
-              value={selectedType}
-              onChange={(e) => setSelectedType(e.target.value as 'Energy' | 'Green')}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-            >
-              <option value="Energy">Energy</option>
-              <option value="Green">Green</option>
-            </select>
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Curve
-            </label>
-            <select
-              value={selectedCurve}
-              onChange={(e) => setSelectedCurve(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-            >
-              {curves.map(curve => (
-                <option key={curve} value={curve}>{curve}</option>
-              ))}
-            </select>
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Year
+              Financial Year
             </label>
             <select
               value={selectedYear}
               onChange={(e) => setSelectedYear(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
             >
-              {years.map(year => (
+              {availableYears.map(year => (
                 <option key={year} value={year}>
-                  {year === 'all' ? 'All Years' : year}
+                  {year === 'all' ? 'All Years' : `FY${year}`}
                 </option>
+              ))}
+            </select>
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Scenario
+            </label>
+            <select
+              value={selectedScenario}
+              onChange={(e) => setSelectedScenario(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+            >
+              {availableScenarios.map(scenario => (
+                <option key={scenario} value={scenario}>{scenario}</option>
               ))}
             </select>
           </div>
@@ -432,26 +436,26 @@ export default function PriceCurveViewer() {
             <div className="text-center">
               <div className="text-gray-600">View Mode</div>
               <div className="font-semibold">
-                {viewMode === 'states' ? 'Comparing States' : 'Comparing Profiles'}
+                {viewMode === 'states' ? 'Comparing States' : 'Comparing Types'}
               </div>
             </div>
             <div className="text-center">
               <div className="text-gray-600">
-                {viewMode === 'states' ? 'Profile' : 'State'}
+                {viewMode === 'states' ? 'Type' : 'State'}
               </div>
               <div className="font-semibold">
-                {viewMode === 'states' ? selectedProfile : selectedState}
+                {viewMode === 'states' ? selectedType : selectedState}
               </div>
             </div>
             <div className="text-center">
-              <div className="text-gray-600">Type</div>
-              <div className="font-semibold">{selectedType}</div>
+              <div className="text-gray-600">Financial Year</div>
+              <div className="font-semibold">
+                {selectedYear === 'all' ? 'All Years' : `FY${selectedYear}`}
+              </div>
             </div>
             <div className="text-center">
-              <div className="text-gray-600">Time Interval</div>
-              <div className="font-semibold">
-                {timeIntervals.find(t => t.value === timeInterval)?.label}
-              </div>
+              <div className="text-gray-600">Scenario</div>
+              <div className="font-semibold">{selectedScenario}</div>
             </div>
             <div className="text-center">
               <div className="text-gray-600">Data Points</div>
@@ -555,7 +559,7 @@ export default function PriceCurveViewer() {
         </div>
       )}
 
-      {/* Raw Data Table - Collapsible */}
+      {/* Raw Data Table */}
       {timeSeriesData.length > 0 && (
         <div className="bg-white rounded-lg shadow-md p-6">
           <div className="flex items-center justify-between mb-4">

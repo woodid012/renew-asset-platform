@@ -77,6 +77,7 @@ export default function StreamlinedMtMTab({ contracts = mockContracts }: Streaml
   const [selectedYear, setSelectedYear] = useState(2025);
   const [mtmResults, setMtmResults] = useState<MtMCalculationResult[]>([]);
   const [isCalculating, setIsCalculating] = useState(false);
+  const [calculationError, setCalculationError] = useState<string>('');
   const [viewMode, setViewMode] = useState<'portfolio' | 'individual'>('portfolio');
   const [selectedContract, setSelectedContract] = useState<string>('');
   const [showSummaryTable, setShowSummaryTable] = useState(false);
@@ -89,61 +90,126 @@ export default function StreamlinedMtMTab({ contracts = mockContracts }: Streaml
     handleCalculateMtM();
   }, [selectedYear, contracts]);
 
-  // Calculate MtM for all active contracts using real price data
+  // Calculate MtM for all active contracts
   const handleCalculateMtM = async () => {
-    if (activeContracts.length === 0) return;
+    if (activeContracts.length === 0) {
+      setMtmResults([]);
+      return;
+    }
 
     setIsCalculating(true);
+    setCalculationError('');
     
     try {
       const options: MtMCalculationOptions = {
         selectedYear,
-        curve: 'Aurora Jan 2025' // You can make this configurable
+        curve: 'Aurora Jan 2025 Intervals',
+        scenario: 'Central'
       };
 
-      console.log(`🚀 Starting MtM calculation for ${activeContracts.length} contracts, year ${selectedYear}`);
-      
-      // Use the API-enabled calculation engine
+      console.log('🔄 Starting MtM calculation with options:', options);
       const results = await streamlinedMtMEngine.calculatePortfolioMtM(activeContracts, options);
-      setMtmResults(results);
+      console.log('✅ MtM calculation completed, results:', results);
       
-      if (results.length > 0 && !selectedContract) {
-        setSelectedContract(results[0].contractId);
+      // Ensure results is an array
+      if (Array.isArray(results)) {
+        setMtmResults(results);
+        
+        if (results.length > 0 && !selectedContract) {
+          setSelectedContract(results[0].contractId);
+        }
+      } else {
+        console.error('❌ MtM calculation returned non-array:', results);
+        setMtmResults([]);
+        setCalculationError('MtM calculation returned invalid data');
       }
-      
-      console.log(`✅ MtM calculation completed: ${results.length} contracts processed`);
     } catch (error) {
       console.error('❌ Error calculating MtM:', error);
-      // Show error message to user
-      alert('Error calculating Mark-to-Market. Check console for details.');
+      setCalculationError(error instanceof Error ? error.message : 'Unknown error occurred');
+      setMtmResults([]);
     } finally {
       setIsCalculating(false);
     }
   };
 
-  // Portfolio aggregation using calculation engine
+  // Portfolio aggregation using calculation engine with safety checks
   const portfolioData = useMemo(() => {
-    if (mtmResults.length === 0) return [];
-    return streamlinedMtMEngine.calculatePortfolioAggregation(mtmResults, selectedYear);
+    if (!Array.isArray(mtmResults) || mtmResults.length === 0) {
+      console.log('📊 Portfolio data: No valid results available');
+      return [];
+    }
+    
+    try {
+      const aggregation = streamlinedMtMEngine.calculatePortfolioAggregation(mtmResults, selectedYear);
+      console.log('📊 Portfolio aggregation calculated:', aggregation.length, 'data points');
+      return aggregation;
+    } catch (error) {
+      console.error('❌ Error calculating portfolio aggregation:', error);
+      return [];
+    }
   }, [mtmResults, selectedYear]);
 
-  // Individual contract data for charts
+  // Individual contract data for charts with safety checks
   const individualContractData = useMemo(() => {
-    const result = mtmResults.find(r => r.contractId === selectedContract);
-    if (!result) return [];
+    if (!Array.isArray(mtmResults) || mtmResults.length === 0 || !selectedContract) {
+      console.log('📈 Individual contract data: No valid results or selected contract');
+      return [];
+    }
 
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    return result.timeSeriesData.map((point, index) => ({
-      month: months[index] || point.period.split('-')[1],
-      ...point,
-      mtmPnL: Math.round(point.mtmPnL),
-      cumulativeMtM: Math.round(point.cumulativeMtM)
-    }));
+    try {
+      const result = mtmResults.find(r => r && r.contractId === selectedContract);
+      if (!result || !Array.isArray(result.timeSeriesData)) {
+        console.log('📈 Individual contract data: No matching result found for', selectedContract);
+        return [];
+      }
+
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const contractData = result.timeSeriesData.map((point, index) => ({
+        month: months[index] || point.period.split('-')[1],
+        ...point,
+        mtmPnL: Math.round(point.mtmPnL),
+        cumulativeMtM: Math.round(point.cumulativeMtM)
+      }));
+      
+      console.log('📈 Individual contract data calculated:', contractData.length, 'data points');
+      return contractData;
+    } catch (error) {
+      console.error('❌ Error calculating individual contract data:', error);
+      return [];
+    }
   }, [mtmResults, selectedContract]);
 
-  // Portfolio summary stats using calculation engine
+  // Portfolio summary stats using calculation engine with safety checks
   const portfolioStats = useMemo(() => {
-    return streamlinedMtMEngine.calculatePortfolioStats(mtmResults);
+    if (!Array.isArray(mtmResults)) {
+      console.log('📊 Portfolio stats: No valid results available');
+      return {
+        totalMtM: 0,
+        totalVolume: 0,
+        totalRevenue: 0,
+        totalMarketValue: 0,
+        avgContractPrice: 0,
+        avgMarketPrice: 0,
+        contractCount: 0
+      };
+    }
+
+    try {
+      const stats = streamlinedMtMEngine.calculatePortfolioStats(mtmResults);
+      console.log('📊 Portfolio stats calculated:', stats);
+      return stats;
+    } catch (error) {
+      console.error('❌ Error calculating portfolio stats:', error);
+      return {
+        totalMtM: 0,
+        totalVolume: 0,
+        totalRevenue: 0,
+        totalMarketValue: 0,
+        avgContractPrice: 0,
+        avgMarketPrice: 0,
+        contractCount: 0
+      };
+    }
   }, [mtmResults]);
 
   return (
@@ -198,8 +264,17 @@ export default function StreamlinedMtMTab({ contracts = mockContracts }: Streaml
         </div>
       </div>
 
+      {/* Error Display */}
+      {calculationError && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <div className="text-red-800">
+            <strong>Error:</strong> {calculationError}
+          </div>
+        </div>
+      )}
+
       {/* MtM Results */}
-      {mtmResults.length > 0 && (
+      {Array.isArray(mtmResults) && mtmResults.length > 0 && (
         <>
           {/* Portfolio Summary */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -243,7 +318,7 @@ export default function StreamlinedMtMTab({ contracts = mockContracts }: Streaml
                 {viewMode === 'portfolio' ? 'Portfolio Monthly MtM' : 'Contract Monthly MtM'}
               </h3>
               
-              {viewMode === 'individual' && (
+              {viewMode === 'individual' && Array.isArray(mtmResults) && mtmResults.length > 0 && (
                 <div className="mb-4">
                   <select
                     value={selectedContract}
@@ -295,7 +370,7 @@ export default function StreamlinedMtMTab({ contracts = mockContracts }: Streaml
                     />
                     <Line 
                       type="monotone" 
-                      dataKey={viewMode === 'portfolio' ? 'cumulativeMtM' : 'cumulativeMtM'}
+                      dataKey="cumulativeMtM"
                       stroke="#10B981" 
                       strokeWidth={3}
                       dot={{ fill: '#10B981', strokeWidth: 2, r: 4 }}
@@ -371,7 +446,7 @@ export default function StreamlinedMtMTab({ contracts = mockContracts }: Streaml
           </div>
 
           {/* Monthly Breakdown Table */}
-          {viewMode === 'individual' && selectedContract && (
+          {viewMode === 'individual' && selectedContract && individualContractData.length > 0 && (
             <div className="bg-white rounded-xl p-6 shadow-md border border-gray-200">
               <h3 className="text-lg font-semibold text-gray-800 mb-4">
                 Monthly Breakdown - {mtmResults.find(r => r.contractId === selectedContract)?.contractName}
@@ -429,7 +504,7 @@ export default function StreamlinedMtMTab({ contracts = mockContracts }: Streaml
       )}
 
       {/* Empty State */}
-      {mtmResults.length === 0 && !isCalculating && (
+      {!Array.isArray(mtmResults) || (mtmResults.length === 0 && !isCalculating && !calculationError) && (
         <div className="bg-white rounded-xl p-12 shadow-md border border-gray-200 text-center">
           <div className="text-6xl mb-4">💹</div>
           <h3 className="text-xl font-semibold text-gray-800 mb-2">Ready to Calculate MtM</h3>
@@ -443,34 +518,26 @@ export default function StreamlinedMtMTab({ contracts = mockContracts }: Streaml
       )}
 
       {/* Integration Notes */}
-      <div className="bg-green-50 rounded-xl p-6 border border-green-200">
-        <h3 className="text-lg font-semibold text-green-800 mb-4">🔗 Live Price Data Integration</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm text-green-700">
+      <div className="bg-blue-50 rounded-xl p-6 border border-blue-200">
+        <h3 className="text-lg font-semibold text-blue-800 mb-4">🔗 Integration Status</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm text-blue-700">
           <div>
-            <h4 className="font-semibold mb-2">✅ API Integration Active</h4>
+            <h4 className="font-semibold mb-2">✅ Connected Features</h4>
             <ul className="space-y-1">
-              <li>• <strong>Real Price Data:</strong> Fetching from /api/price-curves endpoint</li>
-              <li>• <strong>Smart Caching:</strong> 5-minute cache to optimize performance</li>
-              <li>• <strong>Bulk Fetching:</strong> Efficiently loads all required price series</li>
-              <li>• <strong>Fallback Protection:</strong> Uses default prices if API fails</li>
+              <li>• <strong>Price Curves API:</strong> Fetching real market prices</li>
+              <li>• <strong>Green Pricing:</strong> Using 'Green' state for Green contracts</li>
+              <li>• <strong>Error Handling:</strong> Graceful failure handling</li>
+              <li>• <strong>Async Calculations:</strong> Non-blocking MtM processing</li>
             </ul>
           </div>
           <div>
-            <h4 className="font-semibold mb-2">📊 Price Curve Features</h4>
+            <h4 className="font-semibold mb-2">🔄 Current Status</h4>
             <ul className="space-y-1">
-              <li>• <strong>Energy Prices:</strong> State-specific baseload pricing</li>
-              <li>• <strong>Green Certificates:</strong> Renewable energy credit pricing</li>
-              <li>• <strong>Aurora Jan 2025:</strong> Using latest forward curve</li>
-              <li>• <strong>Monthly Granularity:</strong> 12-month price profiles</li>
+              <li>• <strong>MtM Results:</strong> {Array.isArray(mtmResults) ? mtmResults.length : 0} contracts calculated</li>
+              <li>• <strong>Cache Status:</strong> {streamlinedMtMEngine.getCacheStats().size} cached price series</li>
+              <li>• <strong>Active Contracts:</strong> {activeContracts.length} ready for calculation</li>
+              <li>• <strong>Calculation:</strong> {isCalculating ? 'In Progress' : 'Ready'}</li>
             </ul>
-          </div>
-        </div>
-        
-        <div className="mt-4 p-3 bg-green-100 rounded-lg">
-          <div className="flex items-center gap-2 text-green-800 text-sm">
-            <span>🎯</span>
-            <strong>Cache Status:</strong> 
-            <span className="ml-2">Ready to fetch live market data from your price curve database</span>
           </div>
         </div>
       </div>
