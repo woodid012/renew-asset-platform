@@ -1,12 +1,12 @@
 // /api/price-curves/route.js
-import { MongoClient, Db } from 'mongodb'; // Import Db type
-import { NextResponse } from 'next/server';
+import { MongoClient, Db } from 'mongodb';
+import { NextResponse, NextRequest } from 'next/server'; // Import NextRequest
 
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://ProjectHalo:5apsFwxTlqN8WHQR@cluster0.quuwlhb.mongodb.net/energy_contracts?retryWrites=true&w=majority&appName=Cluster0';
 const MONGODB_DB = process.env.MONGODB_DB || 'energy_contracts';
 
-let cachedClient: MongoClient | null = null; // Explicitly type cachedClient
-let cachedDb: Db | null = null; // Explicitly type cachedDb
+let cachedClient: MongoClient | null = null;
+let cachedDb: Db | null = null;
 
 async function connectToDatabase() {
   if (cachedClient && cachedDb) {
@@ -24,7 +24,7 @@ async function connectToDatabase() {
   return { client, db };
 }
 
-export async function GET(request) {
+export async function GET(request: NextRequest) { // Explicitly type the request parameter
   try {
     const { searchParams } = new URL(request.url);
 
@@ -124,7 +124,7 @@ export async function GET(request) {
       message: `Found ${totalRecords} records across ${Object.keys(marketPrices).length} series`
     });
 
-  } catch (error: any) { // Explicitly type error as 'any' for simpler handling
+  } catch (error: any) {
     console.error('Price Curves API Error:', error);
 
     return NextResponse.json({
