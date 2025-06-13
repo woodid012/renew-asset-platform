@@ -196,11 +196,12 @@ export class MarketPriceService {
    * Get market price for contract - simplified
    */
   async getContractMarketPrice(request: ContractPriceRequest): Promise<ContractPriceResponse> {
+    // Define profileType outside try-catch so it's available in both blocks
+    let profileType = request.profile || 'baseload';
     try {
       console.log(`🎯 Getting monthly market price for contract:`, request);
       
       // Determine profile based on volume shape
-      let profileType = request.profile || 'baseload';
       if (!request.profile) {
         const volumeShape = request.volumeShape.toLowerCase();
         if (volumeShape.includes('solar')) {
