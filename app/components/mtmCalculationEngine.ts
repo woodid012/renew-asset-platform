@@ -1,4 +1,7 @@
 // MtM Calculation Engine - Updated with Load Weighted Price (LWP) Support
+// Import the main Contract type instead of defining our own
+
+import { Contract } from '@/app/types'; // Use the main Contract interface
 
 export interface MtMTimeSeriesPoint {
   period: string;
@@ -37,34 +40,6 @@ export interface MtMCalculationResult {
   periodsCalculated: number;
   firstPeriod: string;
   lastPeriod: string;
-}
-
-export interface Contract {
-  _id?: string;
-  name: string;
-  type: 'retail' | 'wholesale' | 'offtake';
-  category: string;
-  state: string;
-  counterparty: string;
-  startDate: string;
-  endDate: string;
-  annualVolume: number;
-  strikePrice: number;
-  unit: string;
-  contractType?: string;
-  direction: 'buy' | 'sell';
-  volumeShape: 'flat' | 'solar' | 'wind' | 'custom';
-  status: 'active' | 'pending';
-  pricingType?: 'fixed' | 'escalation' | 'timeseries';
-  escalationRate?: number;
-  priceTimeSeries?: number[];
-  priceInterval?: 'monthly' | 'quarterly' | 'yearly';
-  timeSeriesData?: Array<{ period: string; volume: number }>;
-  
-  // NEW: LWP Configuration
-  lwpPercentage?: number; // Default LWP percentage (default: 100%)
-  lwpTimeSeries?: number[]; // Future: Monthly LWP percentages
-  lwpInterval?: 'monthly' | 'quarterly' | 'yearly'; // Future: LWP interval
 }
 
 export interface MtMCalculationOptions {
@@ -521,7 +496,7 @@ export class StreamlinedMtMEngine {
   }
 
   /**
-   * Get contract price for a specific period
+   * Get contract price for a specific period - UPDATED with custom_time_of_day support
    */
   private getContractPriceForPeriod(contract: Contract, monthIndex: number, year: number): number {
     // Handle escalation pricing
@@ -540,6 +515,35 @@ export class StreamlinedMtMEngine {
         return contract.priceTimeSeries[quarterIndex] || contract.strikePrice;
       } else if (contract.priceInterval === 'yearly') {
         return contract.priceTimeSeries[0] || contract.strikePrice;
+      }
+    }
+
+    // NEW: Handle custom time-of-day pricing
+    if (contract.pricingType === 'custom_time_of_day' && contract.timeBasedPricing) {
+      // For MtM purposes, we'll use a volume-weighted average of the time-based prices
+      // In a real implementation, you might want to consider the actual time profile
+      if (contract.timeBasedPricing.periods && contract.timeBasedPricing.periods.length > 0) {
+        const totalHours = 24 * 7; // Weekly hours
+        let weightedSum = 0;
+        let totalWeight = 0;
+
+        contract.timeBasedPricing.periods.forEach(period => {
+          // Calculate hours for this period (simplified)
+          const activeDays = period.daysOfWeek.filter(day => day).length;
+          const hoursPerDay = 2; // Simplified assumption
+          const weight = activeDays * hoursPerDay;
+          
+          weightedSum += period.price * weight;
+          totalWeight += weight;
+        });
+
+        if (totalWeight > 0) {
+          return weightedSum / totalWeight;
+        } else {
+          return contract.timeBasedPricing.defaultPrice;
+        }
+      } else {
+        return contract.timeBasedPricing.defaultPrice;
       }
     }
 
