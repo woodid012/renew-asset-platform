@@ -109,16 +109,13 @@ export class StreamlinedMtMEngine {
   }
 
   /**
-   * NEW: Get LWP percentage for a specific period
-   */
-/**
-   * NEW: Get LWP percentage for a specific period
+   * NEW: Get LWP percentage for a specific period - Fixed for short contracts
    */
   private getLWPPercentageForPeriod(contract: Contract, monthIndex: number, year: number): number {
+    const targetPeriod = `${year}-${(monthIndex + 1).toString().padStart(2, '0')}`;
+    
     // PRIORITY 1: Read from timeSeriesData if available (your database structure)
     if (contract.timeSeriesData && contract.timeSeriesData.length > 0) {
-      const targetPeriod = `${year}-${(monthIndex + 1).toString().padStart(2, '0')}`;
-      
       // Find exact period match
       const periodData = contract.timeSeriesData.find(data => 
         data.period === targetPeriod || data.period === `${targetPeriod}-01`
@@ -129,23 +126,29 @@ export class StreamlinedMtMEngine {
         
         // Smart conversion: if value is less than 10, assume it's already a percentage multiplier
         // e.g., 0.98 = 98%, 1.03 = 103%, but 95 = 95%
-        if (lwpValue < 10) {
-          return lwpValue * 100;
-        } else {
-          return lwpValue;
-        }
+        const convertedValue = lwpValue < 10 ? lwpValue * 100 : lwpValue;
+        console.log(`🔍 Found LWP for ${targetPeriod}: ${lwpValue} -> ${convertedValue}%`);
+        return convertedValue;
+      } else {
+        console.log(`⚠️ No LWP data found for ${targetPeriod} in timeSeriesData (contract has ${contract.timeSeriesData.length} periods)`);
       }
     }
 
     // PRIORITY 2: Use lwpTimeSeries if available (future enhancement)
     if (contract.lwpTimeSeries && contract.lwpTimeSeries.length > 0) {
       if (contract.lwpInterval === 'monthly') {
-        return contract.lwpTimeSeries[monthIndex] || (contract.lwpPercentage || 100);
+        const value = contract.lwpTimeSeries[monthIndex] || (contract.lwpPercentage || 100);
+        console.log(`📈 Using lwpTimeSeries monthly[${monthIndex}]: ${value}%`);
+        return value;
       } else if (contract.lwpInterval === 'quarterly') {
         const quarterIndex = Math.floor(monthIndex / 3);
-        return contract.lwpTimeSeries[quarterIndex] || (contract.lwpPercentage || 100);
+        const value = contract.lwpTimeSeries[quarterIndex] || (contract.lwpPercentage || 100);
+        console.log(`📈 Using lwpTimeSeries quarterly[${quarterIndex}]: ${value}%`);
+        return value;
       } else if (contract.lwpInterval === 'yearly') {
-        return contract.lwpTimeSeries[0] || (contract.lwpPercentage || 100);
+        const value = contract.lwpTimeSeries[0] || (contract.lwpPercentage || 100);
+        console.log(`📈 Using lwpTimeSeries yearly: ${value}%`);
+        return value;
       }
     }
 
@@ -153,16 +156,16 @@ export class StreamlinedMtMEngine {
     if (contract.lwpPercentage !== undefined) {
       // Apply same smart conversion logic
       const lwpValue = contract.lwpPercentage;
-      if (lwpValue < 10) {
-        return lwpValue * 100;
-      } else {
-        return lwpValue;
-      }
+      const convertedValue = lwpValue < 10 ? lwpValue * 100 : lwpValue;
+      console.log(`🏢 Using contract lwpPercentage: ${lwpValue} -> ${convertedValue}%`);
+      return convertedValue;
     }
 
     // DEFAULT: 100% (no LWP adjustment)
+    console.log(`🔧 Using default LWP: 100%`);
     return 100;
   }
+
   /**
    * NEW: Calculate Load Weighted Price
    */
@@ -418,14 +421,18 @@ export class StreamlinedMtMEngine {
       const volume = monthlyVolumes[index] || 0;
       
       // Skip periods with no volume
-      if (volume === 0) return;
+      if (volume === 0) {
+        console.log(`⏭️ Skipping ${period} for ${contract.name}: No volume (${volume} MWh)`);
+        return;
+      }
       
       // Calculate contract price for the period
       const contractPrice = this.getContractPriceForPeriod(contract, index, options.selectedYear);
       const marketPrice = marketPrices[index];
       
-      // NEW: Calculate LWP
+      // NEW: Calculate LWP with debugging
       const lwpPercentage = this.getLWPPercentageForPeriod(contract, index, options.selectedYear);
+      console.log(`📊 ${contract.name} ${period}: Volume=${volume.toFixed(0)}MWh, LWP=${lwpPercentage.toFixed(1)}%`);
       const lwpPrice = this.calculateLWP(marketPrice, lwpPercentage);
       
       const contractRevenue = volume * contractPrice;

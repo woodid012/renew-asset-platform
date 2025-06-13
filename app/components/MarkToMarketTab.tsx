@@ -149,9 +149,9 @@ export default function StreamlinedMtMTab({ contracts = mockContracts }: Streaml
         scenario: 'Central'
       };
 
-      console.log('🔄 Starting MtM calculation with LWP support:', options);
+
       const results = await streamlinedMtMEngine.calculatePortfolioMtM(activeContracts, options);
-      console.log('✅ MtM calculation completed with LWP, results:', results);
+
       
       // Ensure results is an array
       if (Array.isArray(results)) {
@@ -161,7 +161,7 @@ export default function StreamlinedMtMTab({ contracts = mockContracts }: Streaml
           setSelectedContract(results[0].contractId);
         }
       } else {
-        console.error('❌ MtM calculation returned non-array:', results);
+
         setMtmResults([]);
         setCalculationError('MtM calculation returned invalid data');
       }
@@ -641,55 +641,8 @@ export default function StreamlinedMtMTab({ contracts = mockContracts }: Streaml
         </div>
       )}
 
-      {/* LWP Information Panel */}
-      <div className="bg-gradient-to-r from-green-50 to-blue-50 rounded-xl p-6 border border-green-200">
-        <h3 className="text-lg font-semibold text-green-800 mb-4">💡 Load Weighted Price (LWP) Information</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
-          <div>
-            <h4 className="font-semibold mb-2 text-green-700">How LWP Works</h4>
-            <ul className="space-y-1 text-green-600">
-              <li>• <strong>Market Price:</strong> Base market price from price curves</li>
-              <li>• <strong>LWP %:</strong> Load weighting percentage (default: 100%)</li>
-              <li>• <strong>LWP Price:</strong> Market Price × LWP% = Load Weighted Price</li>
-              <li>• <strong>MtM Calculation:</strong> Now uses LWP Price instead of Market Price</li>
-            </ul>
-          </div>
-          <div>
-            <h4 className="font-semibold mb-2 text-blue-700">Current Settings</h4>
-            <ul className="space-y-1 text-blue-600">
-              <li>• <strong>Default LWP:</strong> 100% (no adjustment)</li>
-              <li>• <strong>Contract Override:</strong> Individual contracts can set custom LWP%</li>
-              <li>• <strong>Future Enhancement:</strong> Monthly LWP% time series support</li>
-              <li>• <strong>Calculation Base:</strong> All MtM now uses LWP instead of raw market prices</li>
-            </ul>
-          </div>
-        </div>
-      </div>
-
-      {/* Integration Notes */}
-      <div className="bg-blue-50 rounded-xl p-6 border border-blue-200">
-        <h3 className="text-lg font-semibold text-blue-800 mb-4">🔗 Integration Status</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm text-blue-700">
-          <div>
-            <h4 className="font-semibold mb-2">✅ Connected Features</h4>
-            <ul className="space-y-1">
-              <li>• <strong>Price Curves API:</strong> Fetching real market prices</li>
-              <li>• <strong>LWP Calculation:</strong> Market Price × LWP% = LWP Price</li>
-              <li>• <strong>Segmentation:</strong> Energy/Green and Business Category analysis</li>
-              <li>• <strong>Error Handling:</strong> Graceful failure handling</li>
-            </ul>
-          </div>
-          <div>
-            <h4 className="font-semibold mb-2">🔄 Current Status</h4>
-            <ul className="space-y-1">
-              <li>• <strong>MtM Results:</strong> {Array.isArray(mtmResults) ? mtmResults.length : 0} contracts calculated</li>
-              <li>• <strong>Cache Status:</strong> {streamlinedMtMEngine.getCacheStats().size} cached price series</li>
-              <li>• <strong>Segments:</strong> {currentSegments.length} {selectedSegment === 'contractType' ? 'contract types' : 'categories'}</li>
-              <li>• <strong>LWP Support:</strong> Active with individual contract settings</li>
-            </ul>
-          </div>
-        </div>
-      </div>
+      
+      
     </div>
   );
 }
