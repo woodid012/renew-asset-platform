@@ -425,7 +425,7 @@ export class StreamlinedMtMEngine {
       const marketPrice = marketPrices[index];
       
       // NEW: Calculate LWP
-      const lwpPercentage = this.getLWPPercentageForPeriod(contract, index);
+      const lwpPercentage = this.getLWPPercentageForPeriod(contract, index, options.selectedYear);
       const lwpPrice = this.calculateLWP(marketPrice, lwpPercentage);
       
       const contractRevenue = volume * contractPrice;
