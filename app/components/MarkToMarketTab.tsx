@@ -1,954 +1,476 @@
-'use client';
+import React, { useState, useEffect, useMemo } from 'react';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from 'recharts';
 
-import { useState, useEffect, useMemo } from 'react';
-import { Contract, SettingsData } from '@/app/types';
-import { mtmCalculationEngine, MtMCalculationResult, MtMCalculationOptions } from '@/app/services/mtmCalculationEngine';
-import TimeSeriesEditor, { TimeSeriesPoint, TimeSeriesConfig } from './GenericTimeSeriesEditor';
+// Import calculation engine (in real implementation, import from separate file)
+import { 
+  streamlinedMtMEngine, 
+  MtMCalculationResult, 
+  MtMTimeSeriesPoint,
+  Contract,
+  MtMCalculationOptions
+} from './mtmCalculationEngine'; // This would be the actual import path
 
-interface MarkToMarketTabProps {
-  contracts: Contract[];
-  selectedContract: Contract | null;
-  setSelectedContract: (contract: Contract | null) => void;
-  settings: SettingsData | null;
-  marketPrices: { [key: string]: number[] };
+// Mock contracts for demonstration
+const mockContracts = [
+  {
+    _id: '1',
+    name: 'Solar Farm NSW PPA',
+    type: 'offtake' as const,
+    category: 'Solar Farm',
+    state: 'NSW',
+    counterparty: 'Green Energy Co',
+    startDate: '2025-01-01',
+    endDate: '2025-12-31',
+    annualVolume: 50000,
+    strikePrice: 65,
+    unit: 'Energy',
+    contractType: 'Energy',
+    direction: 'buy' as const,
+    volumeShape: 'solar' as const,
+    status: 'active' as const,
+    pricingType: 'fixed' as const
+  },
+  {
+    _id: '2',
+    name: 'Retail Customer QLD',
+    type: 'retail' as const,
+    category: 'Industrial Customer',
+    state: 'QLD',
+    counterparty: 'Manufacturing Corp',
+    startDate: '2025-01-01',
+    endDate: '2025-12-31',
+    annualVolume: 25000,
+    strikePrice: 85,
+    unit: 'Energy',
+    contractType: 'Energy',
+    direction: 'sell' as const,
+    volumeShape: 'flat' as const,
+    status: 'active' as const,
+    pricingType: 'fixed' as const
+  },
+  {
+    _id: '3',
+    name: 'Wind Farm VIC Green Certs',
+    type: 'offtake' as const,
+    category: 'Wind Farm',
+    state: 'VIC',
+    counterparty: 'Wind Power Ltd',
+    startDate: '2025-01-01',
+    endDate: '2025-12-31',
+    annualVolume: 35000,
+    strikePrice: 45,
+    unit: 'Green',
+    contractType: 'Green',
+    direction: 'buy' as const,
+    volumeShape: 'wind' as const,
+    status: 'active' as const,
+    pricingType: 'escalation' as const,
+    escalationRate: 2.5
+  }
+];
+
+interface StreamlinedMtMTabProps {
+  contracts?: Contract[];
 }
 
-interface PortfolioAggregation {
-  totalContracts: number;
-  totalVolume: number;
-  totalAbsVolume: number;
-  totalMtM: number;
-  totalContractRevenue: number;
-  totalMarketValue: number;
-  weightedAvgContractPrice: number;
-  weightedAvgMarketPrice: number;
-}
-
-interface GroupedResults {
-  [groupKey: string]: MtMCalculationResult[];
-}
-
-export default function MarkToMarketTab({
-  contracts,
-  selectedContract,
-  setSelectedContract,
-  settings,
-  marketPrices,
-}: MarkToMarketTabProps) {
-  // Core state
+export default function StreamlinedMtMTab({ contracts = mockContracts }: StreamlinedMtMTabProps) {
+  const [selectedYear, setSelectedYear] = useState(2025);
   const [mtmResults, setMtmResults] = useState<MtMCalculationResult[]>([]);
   const [isCalculating, setIsCalculating] = useState(false);
-  const [calculationError, setCalculationError] = useState<string | null>(null);
-  const [lastCalculationTime, setLastCalculationTime] = useState<Date | null>(null);
+  const [viewMode, setViewMode] = useState<'portfolio' | 'individual'>('portfolio');
+  const [selectedContract, setSelectedContract] = useState<string>('');
+  const [showSummaryTable, setShowSummaryTable] = useState(false);
 
-  // Calculation options
-  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
-  const [yearType, setYearType] = useState<'CY' | 'FY'>('CY');
-  const [priceCurve, setPriceCurve] = useState('Aurora Jan 2025');
-  const [marketPriceProfile, setMarketPriceProfile] = useState<'auto' | 'baseload' | 'solar' | 'wind'>('auto');
-  const [includeForecast, setIncludeForecast] = useState(true);
+  // Filter active contracts
+  const activeContracts = contracts.filter(c => c.status === 'active');
 
-  // Display options
-  const [groupBy, setGroupBy] = useState<'none' | 'category' | 'state' | 'contractType' | 'direction'>('category');
-  const [sortBy, setSortBy] = useState<'mtmPnL' | 'volume' | 'contractName'>('mtmPnL');
-  const [filterDirection, setFilterDirection] = useState<'all' | 'buy' | 'sell'>('all');
-  const [showTimeSeriesDetails, setShowTimeSeriesDetails] = useState(false);
-  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
-  const [expandedContracts, setExpandedContracts] = useState<Set<string>>(new Set());
+  // Auto-calculate MtM when year changes
+  useEffect(() => {
+    handleCalculateMtM();
+  }, [selectedYear, contracts]);
 
-  // Time series editor state
-  const [editingTimeSeriesContract, setEditingTimeSeriesContract] = useState<string | null>(null);
-  const [timeSeriesData, setTimeSeriesData] = useState<TimeSeriesPoint[]>([]);
+  // Calculate MtM for all active contracts using real price data
+  const handleCalculateMtM = async () => {
+    if (activeContracts.length === 0) return;
 
-  // Cache management state
-  const [cacheStats, setCacheStats] = useState<{ size: number; keys: string[] }>({ size: 0, keys: [] });
-  const [showCacheInfo, setShowCacheInfo] = useState(false);
-
-  // Get available years from contracts
-  const availableYears = useMemo(() => {
-    const years = new Set<number>();
-    const currentYear = new Date().getFullYear();
-    
-    // Add current year and next few years
-    for (let i = -2; i <= 5; i++) {
-      years.add(currentYear + i);
-    }
-    
-    // Add years from contract dates
-    contracts.forEach(contract => {
-      if (contract.startDate && contract.endDate) {
-        const startYear = new Date(contract.startDate).getFullYear();
-        const endYear = new Date(contract.endDate).getFullYear();
-        
-        for (let year = startYear; year <= endYear; year++) {
-          years.add(year);
-        }
-      }
-      
-      // Add years from time series data
-      if (contract.timeSeriesData) {
-        contract.timeSeriesData.forEach(ts => {
-          const year = parseInt(ts.period.split('-')[0]);
-          if (!isNaN(year)) {
-            years.add(year);
-          }
-        });
-      }
-    });
-    
-    return Array.from(years).sort((a, b) => a - b);
-  }, [contracts]);
-
-  // Perform MtM calculations using simplified engine
-  const calculateMtM = async () => {
     setIsCalculating(true);
-    setCalculationError(null);
     
     try {
-      console.log(`🚀 Starting simplified MtM calculation for ${yearType} ${selectedYear}`);
-      
       const options: MtMCalculationOptions = {
         selectedYear,
-        yearType,
-        priceCurve,
-        includeForecast,
-        marketPriceProfile
+        curve: 'Aurora Jan 2025' // You can make this configurable
       };
+
+      console.log(`🚀 Starting MtM calculation for ${activeContracts.length} contracts, year ${selectedYear}`);
       
-      // Use the simplified engine that fetches all market data at once
-      const results = await mtmCalculationEngine.calculatePortfolioMtM(contracts, options);
-      
+      // Use the API-enabled calculation engine
+      const results = await streamlinedMtMEngine.calculatePortfolioMtM(activeContracts, options);
       setMtmResults(results);
-      setLastCalculationTime(new Date());
+      
+      if (results.length > 0 && !selectedContract) {
+        setSelectedContract(results[0].contractId);
+      }
       
       console.log(`✅ MtM calculation completed: ${results.length} contracts processed`);
-      
     } catch (error) {
-      console.error('❌ MtM calculation failed:', error);
-      setCalculationError(error instanceof Error ? error.message : 'Unknown calculation error');
+      console.error('❌ Error calculating MtM:', error);
+      // Show error message to user
+      alert('Error calculating Mark-to-Market. Check console for details.');
     } finally {
       setIsCalculating(false);
     }
   };
 
-  // Clear price cache
-  const clearPriceCache = async () => {
-    try {
-      console.log('🧹 Clearing price cache...');
-      const response = await fetch('/api/price-curves?action=clear-cache', {
-        method: 'DELETE'
-      });
-      
-      const result = await response.json();
-      if (result.success) {
-        console.log(`✅ Cache cleared: ${result.message}`);
-        setCacheStats({ size: 0, keys: [] });
-      }
-    } catch (error) {
-      console.error('❌ Error clearing cache:', error);
-    }
-  };
+  // Portfolio aggregation using calculation engine
+  const portfolioData = useMemo(() => {
+    if (mtmResults.length === 0) return [];
+    return streamlinedMtMEngine.calculatePortfolioAggregation(mtmResults, selectedYear);
+  }, [mtmResults, selectedYear]);
 
-  // Get cache statistics
-  const getCacheStats = async () => {
-    try {
-      const response = await fetch('/api/price-curves?action=cache-stats', {
-        method: 'DELETE'
-      });
-      
-      const result = await response.json();
-      if (result.success) {
-        setCacheStats({
-          size: result.cache.size,
-          keys: result.cache.keys
-        });
-      }
-    } catch (error) {
-      console.error('❌ Error getting cache stats:', error);
-    }
-  };
+  // Individual contract data for charts
+  const individualContractData = useMemo(() => {
+    const result = mtmResults.find(r => r.contractId === selectedContract);
+    if (!result) return [];
 
-  // Auto-calculate when key parameters change
-  useEffect(() => {
-    if (contracts.length > 0) {
-      calculateMtM();
-    }
-  }, [selectedYear, yearType, priceCurve, marketPriceProfile, contracts]);
-
-  // Load cache stats on mount
-  useEffect(() => {
-    getCacheStats();
-  }, []);
-
-  // Filter and sort results
-  const filteredResults = useMemo(() => {
-    let filtered = mtmResults;
-
-    if (filterDirection !== 'all') {
-      filtered = filtered.filter(result => result.direction === filterDirection);
-    }
-
-    // Sort
-    filtered.sort((a, b) => {
-      switch (sortBy) {
-        case 'mtmPnL':
-          return b.totalMtMPnL - a.totalMtMPnL;
-        case 'volume':
-          return Math.abs(b.totalVolume) - Math.abs(a.totalVolume);
-        case 'contractName':
-          return a.contractName.localeCompare(b.contractName);
-        default:
-          return b.totalMtMPnL - a.totalMtMPnL;
-      }
-    });
-
-    return filtered;
-  }, [mtmResults, filterDirection, sortBy]);
-
-  // Group results  
-  const groupedResults: GroupedResults = useMemo(() => {
-    if (groupBy === 'none') {
-      return { 'All Contracts': filteredResults };
-    }
-
-    const groups: GroupedResults = {};
-
-    filteredResults.forEach(result => {
-      let groupKey = '';
-      switch (groupBy) {
-        case 'category':
-          groupKey = result.category;
-          break;
-        case 'state':
-          groupKey = result.state;
-          break;
-        case 'contractType':
-          groupKey = result.contractType;
-          break;
-        case 'direction':
-          groupKey = result.direction.toUpperCase();
-          break;
-      }
-
-      if (!groups[groupKey]) {
-        groups[groupKey] = [];
-      }
-      groups[groupKey].push(result);
-    });
-
-    return groups;
-  }, [filteredResults, groupBy]);
-
-  // Calculate portfolio aggregation
-  const portfolioAggregation: PortfolioAggregation = useMemo(() => {
-    return filteredResults.reduce((acc, result) => ({
-      totalContracts: acc.totalContracts + 1,
-      totalVolume: acc.totalVolume + result.totalVolume,
-      totalAbsVolume: acc.totalAbsVolume + result.totalAbsVolume,
-      totalMtM: acc.totalMtM + result.totalMtMPnL,
-      totalContractRevenue: acc.totalContractRevenue + result.totalContractRevenue,
-      totalMarketValue: acc.totalMarketValue + result.totalMarketValue,
-      weightedAvgContractPrice: 0, // Will calculate after
-      weightedAvgMarketPrice: 0 // Will calculate after
-    }), {
-      totalContracts: 0,
-      totalVolume: 0,
-      totalAbsVolume: 0,
-      totalMtM: 0,
-      totalContractRevenue: 0,
-      totalMarketValue: 0,
-      weightedAvgContractPrice: 0,
-      weightedAvgMarketPrice: 0
-    });
-  }, [filteredResults]);
-
-  // Calculate weighted averages
-  portfolioAggregation.weightedAvgContractPrice = portfolioAggregation.totalAbsVolume > 0 
-    ? portfolioAggregation.totalContractRevenue / portfolioAggregation.totalAbsVolume 
-    : 0;
-  portfolioAggregation.weightedAvgMarketPrice = portfolioAggregation.totalAbsVolume > 0 
-    ? portfolioAggregation.totalMarketValue / portfolioAggregation.totalAbsVolume 
-    : 0;
-
-  // Group aggregation helper
-  const getGroupAggregation = (results: MtMCalculationResult[]) => {
-    return results.reduce((acc, result) => ({
-      totalVolume: acc.totalVolume + result.totalVolume,
-      totalAbsVolume: acc.totalAbsVolume + result.totalAbsVolume,
-      totalMtM: acc.totalMtM + result.totalMtMPnL,
-      totalContractRevenue: acc.totalContractRevenue + result.totalContractRevenue,
-      totalMarketValue: acc.totalMarketValue + result.totalMarketValue,
-      count: acc.count + 1
-    }), {
-      totalVolume: 0,
-      totalAbsVolume: 0,
-      totalMtM: 0,
-      totalContractRevenue: 0,
-      totalMarketValue: 0,
-      count: 0
-    });
-  };
-
-  // Toggle functions
-  const toggleGroupExpansion = (groupName: string) => {
-    const newExpanded = new Set(expandedGroups);
-    if (newExpanded.has(groupName)) {
-      newExpanded.delete(groupName);
-    } else {
-      newExpanded.add(groupName);
-    }
-    setExpandedGroups(newExpanded);
-  };
-
-  const toggleContractExpansion = (contractId: string) => {
-    const newExpanded = new Set(expandedContracts);
-    if (newExpanded.has(contractId)) {
-      newExpanded.delete(contractId);
-    } else {
-      newExpanded.add(contractId);
-    }
-    setExpandedContracts(newExpanded);
-  };
-
-  const expandAllGroups = () => {
-    setExpandedGroups(new Set(Object.keys(groupedResults)));
-  };
-
-  const collapseAllGroups = () => {
-    setExpandedGroups(new Set());
-  };
-
-  // Time series editor functions
-  const openTimeSeriesEditor = (result: MtMCalculationResult) => {
-    const timeSeriesPoints: TimeSeriesPoint[] = result.timeSeriesData.map(point => ({
-      timestamp: `${point.period}-01T00:00:00Z`,
-      value: point.marketPrice,
-      metadata: {
-        period: point.period,
-        contractVolume: point.contractVolume,
-        contractPrice: point.contractPrice,
-        mtmPnL: point.mtmPnL
-      }
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return result.timeSeriesData.map((point, index) => ({
+      month: months[index] || point.period.split('-')[1],
+      ...point,
+      mtmPnL: Math.round(point.mtmPnL),
+      cumulativeMtM: Math.round(point.cumulativeMtM)
     }));
-    
-    setTimeSeriesData(timeSeriesPoints);
-    setEditingTimeSeriesContract(result.contractId);
-  };
+  }, [mtmResults, selectedContract]);
 
-  const closeTimeSeriesEditor = () => {
-    setEditingTimeSeriesContract(null);
-    setTimeSeriesData([]);
-  };
-
-  const handleTimeSeriesDataChange = (newData: TimeSeriesPoint[]) => {
-    setTimeSeriesData(newData);
-    console.log('Time series data updated:', newData);
-  };
-
-  const timeSeriesConfig: TimeSeriesConfig = {
-    label: 'Market Price',
-    unit: 'MWh',
-    valueType: 'currency',
-    precision: 2,
-    defaultValue: 0,
-    aggregationMethod: 'average',
-    allowedIntervals: ['monthly', 'quarterly', 'yearly']
-  };
+  // Portfolio summary stats using calculation engine
+  const portfolioStats = useMemo(() => {
+    return streamlinedMtMEngine.calculatePortfolioStats(mtmResults);
+  }, [mtmResults]);
 
   return (
     <div className="space-y-6">
-      {/* Header and Controls */}
+      {/* Header */}
       <div className="bg-white rounded-xl p-6 shadow-md border border-gray-200">
-        <div className="flex justify-between items-center mb-6">
+        <div className="flex justify-between items-center">
           <div>
             <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-3">
               💹 Mark-to-Market Analysis
-              <span className="text-sm font-normal text-gray-500">
-                (With Cached Market Data)
-              </span>
             </h2>
             <p className="text-gray-600 mt-2">
-              Optimized MtM calculations with bulk market price fetching and caching
+              Real-time portfolio valuation and P&L analysis for {activeContracts.length} active contracts
             </p>
           </div>
           
-          <div className="flex gap-3">
+          <div className="flex gap-4 items-center">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Year</label>
+              <select
+                value={selectedYear}
+                onChange={(e) => setSelectedYear(Number(e.target.value))}
+                className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value={2024}>2024</option>
+                <option value={2025}>2025</option>
+                <option value={2026}>2026</option>
+                <option value={2027}>2027</option>
+              </select>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">View</label>
+              <select
+                value={viewMode}
+                onChange={(e) => setViewMode(e.target.value as 'portfolio' | 'individual')}
+                className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="portfolio">Portfolio View</option>
+                <option value="individual">Individual Contract</option>
+              </select>
+            </div>
+
             <button
-              onClick={() => setShowCacheInfo(!showCacheInfo)}
-              className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg font-medium hover:bg-gray-200 transition-all duration-200"
-            >
-              {showCacheInfo ? '🔽' : '🔼'} Cache Info
-            </button>
-            <button
-              onClick={calculateMtM}
+              onClick={handleCalculateMtM}
               disabled={isCalculating}
-              className="bg-blue-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+              className="bg-blue-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-600 disabled:opacity-50 transition-colors"
             >
-              {isCalculating ? '⏳ Calculating...' : '🔄 Recalculate'}
+              {isCalculating ? 'Calculating...' : 'Refresh MtM'}
             </button>
           </div>
         </div>
+      </div>
 
-        {/* Cache Information */}
-        {showCacheInfo && (
-          <div className="bg-blue-50 rounded-lg p-4 mb-6 border border-blue-200">
-            <h3 className="text-lg font-semibold text-blue-800 mb-3">📊 Price Cache Information</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <div className="text-sm text-blue-600 font-medium">Cache Size</div>
-                <div className="text-2xl font-bold text-blue-800">{cacheStats.size}</div>
-                <div className="text-xs text-blue-600">cached price series</div>
+      {/* MtM Results */}
+      {mtmResults.length > 0 && (
+        <>
+          {/* Portfolio Summary */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="bg-white rounded-lg p-4 shadow-md border border-gray-200 text-center">
+              <div className={`text-2xl font-bold ${
+                portfolioStats.totalMtM >= 0 ? 'text-green-600' : 'text-red-600'
+              }`}>
+                {portfolioStats.totalMtM >= 0 ? '+' : ''}${portfolioStats.totalMtM.toLocaleString()}
               </div>
-              <div>
-                <div className="text-sm text-blue-600 font-medium">Cache Duration</div>
-                <div className="text-lg font-bold text-blue-800">5 minutes</div>
-                <div className="text-xs text-blue-600">auto-refresh</div>
-              </div>
-              <div className="flex items-end">
-                <div className="space-x-2">
-                  <button
-                    onClick={getCacheStats}
-                    className="bg-blue-500 text-white px-3 py-1 rounded text-sm hover:bg-blue-600 transition-colors"
-                  >
-                    🔄 Refresh Stats
-                  </button>
-                  <button
-                    onClick={clearPriceCache}
-                    className="bg-red-500 text-white px-3 py-1 rounded text-sm hover:bg-red-600 transition-colors"
-                  >
-                    🧹 Clear Cache
-                  </button>
-                </div>
-              </div>
+              <div className="text-sm text-gray-600">Total MtM P&L</div>
             </div>
             
-            {cacheStats.keys.length > 0 && (
-              <div className="mt-4">
-                <div className="text-sm text-blue-600 font-medium mb-2">Cached Price Series:</div>
-                <div className="bg-white rounded p-2 max-h-32 overflow-y-auto">
-                  <div className="text-xs text-gray-600 space-y-1">
-                    {cacheStats.keys.slice(0, 10).map((key, index) => (
-                      <div key={index} className="font-mono truncate">{key}</div>
+            <div className="bg-white rounded-lg p-4 shadow-md border border-gray-200 text-center">
+              <div className="text-2xl font-bold text-blue-600">
+                {portfolioStats.totalVolume.toLocaleString()}
+              </div>
+              <div className="text-sm text-gray-600">Total Volume (MWh)</div>
+            </div>
+            
+            <div className="bg-white rounded-lg p-4 shadow-md border border-gray-200 text-center">
+              <div className="text-2xl font-bold text-purple-600">
+                ${portfolioStats.avgContractPrice.toFixed(2)}
+              </div>
+              <div className="text-sm text-gray-600">Avg Contract Price</div>
+            </div>
+            
+            <div className="bg-white rounded-lg p-4 shadow-md border border-gray-200 text-center">
+              <div className="text-2xl font-bold text-orange-600">
+                ${portfolioStats.avgMarketPrice.toFixed(2)}
+              </div>
+              <div className="text-sm text-gray-600">Avg Market Price</div>
+            </div>
+          </div>
+
+          {/* Charts */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            
+            {/* Monthly MtM Chart */}
+            <div className="bg-white rounded-xl p-6 shadow-md border border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-800 mb-4">
+                {viewMode === 'portfolio' ? 'Portfolio Monthly MtM' : 'Contract Monthly MtM'}
+              </h3>
+              
+              {viewMode === 'individual' && (
+                <div className="mb-4">
+                  <select
+                    value={selectedContract}
+                    onChange={(e) => setSelectedContract(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    {mtmResults.map(result => (
+                      <option key={result.contractId} value={result.contractId}>
+                        {result.contractName}
+                      </option>
                     ))}
-                    {cacheStats.keys.length > 10 && (
-                      <div className="text-gray-500">... and {cacheStats.keys.length - 10} more</div>
-                    )}
-                  </div>
+                  </select>
                 </div>
+              )}
+              
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={viewMode === 'portfolio' ? portfolioData : individualContractData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="month" />
+                    <YAxis />
+                    <Tooltip 
+                      formatter={(value: number) => [`$${value.toLocaleString()}`, 'MtM P&L']}
+                    />
+                    <Bar 
+                      dataKey={viewMode === 'portfolio' ? 'totalMtM' : 'mtmPnL'} 
+                      fill="#3B82F6"
+                      name="MtM P&L"
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            {/* Cumulative MtM Chart */}
+            <div className="bg-white rounded-xl p-6 shadow-md border border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-800 mb-4">
+                {viewMode === 'portfolio' ? 'Portfolio Cumulative MtM' : 'Contract Cumulative MtM'}
+              </h3>
+              
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={viewMode === 'portfolio' ? portfolioData : individualContractData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="month" />
+                    <YAxis />
+                    <Tooltip 
+                      formatter={(value: number) => [`$${value.toLocaleString()}`, 'Cumulative MtM']}
+                    />
+                    <Line 
+                      type="monotone" 
+                      dataKey={viewMode === 'portfolio' ? 'cumulativeMtM' : 'cumulativeMtM'}
+                      stroke="#10B981" 
+                      strokeWidth={3}
+                      dot={{ fill: '#10B981', strokeWidth: 2, r: 4 }}
+                      name="Cumulative MtM"
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </div>
+
+          {/* Collapsible Contract MtM Summary */}
+          <div className="bg-white rounded-xl p-6 shadow-md border border-gray-200">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold text-gray-800">Contract MtM Summary</h3>
+              <button
+                onClick={() => setShowSummaryTable(!showSummaryTable)}
+                className="flex items-center gap-2 px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
+              >
+                {showSummaryTable ? '🔼 Collapse' : '🔽 Expand'}
+                <span className="text-gray-600">({mtmResults.length} contracts)</span>
+              </button>
+            </div>
+            
+            {showSummaryTable && (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-gray-50 border-b border-gray-200">
+                      <th className="text-left p-3 font-semibold text-gray-700">Contract</th>
+                      <th className="text-left p-3 font-semibold text-gray-700">Direction</th>
+                      <th className="text-left p-3 font-semibold text-gray-700">Type</th>
+                      <th className="text-left p-3 font-semibold text-gray-700">State</th>
+                      <th className="text-left p-3 font-semibold text-gray-700">Volume (MWh)</th>
+                      <th className="text-left p-3 font-semibold text-gray-700">Avg Contract Price</th>
+                      <th className="text-left p-3 font-semibold text-gray-700">Avg Market Price</th>
+                      <th className="text-left p-3 font-semibold text-gray-700">Total MtM P&L</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {mtmResults.map((result, index) => (
+                      <tr key={result.contractId} className="border-b border-gray-100 hover:bg-gray-50">
+                        <td className="p-3 font-medium text-gray-900">{result.contractName}</td>
+                        <td className="p-3">
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium uppercase ${
+                            result.direction === 'buy' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                          }`}>
+                            {result.direction}
+                          </span>
+                        </td>
+                        <td className="p-3">
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            result.contractType === 'Green' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'
+                          }`}>
+                            {result.contractType}
+                          </span>
+                        </td>
+                        <td className="p-3 text-gray-700">{result.state}</td>
+                        <td className="p-3 text-gray-700">{Math.abs(result.totalVolume).toLocaleString()}</td>
+                        <td className="p-3 text-gray-700">${result.weightedAvgContractPrice.toFixed(2)}</td>
+                        <td className="p-3 text-gray-700">${result.weightedAvgMarketPrice.toFixed(2)}</td>
+                        <td className={`p-3 font-semibold ${
+                          result.totalMtMPnL >= 0 ? 'text-green-600' : 'text-red-600'
+                        }`}>
+                          {result.totalMtMPnL >= 0 ? '+' : ''}${result.totalMtMPnL.toLocaleString()}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             )}
           </div>
-        )}
 
-        {/* Calculation Options */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4 mb-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Year Type</label>
-            <select
-              value={yearType}
-              onChange={(e) => setYearType(e.target.value as 'CY' | 'FY')}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="CY">Calendar Year</option>
-              <option value="FY">Financial Year</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Year</label>
-            <select
-              value={selectedYear}
-              onChange={(e) => setSelectedYear(Number(e.target.value))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              {availableYears.map(year => (
-                <option key={year} value={year}>{yearType} {year}</option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Price Curve</label>
-            <select
-              value={priceCurve}
-              onChange={(e) => setPriceCurve(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="Aurora Jan 2025">Aurora Jan 2025</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Market Price Profile</label>
-            <select
-              value={marketPriceProfile}
-              onChange={(e) => setMarketPriceProfile(e.target.value as any)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="auto">Auto-detect</option>
-              <option value="baseload">Baseload</option>
-              <option value="solar">Solar</option>
-              <option value="wind">Wind</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Group By</label>
-            <select
-              value={groupBy}
-              onChange={(e) => setGroupBy(e.target.value as any)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="none">None</option>
-              <option value="category">Category</option>
-              <option value="state">State</option>
-              <option value="contractType">Contract Type</option>
-              <option value="direction">Direction</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Filter Direction</label>
-            <select
-              value={filterDirection}
-              onChange={(e) => setFilterDirection(e.target.value as any)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="all">All</option>
-              <option value="buy">Buy Only</option>
-              <option value="sell">Sell Only</option>
-            </select>
-          </div>
-        </div>
-
-        {/* Additional Options */}
-        <div className="bg-gray-50 rounded-lg p-4">
-          <div className="flex justify-between items-center">
-            <div className="flex gap-6">
-              <label className="flex items-center text-sm">
-                <input
-                  type="checkbox"
-                  checked={includeForecast}
-                  onChange={(e) => setIncludeForecast(e.target.checked)}
-                  className="mr-2"
-                />
-                Include Forecast Periods
-              </label>
-              <label className="flex items-center text-sm">
-                <input
-                  type="checkbox"
-                  checked={showTimeSeriesDetails}
-                  onChange={(e) => setShowTimeSeriesDetails(e.target.checked)}
-                  className="mr-2"
-                />
-                Show Time Series Details
-              </label>
-            </div>
-            
-            <div className="text-xs text-gray-500">
-              {lastCalculationTime && (
-                <>Last calculated: {lastCalculationTime.toLocaleString()}</>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Error Display */}
-        {calculationError && (
-          <div className="mt-4 bg-red-50 border border-red-200 rounded-lg p-4">
-            <p className="text-red-800 font-medium">Calculation Error: {calculationError}</p>
-          </div>
-        )}
-      </div>
-
-      {/* Portfolio Summary */}
-      <div className="bg-white rounded-xl p-6 shadow-md border border-gray-200">
-        <h3 className="text-lg font-semibold text-gray-800 mb-4">Portfolio Summary ({yearType} {selectedYear})</h3>
-        
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-          <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
-            <div className="text-sm text-blue-600 font-medium">Active Contracts</div>
-            <div className="text-2xl font-bold text-blue-800">{portfolioAggregation.totalContracts}</div>
-          </div>
-
-          <div className="bg-purple-50 rounded-lg p-4 border border-purple-200">
-            <div className="text-sm text-purple-600 font-medium">Net Volume</div>
-            <div className="text-2xl font-bold text-purple-800">
-              {portfolioAggregation.totalVolume.toLocaleString()} MWh
-            </div>
-            <div className="text-xs text-purple-600">
-              ({portfolioAggregation.totalAbsVolume.toLocaleString()} gross)
-            </div>
-          </div>
-
-          <div className={`rounded-lg p-4 border ${
-            portfolioAggregation.totalMtM >= 0 
-              ? 'bg-green-50 border-green-200' 
-              : 'bg-red-50 border-red-200'
-          }`}>
-            <div className={`text-sm font-medium ${
-              portfolioAggregation.totalMtM >= 0 ? 'text-green-600' : 'text-red-600'
-            }`}>
-              Total MtM P&L
-            </div>
-            <div className={`text-2xl font-bold ${
-              portfolioAggregation.totalMtM >= 0 ? 'text-green-800' : 'text-red-800'
-            }`}>
-              ${portfolioAggregation.totalMtM.toLocaleString()}
-            </div>
-          </div>
-
-          <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-            <div className="text-sm text-gray-600 font-medium">Avg Contract Price</div>
-            <div className="text-2xl font-bold text-gray-800">
-              ${portfolioAggregation.weightedAvgContractPrice.toFixed(2)}
-            </div>
-          </div>
-
-          <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-            <div className="text-sm text-gray-600 font-medium">Avg Market Price</div>
-            <div className="text-2xl font-bold text-gray-800">
-              ${portfolioAggregation.weightedAvgMarketPrice.toFixed(2)}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Group Controls */}
-      {groupBy !== 'none' && Object.keys(groupedResults).length > 1 && (
-        <div className="bg-white rounded-xl p-4 shadow-md border border-gray-200">
-          <div className="flex justify-between items-center">
-            <div className="text-sm text-gray-600">
-              {Object.keys(groupedResults).length} groups found
-            </div>
-            <div className="flex gap-2">
-              <button
-                onClick={expandAllGroups}
-                className="text-sm bg-blue-100 text-blue-700 px-3 py-1 rounded hover:bg-blue-200 transition-colors"
-              >
-                ➕ Expand All
-              </button>
-              <button
-                onClick={collapseAllGroups}
-                className="text-sm bg-gray-100 text-gray-700 px-3 py-1 rounded hover:bg-gray-200 transition-colors"
-              >
-                ➖ Collapse All
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Grouped Results */}
-      <div className="space-y-6">
-        {Object.entries(groupedResults).map(([groupName, results]) => {
-          const groupAgg = getGroupAggregation(results);
-          const isExpanded = expandedGroups.has(groupName);
-          const canExpand = groupBy !== 'none' && results.length > 1;
-          
-          return (
-            <div key={groupName} className="bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden">
-              {/* Group Header */}
-              <div 
-                className={`p-6 ${canExpand ? 'cursor-pointer hover:bg-gray-50' : ''} border-b border-gray-100`}
-                onClick={() => canExpand && toggleGroupExpansion(groupName)}
-              >
-                <div className="flex justify-between items-center">
-                  <div className="flex items-center gap-3">
-                    {canExpand && (
-                      <button className="text-xl text-gray-500 hover:text-gray-700 transition-colors">
-                        {isExpanded ? '➖' : '➕'}
-                      </button>
-                    )}
-                    <h3 className="text-lg font-semibold text-gray-800">{groupName}</h3>
-                    <span className="text-sm text-gray-500">({groupAgg.count} contract{groupAgg.count !== 1 ? 's' : ''})</span>
-                  </div>
-                  <div className="flex items-center gap-6 text-sm">
-                    <div className="text-center">
-                      <div className="text-xs text-gray-500 uppercase tracking-wide">Net Volume</div>
-                      <div className={`font-semibold ${groupAgg.totalVolume < 0 ? 'text-red-600' : 'text-green-600'}`}>
-                        {groupAgg.totalVolume.toLocaleString()} MWh
-                      </div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-xs text-gray-500 uppercase tracking-wide">MtM P&L</div>
-                      <div className={`text-lg font-bold ${groupAgg.totalMtM >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                        ${groupAgg.totalMtM.toLocaleString()}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Individual Contracts */}
-              {(isExpanded || !canExpand) && (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="bg-gray-50 border-b border-gray-200">
-                        <th className="text-left p-3 font-semibold text-gray-700">Contract</th>
-                        <th className="text-left p-3 font-semibold text-gray-700">Direction</th>
-                        <th className="text-left p-3 font-semibold text-gray-700">Volume (MWh)</th>
-                        <th className="text-left p-3 font-semibold text-gray-700">Avg Contract Price</th>
-                        <th className="text-left p-3 font-semibold text-gray-700">Avg Market Price</th>
-                        <th className="text-left p-3 font-semibold text-gray-700">MtM P&L</th>
-                        <th className="text-left p-3 font-semibold text-gray-700">Data Source</th>
-                        <th className="text-left p-3 font-semibold text-gray-700">Actions</th>
+          {/* Monthly Breakdown Table */}
+          {viewMode === 'individual' && selectedContract && (
+            <div className="bg-white rounded-xl p-6 shadow-md border border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-800 mb-4">
+                Monthly Breakdown - {mtmResults.find(r => r.contractId === selectedContract)?.contractName}
+              </h3>
+              
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-gray-50 border-b border-gray-200">
+                      <th className="text-left p-3 font-semibold text-gray-700">Month</th>
+                      <th className="text-left p-3 font-semibold text-gray-700">Volume (MWh)</th>
+                      <th className="text-left p-3 font-semibold text-gray-700">Contract Price</th>
+                      <th className="text-left p-3 font-semibold text-gray-700">Market Price</th>
+                      <th className="text-left p-3 font-semibold text-gray-700">Contract Revenue</th>
+                      <th className="text-left p-3 font-semibold text-gray-700">Market Value</th>
+                      <th className="text-left p-3 font-semibold text-gray-700">Monthly MtM</th>
+                      <th className="text-left p-3 font-semibold text-gray-700">Cumulative</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {individualContractData.map((data, index) => (
+                      <tr key={index} className="border-b border-gray-100 hover:bg-gray-50">
+                        <td className="p-3 font-medium text-gray-900">{data.month}</td>
+                        <td className="p-3 text-gray-700">{Math.round(data.contractVolume).toLocaleString()}</td>
+                        <td className="p-3 text-gray-700">${data.contractPrice.toFixed(2)}</td>
+                        <td className="p-3 text-gray-700">${data.marketPrice.toFixed(2)}</td>
+                        <td className="p-3 text-gray-700">${Math.round(data.contractRevenue).toLocaleString()}</td>
+                        <td className="p-3 text-gray-700">${Math.round(data.marketValue).toLocaleString()}</td>
+                        <td className={`p-3 font-medium ${
+                          data.mtmPnL >= 0 ? 'text-green-600' : 'text-red-600'
+                        }`}>
+                          {data.mtmPnL >= 0 ? '+' : ''}${data.mtmPnL.toLocaleString()}
+                        </td>
+                        <td className={`p-3 font-medium ${
+                          data.cumulativeMtM >= 0 ? 'text-green-600' : 'text-red-600'
+                        }`}>
+                          {data.cumulativeMtM >= 0 ? '+' : ''}${data.cumulativeMtM.toLocaleString()}
+                        </td>
                       </tr>
-                    </thead>
-                    <tbody>
-                      {results.map((result, index) => {
-                        const isContractExpanded = expandedContracts.has(result.contractId);
-                        
-                        return (
-                          <React.Fragment key={result.contractId}>
-                            <tr className="border-b border-gray-100 hover:bg-gray-50">
-                              <td className="p-3">
-                                <div className="flex items-center gap-2">
-                                  {showTimeSeriesDetails && result.timeSeriesData.length > 0 && (
-                                    <button
-                                      onClick={() => toggleContractExpansion(result.contractId)}
-                                      className="text-sm text-gray-500 hover:text-gray-700"
-                                    >
-                                      {isContractExpanded ? '🔽' : '▶️'}
-                                    </button>
-                                  )}
-                                  <div>
-                                    <div className="font-medium text-gray-900">{result.contractName}</div>
-                                    <div className="text-xs text-gray-500">{result.counterparty}</div>
-                                  </div>
-                                </div>
-                              </td>
-                              <td className="p-3">
-                                <span className={`px-2 py-1 rounded-full text-xs font-medium uppercase ${
-                                  result.direction === 'buy' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                                }`}>
-                                  {result.direction}
-                                </span>
-                              </td>
-                              <td className="p-3">
-                                <div className={`font-medium ${result.totalVolume < 0 ? 'text-red-600' : 'text-green-600'}`}>
-                                  {result.totalVolume.toLocaleString()}
-                                </div>
-                                <div className="text-xs text-gray-500">{result.periodsCalculated} periods</div>
-                              </td>
-                              <td className="p-3 font-medium">${result.weightedAvgContractPrice.toFixed(2)}</td>
-                              <td className="p-3 font-medium">${result.weightedAvgMarketPrice.toFixed(2)}</td>
-                              <td className="p-3">
-                                <div className={`font-semibold ${
-                                  result.totalMtMPnL >= 0 ? 'text-green-600' : 'text-red-600'
-                                }`}>
-                                  ${result.totalMtMPnL.toLocaleString()}
-                                </div>
-                                <div className="text-xs text-gray-500">
-                                  ${(result.totalAbsVolume > 0 ? result.totalMtMPnL / result.totalAbsVolume : 0).toFixed(2)}/MWh
-                                </div>
-                              </td>
-                              <td className="p-3">
-                                <div className="space-y-1">
-                                  <span className={`px-2 py-1 rounded-full text-xs ${
-                                    result.volumeDataSource === 'time_series' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'
-                                  }`}>
-                                    {result.volumeDataSource === 'time_series' ? 'Time Series' : 'Shape-based'}
-                                  </span>
-                                  <div className="text-xs text-gray-500">{result.marketPriceProfile}</div>
-                                  <div className="text-xs text-green-600 font-medium">{result.priceDataSource}</div>
-                                </div>
-                              </td>
-                              <td className="p-3">
-                                <div className="flex gap-1">
-                                  <button
-                                    onClick={() => openTimeSeriesEditor(result)}
-                                    className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded hover:bg-blue-200 transition-colors"
-                                    title="View Market Price Time Series"
-                                  >
-                                    📊 TS
-                                  </button>
-                                  <button
-                                    onClick={() => {
-                                      const contract = contracts.find(c => c._id === result.contractId || c.name === result.contractName);
-                                      setSelectedContract(contract || null);
-                                    }}
-                                    className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded hover:bg-gray-200 transition-colors"
-                                    title="View Contract Details"
-                                  >
-                                    🔍 View
-                                  </button>
-                                </div>
-                              </td>
-                            </tr>
-                            
-                            {/* Time Series Breakdown */}
-                            {showTimeSeriesDetails && isContractExpanded && result.timeSeriesData.length > 0 && (
-                              <tr>
-                                <td colSpan={8} className="p-0">
-                                  <div className="bg-gray-50 border-t border-gray-200">
-                                    <div className="p-4">
-                                      <h4 className="text-sm font-semibold text-gray-800 mb-3">
-                                        📈 Time Series Breakdown - {result.contractName}
-                                      </h4>
-                                      <div className="overflow-x-auto">
-                                        <table className="w-full text-xs">
-                                          <thead>
-                                            <tr className="bg-gray-100">
-                                              <th className="text-left p-2 font-medium">Period</th>
-                                              <th className="text-left p-2 font-medium">Volume (MWh)</th>
-                                              <th className="text-left p-2 font-medium">Contract Price</th>
-                                              <th className="text-left p-2 font-medium">Market Price</th>
-                                              <th className="text-left p-2 font-medium">Contract Revenue</th>
-                                              <th className="text-left p-2 font-medium">Market Value</th>
-                                              <th className="text-left p-2 font-medium">Period MtM</th>
-                                              <th className="text-left p-2 font-medium">Cumulative MtM</th>
-                                            </tr>
-                                          </thead>
-                                          <tbody>
-                                            {result.timeSeriesData.map((point, pointIndex) => (
-                                              <tr key={point.period} className="border-b border-gray-200 hover:bg-gray-100">
-                                                <td className="p-2 font-medium">{point.period}</td>
-                                                <td className="p-2">{point.contractVolume.toLocaleString()}</td>
-                                                <td className="p-2">${point.contractPrice.toFixed(2)}</td>
-                                                <td className="p-2">${point.marketPrice.toFixed(2)}</td>
-                                                <td className="p-2">${point.contractRevenue.toLocaleString()}</td>
-                                                <td className="p-2">${point.marketValue.toLocaleString()}</td>
-                                                <td className={`p-2 font-medium ${
-                                                  point.mtmPnL >= 0 ? 'text-green-600' : 'text-red-600'
-                                                }`}>
-                                                  ${point.mtmPnL.toLocaleString()}
-                                                </td>
-                                                <td className={`p-2 font-medium ${
-                                                  point.cumulativeMtM >= 0 ? 'text-green-600' : 'text-red-600'
-                                                }`}>
-                                                  ${point.cumulativeMtM.toLocaleString()}
-                                                </td>
-                                              </tr>
-                                            ))}
-                                          </tbody>
-                                        </table>
-                                      </div>
-                                    </div>
-                                  </div>
-                                </td>
-                              </tr>
-                            )}
-                          </React.Fragment>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              )}
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
-          );
-        })}
-      </div>
-
-      {/* No Results Message */}
-      {filteredResults.length === 0 && !isCalculating && (
-        <div className="bg-white rounded-xl p-12 shadow-md border border-gray-200 text-center">
-          <div className="text-4xl mb-4">📊</div>
-          <h3 className="text-lg font-semibold text-gray-800 mb-2">No MtM Data Available</h3>
-          <p className="text-gray-600">
-            No active contracts found for {yearType} {selectedYear} or calculation failed. 
-            Please check your contracts and try recalculating.
-          </p>
-          <div className="mt-4 text-sm text-gray-500">
-            <p>Possible reasons:</p>
-            <ul className="list-disc list-inside mt-2">
-              <li>No active contracts for the selected year</li>
-              <li>Market price data unavailable</li>
-              <li>Contract volume data missing</li>
-              <li>Cache or network connectivity issues</li>
-            </ul>
-          </div>
-        </div>
+          )}
+        </>
       )}
 
       {/* Loading State */}
       {isCalculating && (
         <div className="bg-white rounded-xl p-12 shadow-md border border-gray-200 text-center">
-          <div className="text-4xl mb-4">⏳</div>
-          <h3 className="text-lg font-semibold text-gray-800 mb-2">Calculating Mark-to-Market...</h3>
-          <p className="text-gray-600">
-            Processing {contracts.filter(c => c.status === 'active').length} active contracts using cached market data
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500 mb-4"></div>
+          <p className="text-gray-600">Calculating Mark-to-Market...</p>
+        </div>
+      )}
+
+      {/* Empty State */}
+      {mtmResults.length === 0 && !isCalculating && (
+        <div className="bg-white rounded-xl p-12 shadow-md border border-gray-200 text-center">
+          <div className="text-6xl mb-4">💹</div>
+          <h3 className="text-xl font-semibold text-gray-800 mb-2">Ready to Calculate MtM</h3>
+          <p className="text-gray-600 mb-4">
+            {activeContracts.length === 0 
+              ? 'No active contracts found. Add contracts to see MtM analysis.'
+              : `Found ${activeContracts.length} active contracts. Click "Refresh MtM" to calculate.`
+            }
           </p>
-          <div className="mt-4">
-            <div className="animate-pulse bg-gray-200 h-2 rounded w-1/2 mx-auto"></div>
-          </div>
-          <div className="mt-2 text-xs text-gray-500">
-            Using optimized bulk market price fetching...
-          </div>
         </div>
       )}
 
-      {/* Time Series Editor Modal */}
-      {editingTimeSeriesContract && (
-        <TimeSeriesEditor
-          data={timeSeriesData}
-          config={timeSeriesConfig}
-          onDataChange={handleTimeSeriesDataChange}
-          onClose={closeTimeSeriesEditor}
-        />
-      )}
-
-      {/* Enhanced Information Panel */}
-      <div className="bg-white rounded-xl p-6 shadow-md border border-gray-200">
-        <h3 className="text-lg font-semibold text-gray-800 mb-4">
-          🚀 Optimized MtM Calculation Engine
-        </h3>
+      {/* Integration Notes */}
+      <div className="bg-green-50 rounded-xl p-6 border border-green-200">
+        <h3 className="text-lg font-semibold text-green-800 mb-4">🔗 Live Price Data Integration</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm text-green-700">
+          <div>
+            <h4 className="font-semibold mb-2">✅ API Integration Active</h4>
+            <ul className="space-y-1">
+              <li>• <strong>Real Price Data:</strong> Fetching from /api/price-curves endpoint</li>
+              <li>• <strong>Smart Caching:</strong> 5-minute cache to optimize performance</li>
+              <li>• <strong>Bulk Fetching:</strong> Efficiently loads all required price series</li>
+              <li>• <strong>Fallback Protection:</strong> Uses default prices if API fails</li>
+            </ul>
+          </div>
+          <div>
+            <h4 className="font-semibold mb-2">📊 Price Curve Features</h4>
+            <ul className="space-y-1">
+              <li>• <strong>Energy Prices:</strong> State-specific baseload pricing</li>
+              <li>• <strong>Green Certificates:</strong> Renewable energy credit pricing</li>
+              <li>• <strong>Aurora Jan 2025:</strong> Using latest forward curve</li>
+              <li>• <strong>Monthly Granularity:</strong> 12-month price profiles</li>
+            </ul>
+          </div>
+        </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div>
-            <h4 className="font-semibold text-gray-800 mb-3">Performance Features:</h4>
-            <ul className="text-sm text-gray-600 space-y-1">
-              <li>• Bulk market price fetching (1-2 API calls total)</li>
-              <li>• In-memory price data caching (5 min TTL)</li>
-              <li>• Parallel contract processing</li>
-              <li>• Smart cache key generation</li>
-              <li>• Automatic cache cleanup</li>
-              <li>• Zero duplicate API calls</li>
-            </ul>
-          </div>
-
-          <div>
-            <h4 className="font-semibold text-gray-800 mb-3">Data Sources:</h4>
-            <ul className="text-sm text-gray-600 space-y-1">
-              <li>• MongoDB price curves (cached)</li>
-              <li>• Contract time series data</li>
-              <li>• Volume shape algorithms</li>
-              <li>• Price escalation calculations</li>
-              <li>• Smart profile detection</li>
-              <li>• Optimized series matching</li>
-            </ul>
-          </div>
-
-          <div>
-            <h4 className="font-semibold text-gray-800 mb-3">Current Session:</h4>
-            <ul className="text-sm text-gray-600 space-y-1">
-              <li>• Active Contracts: {contracts.filter(c => c.status === 'active').length}</li>
-              <li>• Successful Calculations: {mtmResults.length}</li>
-              <li>• Last Calculation: {lastCalculationTime ? lastCalculationTime.toLocaleTimeString() : 'None'}</li>
-              <li>• Market Price Profile: {marketPriceProfile}</li>
-              <li>• Cache Entries: {cacheStats.size}</li>
-              <li>• Error State: {calculationError ? 'Yes' : 'None'}</li>
-            </ul>
-          </div>
-        </div>
-
-        <div className="mt-6 bg-green-50 border border-green-200 rounded-lg p-4">
-          <h4 className="font-semibold text-green-800 mb-2">✨ Optimization Benefits:</h4>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-green-700">
-            <div>
-              <strong>Speed Improvement:</strong> 10-100x faster calculations with bulk price fetching
-            </div>
-            <div>
-              <strong>Reduced API Load:</strong> From N calls per contract to 1-2 calls per portfolio
-            </div>
-            <div>
-              <strong>Cache Efficiency:</strong> 5-minute cache prevents duplicate database queries
-            </div>
-            <div>
-              <strong>Scalability:</strong> Handles hundreds of contracts without performance degradation
-            </div>
+        <div className="mt-4 p-3 bg-green-100 rounded-lg">
+          <div className="flex items-center gap-2 text-green-800 text-sm">
+            <span>🎯</span>
+            <strong>Cache Status:</strong> 
+            <span className="ml-2">Ready to fetch live market data from your price curve database</span>
           </div>
         </div>
       </div>
