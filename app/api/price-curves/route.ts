@@ -1,6 +1,6 @@
 // /api/price-curves/route.js
 import { MongoClient, Db } from 'mongodb';
-import { NextResponse, NextRequest } from 'next/server'; // Import NextRequest
+import { NextResponse, NextRequest } from 'next/server';
 
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://ProjectHalo:5apsFwxTlqN8WHQR@cluster0.quuwlhb.mongodb.net/energy_contracts?retryWrites=true&w=majority&appName=Cluster0';
 const MONGODB_DB = process.env.MONGODB_DB || 'energy_contracts';
@@ -24,7 +24,16 @@ async function connectToDatabase() {
   return { client, db };
 }
 
-export async function GET(request: NextRequest) { // Explicitly type the request parameter
+// Define an interface for the query object
+interface PriceCurveQuery {
+  curve: string;
+  Scenario: string;
+  state?: string; // Optional property
+  type?: string;  // Optional property
+  FY?: number;    // Optional property
+}
+
+export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
 
@@ -42,7 +51,7 @@ export async function GET(request: NextRequest) { // Explicitly type the request
     const { db } = await connectToDatabase();
 
     // Build MongoDB query for price_curves_intervals collection
-    const query = {
+    const query: PriceCurveQuery = { // Apply the defined interface here
       curve: curve,
       Scenario: scenario
     };
@@ -61,6 +70,22 @@ export async function GET(request: NextRequest) { // Explicitly type the request
 
     console.log(`Found ${data.length} records`);
 
+    interface TransformedRecord {
+      time: string;
+      price: number;
+      date: string;
+      year: number;
+      month: number;
+      monthName: string;
+      state: string;
+      type: string;
+      financialYear: number;
+      calendarYear: number;
+      scenario: string;
+      period: string;
+      curve: string;
+    }
+
     // Transform data for response
     const transformedData = data.map(record => ({
       time: record.time, // Interval_date
@@ -76,10 +101,10 @@ export async function GET(request: NextRequest) { // Explicitly type the request
       scenario: record.Scenario,
       period: record.period_30,
       curve: record.curve
-    }));
+    })) as TransformedRecord[];
 
     // Group by series (combination of state and type)
-    const marketPrices = {};
+    const marketPrices: { [key: string]: TransformedRecord[] } = {};
 
     transformedData.forEach(record => {
       const seriesKey = `${record.state}-${record.type}`;
@@ -93,7 +118,7 @@ export async function GET(request: NextRequest) { // Explicitly type the request
 
     // Sort each series by date
     Object.keys(marketPrices).forEach(seriesKey => {
-      marketPrices[seriesKey].sort((a, b) => new Date(a.date) - new Date(b.date));
+      marketPrices[seriesKey].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
     });
 
     // Calculate summary statistics
