@@ -5,9 +5,11 @@ import {
   streamlinedMtMEngine, 
   MtMCalculationResult, 
   MtMTimeSeriesPoint,
-  Contract,
   MtMCalculationOptions
 } from './mtmCalculationEngine'; // This would be the actual import path
+
+// Import Contract from main types file instead of MtM engine
+import { Contract } from '@/app/types';
 
 // Mock contracts for demonstration
 const mockContracts = [
