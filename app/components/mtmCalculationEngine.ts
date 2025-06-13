@@ -1,13 +1,16 @@
-// MtM Calculation Engine - Updated for Price Curves Integration
+// MtM Calculation Engine - Updated with Load Weighted Price (LWP) Support
 
 export interface MtMTimeSeriesPoint {
   period: string;
   contractVolume: number;
   contractPrice: number;
   marketPrice: number;
+  lwpPercentage: number; // NEW: LWP percentage (default 100%)
+  lwpPrice: number; // NEW: Load Weighted Price (Market Price × LWP%)
   contractRevenue: number;
   marketValue: number;
-  mtmPnL: number;
+  lwpValue: number; // NEW: LWP Value (Volume × LWP Price)
+  mtmPnL: number; // NOW: Uses LWP instead of Market Price
   cumulativeMtM: number;
 }
 
@@ -24,9 +27,11 @@ export interface MtMCalculationResult {
   totalAbsVolume: number;
   weightedAvgContractPrice: number;
   weightedAvgMarketPrice: number;
+  weightedAvgLWPPrice: number; // NEW: Average LWP Price
   totalContractRevenue: number;
   totalMarketValue: number;
-  totalMtMPnL: number;
+  totalLWPValue: number; // NEW: Total LWP Value
+  totalMtMPnL: number; // NOW: Based on LWP
   volumeDataSource: string;
   marketPriceProfile: string;
   periodsCalculated: number;
@@ -55,6 +60,11 @@ export interface Contract {
   priceTimeSeries?: number[];
   priceInterval?: 'monthly' | 'quarterly' | 'yearly';
   timeSeriesData?: Array<{ period: string; volume: number }>;
+  
+  // NEW: LWP Configuration
+  lwpPercentage?: number; // Default LWP percentage (default: 100%)
+  lwpTimeSeries?: number[]; // Future: Monthly LWP percentages
+  lwpInterval?: 'monthly' | 'quarterly' | 'yearly'; // Future: LWP interval
 }
 
 export interface MtMCalculationOptions {
@@ -63,7 +73,7 @@ export interface MtMCalculationOptions {
   scenario?: string;
 }
 
-// Price curve data interfaces - Updated for new format
+// Price curve data interfaces
 interface PriceCurvePoint {
   time: string;
   price: number;
@@ -108,7 +118,7 @@ export class StreamlinedMtMEngine {
     // Initialize price cache
     this.priceCache = new Map();
 
-    // Initialize empty price arrays - NO FALLBACKS
+    // Initialize empty price arrays
     this.marketPrices = {};
     this.greenPrices = {};
 
@@ -121,6 +131,33 @@ export class StreamlinedMtMEngine {
     };
 
     this.months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  }
+
+  /**
+   * NEW: Get LWP percentage for a specific period
+   */
+  private getLWPPercentageForPeriod(contract: Contract, monthIndex: number): number {
+    // Future: Use lwpTimeSeries if available
+    if (contract.lwpTimeSeries && contract.lwpTimeSeries.length > 0) {
+      if (contract.lwpInterval === 'monthly') {
+        return contract.lwpTimeSeries[monthIndex] || (contract.lwpPercentage || 100);
+      } else if (contract.lwpInterval === 'quarterly') {
+        const quarterIndex = Math.floor(monthIndex / 3);
+        return contract.lwpTimeSeries[quarterIndex] || (contract.lwpPercentage || 100);
+      } else if (contract.lwpInterval === 'yearly') {
+        return contract.lwpTimeSeries[0] || (contract.lwpPercentage || 100);
+      }
+    }
+
+    // Default: Use single LWP percentage or 100%
+    return contract.lwpPercentage || 100;
+  }
+
+  /**
+   * NEW: Calculate Load Weighted Price
+   */
+  private calculateLWP(marketPrice: number, lwpPercentage: number): number {
+    return marketPrice * (lwpPercentage / 100);
   }
 
   /**
@@ -187,12 +224,12 @@ export class StreamlinedMtMEngine {
       }
     } catch (error) {
       console.error(`❌ Error fetching price data for ${state} ${contractType}:`, error);
-      throw error; // Re-throw instead of using fallbacks
+      throw error;
     }
   }
 
   /**
-   * Extract monthly prices from API response - Updated for new format
+   * Extract monthly prices from API response
    */
   private extractMonthlyPricesFromAPI(
     marketPrices: { [key: string]: PriceCurvePoint[] }, 
@@ -202,7 +239,7 @@ export class StreamlinedMtMEngine {
     const seriesKeys = Object.keys(marketPrices);
     console.log(`🔍 Available price series:`, seriesKeys);
     
-    // Try to find the best matching series - Updated for new format
+    // Try to find the best matching series
     const possibleKeys = [
       `${state}-${type}`,
       `${state}-Energy`, // Fallback for Energy type
@@ -337,7 +374,7 @@ export class StreamlinedMtMEngine {
   }
 
   /**
-   * Calculate MtM for a single contract
+   * Calculate MtM for a single contract - UPDATED with LWP
    */
   async calculateContractMtM(contract: Contract, options: MtMCalculationOptions): Promise<MtMCalculationResult> {
     const timeSeriesData: MtMTimeSeriesPoint[] = [];
@@ -365,7 +402,7 @@ export class StreamlinedMtMEngine {
     // Calculate monthly volumes
     const monthlyVolumes = this.calculateMonthlyVolumes(contract);
 
-    // Calculate monthly MtM
+    // Calculate monthly MtM with LWP
     this.months.forEach((month, index) => {
       const period = `${options.selectedYear}-${(index + 1).toString().padStart(2, '0')}`;
       const volume = monthlyVolumes[index] || 0;
@@ -377,19 +414,24 @@ export class StreamlinedMtMEngine {
       const contractPrice = this.getContractPriceForPeriod(contract, index, options.selectedYear);
       const marketPrice = marketPrices[index];
       
+      // NEW: Calculate LWP
+      const lwpPercentage = this.getLWPPercentageForPeriod(contract, index);
+      const lwpPrice = this.calculateLWP(marketPrice, lwpPercentage);
+      
       const contractRevenue = volume * contractPrice;
       const marketValue = volume * marketPrice;
+      const lwpValue = volume * lwpPrice; // NEW: LWP Value
 
-      // Calculate MtM based on direction
+      // Calculate MtM based on direction - NOW USING LWP
       let mtmPnL: number;
       if (contract.direction === 'sell') {
-        // Sell: MtM = Contract Revenue - Market Value
-        // Positive when contract price > market price
-        mtmPnL = contractRevenue - marketValue;
+        // Sell: MtM = Contract Revenue - LWP Value
+        // Positive when contract price > LWP price
+        mtmPnL = contractRevenue - lwpValue;
       } else {
-        // Buy: MtM = Market Value - Contract Revenue
-        // Positive when market price > contract price
-        mtmPnL = marketValue - contractRevenue;
+        // Buy: MtM = LWP Value - Contract Revenue
+        // Positive when LWP price > contract price
+        mtmPnL = lwpValue - contractRevenue;
       }
 
       cumulativeMtM += mtmPnL;
@@ -399,9 +441,12 @@ export class StreamlinedMtMEngine {
         contractVolume: volume,
         contractPrice,
         marketPrice,
+        lwpPercentage, // NEW
+        lwpPrice, // NEW
         contractRevenue,
         marketValue,
-        mtmPnL,
+        lwpValue, // NEW
+        mtmPnL, // NOW: Based on LWP
         cumulativeMtM
       });
     });
@@ -503,7 +548,7 @@ export class StreamlinedMtMEngine {
   }
 
   /**
-   * Calculate summary metrics from time series data
+   * Calculate summary metrics from time series data - UPDATED with LWP
    */
   private calculateSummaryMetrics(timeSeriesData: MtMTimeSeriesPoint[], contract: Contract) {
     if (timeSeriesData.length === 0) {
@@ -512,8 +557,10 @@ export class StreamlinedMtMEngine {
         totalAbsVolume: 0,
         weightedAvgContractPrice: 0,
         weightedAvgMarketPrice: 0,
+        weightedAvgLWPPrice: 0, // NEW
         totalContractRevenue: 0,
         totalMarketValue: 0,
+        totalLWPValue: 0, // NEW
         totalMtMPnL: 0
       };
     }
@@ -521,6 +568,7 @@ export class StreamlinedMtMEngine {
     const totalAbsVolume = timeSeriesData.reduce((sum, point) => sum + Math.abs(point.contractVolume), 0);
     const totalContractRevenue = timeSeriesData.reduce((sum, point) => sum + point.contractRevenue, 0);
     const totalMarketValue = timeSeriesData.reduce((sum, point) => sum + point.marketValue, 0);
+    const totalLWPValue = timeSeriesData.reduce((sum, point) => sum + point.lwpValue, 0); // NEW
     const totalMtMPnL = timeSeriesData.reduce((sum, point) => sum + point.mtmPnL, 0);
 
     // Apply direction sign to volume
@@ -528,20 +576,23 @@ export class StreamlinedMtMEngine {
 
     const weightedAvgContractPrice = totalAbsVolume > 0 ? totalContractRevenue / totalAbsVolume : 0;
     const weightedAvgMarketPrice = totalAbsVolume > 0 ? totalMarketValue / totalAbsVolume : 0;
+    const weightedAvgLWPPrice = totalAbsVolume > 0 ? totalLWPValue / totalAbsVolume : 0; // NEW
 
     return {
       totalVolume: signedVolume,
       totalAbsVolume,
       weightedAvgContractPrice,
       weightedAvgMarketPrice,
+      weightedAvgLWPPrice, // NEW
       totalContractRevenue,
       totalMarketValue,
+      totalLWPValue, // NEW
       totalMtMPnL
     };
   }
 
   /**
-   * Calculate portfolio-level aggregated data for charting
+   * Calculate portfolio-level aggregated data for charting - UPDATED with LWP
    */
   calculatePortfolioAggregation(results: MtMCalculationResult[], year: number) {
     // Safety check: ensure results is an array
@@ -559,6 +610,7 @@ export class StreamlinedMtMEngine {
       let totalVolume = 0;
       let totalContractRevenue = 0;
       let totalMarketValue = 0;
+      let totalLWPValue = 0; // NEW
       let cumulativeMtM = 0;
 
       results.forEach(result => {
@@ -574,6 +626,7 @@ export class StreamlinedMtMEngine {
           totalVolume += Math.abs(periodData.contractVolume);
           totalContractRevenue += periodData.contractRevenue;
           totalMarketValue += periodData.marketValue;
+          totalLWPValue += periodData.lwpValue; // NEW
           // Use the last cumulative value found
           cumulativeMtM = periodData.cumulativeMtM;
         }
@@ -586,15 +639,17 @@ export class StreamlinedMtMEngine {
         totalVolume: Math.round(totalVolume),
         totalContractRevenue: Math.round(totalContractRevenue),
         totalMarketValue: Math.round(totalMarketValue),
+        totalLWPValue: Math.round(totalLWPValue), // NEW
         cumulativeMtM: Math.round(cumulativeMtM),
         avgContractPrice: totalVolume > 0 ? totalContractRevenue / totalVolume : 0,
-        avgMarketPrice: totalVolume > 0 ? totalMarketValue / totalVolume : 0
+        avgMarketPrice: totalVolume > 0 ? totalMarketValue / totalVolume : 0,
+        avgLWPPrice: totalVolume > 0 ? totalLWPValue / totalVolume : 0 // NEW
       };
     });
   }
 
   /**
-   * Calculate portfolio summary statistics
+   * Calculate portfolio summary statistics - UPDATED with LWP
    */
   calculatePortfolioStats(results: MtMCalculationResult[]) {
     // Safety check: ensure results is an array
@@ -605,8 +660,10 @@ export class StreamlinedMtMEngine {
         totalVolume: 0,
         totalRevenue: 0,
         totalMarketValue: 0,
+        totalLWPValue: 0, // NEW
         avgContractPrice: 0,
         avgMarketPrice: 0,
+        avgLWPPrice: 0, // NEW
         contractCount: 0
       };
     }
@@ -626,14 +683,20 @@ export class StreamlinedMtMEngine {
     const totalMarketValue = results.reduce((sum, result) => {
       return sum + (result?.totalMarketValue || 0);
     }, 0);
+    
+    const totalLWPValue = results.reduce((sum, result) => { // NEW
+      return sum + (result?.totalLWPValue || 0);
+    }, 0);
 
     return {
       totalMtM,
       totalVolume,
       totalRevenue,
       totalMarketValue,
+      totalLWPValue, // NEW
       avgContractPrice: totalVolume > 0 ? totalRevenue / totalVolume : 0,
       avgMarketPrice: totalVolume > 0 ? totalMarketValue / totalVolume : 0,
+      avgLWPPrice: totalVolume > 0 ? totalLWPValue / totalVolume : 0, // NEW
       contractCount: results.length
     };
   }

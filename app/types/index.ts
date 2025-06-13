@@ -1,4 +1,4 @@
-// app/types/index.ts
+// app/types/index.ts - Updated with LWP Support
 
 export interface TimeSeriesDataPoint {
   period: string; // YYYY-MM format
@@ -48,7 +48,7 @@ export interface Contract {
   strikePrice: number;
   unit: string;
   contractType?: string;
-  direction: 'buy' | 'sell'; // NEW: Buy or Sell direction
+  direction: 'buy' | 'sell'; // Buy or Sell direction
   volumeShape: 'flat' | 'solar' | 'wind' | 'custom';
   status: 'active' | 'pending';
   indexation: string;
@@ -61,8 +61,8 @@ export interface Contract {
 
   // Enhanced volume fields
   timeSeriesData?: TimeSeriesDataPoint[];
-  volumeTimeSeries?: number[]; // NEW: Direct volume time series (like priceTimeSeries)
-  volumeInterval?: 'monthly' | 'quarterly' | 'yearly'; // NEW: Volume interval (like priceInterval)
+  volumeTimeSeries?: number[]; // Direct volume time series (like priceTimeSeries)
+  volumeInterval?: 'monthly' | 'quarterly' | 'yearly'; // Volume interval (like priceInterval)
   tenor?: {
     value: number;
     unit: 'months' | 'years';
@@ -86,4 +86,10 @@ export interface Contract {
 
   // Contract requirements
   contractRequirements?: ContractRequirement[];
+
+  // NEW: Load Weighted Price (LWP) Configuration
+  lwpPercentage?: number; // Default LWP percentage (default: 100%)
+  lwpTimeSeries?: number[]; // Future: Monthly LWP percentages [95, 98, 100, 102, ...]
+  lwpInterval?: 'monthly' | 'quarterly' | 'yearly'; // Future: LWP interval matching price/volume intervals
+  lwpNotes?: string; // Optional notes about LWP configuration
 }
