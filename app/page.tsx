@@ -345,8 +345,8 @@ const updateContract = async (updatedContract: Contract) => {
         <div className="min-h-96">
          
           {activeTab === 'input' && <ContractInputTab {...commonProps} />}
-          {activeTab === 'price-curve' && <PriceCurveTab />} {/* REMOVED ...commonProps */}
-          {activeTab === 'mark-to-market' && <MarkToMarketTab />} {/* REMOVED ...commonProps */}
+          {activeTab === 'price-curve' && <PriceCurveTab {...commonProps} />}
+          {activeTab === 'mark-to-market' && <MarkToMarketTab {...commonProps} />}
           {activeTab === 'time-series' && <TimeSeriesOutputTab {...commonProps} />}
           {activeTab === 'settings' && (
             <SettingsTab
