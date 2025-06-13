@@ -12,7 +12,7 @@ import {
 import { Contract } from '@/app/types';
 
 // Mock contracts for demonstration
-const mockContracts = [
+const mockContracts: Contract[] = [
   {
     _id: '1',
     name: 'Solar Farm NSW PPA',
@@ -29,10 +29,10 @@ const mockContracts = [
     direction: 'buy' as const,
     volumeShape: 'solar' as const,
     status: 'active' as const,
+    indexation: 'Fixed',
+    referenceDate: '2025-01-01',
     pricingType: 'fixed' as const,
-    lwpPercentage: 95, // NEW: 95% LWP
-    indexation: null,
-    referenceDate: null
+    lwpPercentage: 95 // NEW: 95% LWP
   },
   {
     _id: '2',
@@ -50,10 +50,10 @@ const mockContracts = [
     direction: 'sell' as const,
     volumeShape: 'flat' as const,
     status: 'active' as const,
+    indexation: 'Fixed',
+    referenceDate: '2025-01-01',
     pricingType: 'fixed' as const,
-    lwpPercentage: 98, // NEW: 98% LWP
-    indexation: null,
-    referenceDate: null
+    lwpPercentage: 98 // NEW: 98% LWP
   },
   {
     _id: '3',
@@ -71,11 +71,11 @@ const mockContracts = [
     direction: 'buy' as const,
     volumeShape: 'wind' as const,
     status: 'active' as const,
+    indexation: 'Escalation 2%',
+    referenceDate: '2025-01-01',
     pricingType: 'escalation' as const,
     escalationRate: 2.5,
-    lwpPercentage: 100, // NEW: 100% LWP (default)
-    indexation: null,
-    referenceDate: null
+    lwpPercentage: 100 // NEW: 100% LWP (default)
   },
   {
     _id: '4',
@@ -93,10 +93,10 @@ const mockContracts = [
     direction: 'sell' as const,
     volumeShape: 'flat' as const,
     status: 'active' as const,
+    indexation: 'Fixed',
+    referenceDate: '2025-01-01',
     pricingType: 'fixed' as const,
-    lwpPercentage: 105, // NEW: 105% LWP
-    indexation: null,
-    referenceDate: null
+    lwpPercentage: 105 // NEW: 105% LWP
   }
 ];
 
