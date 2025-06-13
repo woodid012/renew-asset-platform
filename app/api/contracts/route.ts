@@ -102,6 +102,26 @@ export async function POST(request: NextRequest) {
       contractData.priceTimeSeries = contractData.priceTimeSeries.map((price: any) => Number(price) || 0);
     }
 
+    // Handle LWP (Load Weighted Price) fields - NEW
+    if (contractData.lwpPercentage !== undefined) {
+      contractData.lwpPercentage = Number(contractData.lwpPercentage) || 100;
+    }
+
+    // Handle LWP time series - NEW
+    if (contractData.lwpTimeSeries && Array.isArray(contractData.lwpTimeSeries)) {
+      contractData.lwpTimeSeries = contractData.lwpTimeSeries.map((lwp: any) => Number(lwp) || 100);
+    }
+
+    // Handle LWP interval - NEW
+    if (contractData.lwpInterval) {
+      contractData.lwpInterval = contractData.lwpInterval;
+    }
+
+    // Handle LWP notes - NEW
+    if (contractData.lwpNotes) {
+      contractData.lwpNotes = contractData.lwpNotes;
+    }
+
     // Ensure numeric fields are numbers
     contractData.annualVolume = Number(contractData.annualVolume) || 0;
     contractData.strikePrice = Number(contractData.strikePrice) || 0;
@@ -179,6 +199,26 @@ export async function PUT(request: NextRequest) {
     // Handle price time series
     if (updateData.priceTimeSeries && Array.isArray(updateData.priceTimeSeries)) {
       updateData.priceTimeSeries = updateData.priceTimeSeries.map((price: any) => Number(price) || 0);
+    }
+
+    // Handle LWP (Load Weighted Price) fields - NEW
+    if (updateData.lwpPercentage !== undefined) {
+      updateData.lwpPercentage = Number(updateData.lwpPercentage) || 100;
+    }
+
+    // Handle LWP time series - NEW
+    if (updateData.lwpTimeSeries && Array.isArray(updateData.lwpTimeSeries)) {
+      updateData.lwpTimeSeries = updateData.lwpTimeSeries.map((lwp: any) => Number(lwp) || 100);
+    }
+
+    // Handle LWP interval - NEW
+    if (updateData.lwpInterval !== undefined) {
+      updateData.lwpInterval = updateData.lwpInterval;
+    }
+
+    // Handle LWP notes - NEW
+    if (updateData.lwpNotes !== undefined) {
+      updateData.lwpNotes = updateData.lwpNotes;
     }
 
     // Ensure numeric fields are numbers

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import ContractVolumeEditor from './ContractVolumeEditor';
 import ContractPriceEditor from './ContractPriceEditor';
 import ContractRequirementsEditor from './ContractRequirementsEditor';
+import ContractLWPEditor from './ContractLWPEditor';
 import { Contract, SettingsData, TimeSeriesDataPoint, PriceCurve } from '@/app/types';
 
 interface ContractBaseProps {
@@ -25,13 +26,11 @@ const VolumeUtils = {
     let endDate = new Date(start);
 
     if (tenor.unit === 'months') {
-      // Add months and go to last day of that month
       endDate.setMonth(endDate.getMonth() + tenor.value);
-      endDate.setDate(0); // Set to last day of previous month (which is the target month)
+      endDate.setDate(0);
     } else {
-      // Add years and go to last day of December
       endDate.setFullYear(endDate.getFullYear() + tenor.value);
-      endDate.setMonth(11, 31); // December 31st
+      endDate.setMonth(11, 31);
     }
     
     return endDate.toISOString().split('T')[0];
@@ -41,22 +40,19 @@ const VolumeUtils = {
     const start = new Date(startDate);
     const end = new Date(endDate);
     
-    // Calculate months difference (inclusive)
     const yearDiff = end.getFullYear() - start.getFullYear();
     const monthDiff = end.getMonth() - start.getMonth();
-    const totalMonths = yearDiff * 12 + monthDiff + 1; // +1 to make it inclusive
+    const totalMonths = yearDiff * 12 + monthDiff + 1;
     
-    // If it's exactly divisible by 12 months and at year boundaries, use years
     if (totalMonths % 12 === 0 && 
-        start.getMonth() === 0 && start.getDate() === 1 && // Jan 1st start
-        end.getMonth() === 11 && end.getDate() === 31) {   // Dec 31st end
+        start.getMonth() === 0 && start.getDate() === 1 && 
+        end.getMonth() === 11 && end.getDate() === 31) {
       return {
         value: totalMonths / 12,
         unit: 'years'
       };
     }
     
-    // Otherwise use months
     return {
       value: Math.max(1, totalMonths),
       unit: 'months'
@@ -78,10 +74,10 @@ export default function ContractBase({
   const [showVolumeEditor, setShowVolumeEditor] = useState(false);
   const [showPriceEditor, setShowPriceEditor] = useState(false);
   const [showRequirementsEditor, setShowRequirementsEditor] = useState(false);
+  const [showLWPEditor, setShowLWPEditor] = useState(false);
 
   if (!formData) return null;
 
-  // Initialize default start date to current year
   useEffect(() => {
     if (!formData.startDate) {
       const currentYear = new Date().getFullYear();
@@ -90,14 +86,12 @@ export default function ContractBase({
     }
   }, []);
 
-  // Initialize default trade direction if not set
   useEffect(() => {
     if (!formData.direction) {
       onInputChange('direction', 'buy');
     }
   }, []);
 
-  // Calculate and update tenor whenever dates change
   useEffect(() => {
     if (formData.startDate && formData.endDate) {
       const calculatedTenor = VolumeUtils.calculateTenor(formData.startDate, formData.endDate);
@@ -105,17 +99,14 @@ export default function ContractBase({
     }
   }, [formData.startDate, formData.endDate]);
 
-  // Handle start date changes
   const handleStartDateChange = (startDate: string) => {
     onInputChange('startDate', startDate);
   };
 
-  // Handle end date changes
   const handleEndDateChange = (endDate: string) => {
     onInputChange('endDate', endDate);
   };
 
-  // Get categories based on contract type
   const getAvailableCategories = (contractType: string) => {
     if (settings?.contractTypes) {
       return settings.contractTypes[contractType as keyof typeof settings.contractTypes] || [];
@@ -123,7 +114,6 @@ export default function ContractBase({
     return [];
   };
 
-  // Get requirements statistics
   const getRequirementsStats = () => {
     const requirements = formData.contractRequirements || [];
     const total = requirements.length;
@@ -156,18 +146,14 @@ export default function ContractBase({
         </div>
 
         <div className="p-6">
-          {/* Main Contract Details Form */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
             
-            {/* Left Column - Basic Contract Details */}
             <div>
               <h3 className="text-lg font-semibold text-gray-800 mb-4">Contract Details</h3>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Contract Name and Trade Direction */}
                 <div className="md:col-span-2">
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    {/* Contract Name */}
                     <div className="md:col-span-3">
                       <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
                         Contract Name *
@@ -185,7 +171,6 @@ export default function ContractBase({
                       {errors.name && <p className="mt-1 text-sm text-red-600">{errors.name}</p>}
                     </div>
 
-                    {/* Trade Direction */}
                     <div>
                       <label htmlFor="direction" className="block text-sm font-medium text-gray-700 mb-2">
                         Trade Direction *
@@ -203,7 +188,6 @@ export default function ContractBase({
                   </div>
                 </div>
 
-                {/* Contract Type */}
                 <div>
                   <label htmlFor="type" className="block text-sm font-medium text-gray-700 mb-2">
                     Contract Type *
@@ -223,7 +207,6 @@ export default function ContractBase({
                   </select>
                 </div>
 
-                {/* Category */}
                 <div>
                   <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-2">
                     Category *
@@ -244,7 +227,6 @@ export default function ContractBase({
                   {errors.category && <p className="mt-1 text-sm text-red-600">{errors.category}</p>}
                 </div>
 
-                {/* State */}
                 <div>
                   <label htmlFor="state" className="block text-sm font-medium text-gray-700 mb-2">
                     State *
@@ -261,7 +243,6 @@ export default function ContractBase({
                   </select>
                 </div>
 
-                {/* Counterparty */}
                 <div>
                   <label htmlFor="counterparty" className="block text-sm font-medium text-gray-700 mb-2">
                     Counterparty *
@@ -279,7 +260,6 @@ export default function ContractBase({
                   {errors.counterparty && <p className="mt-1 text-sm text-red-600">{errors.counterparty}</p>}
                 </div>
 
-                {/* Start Date */}
                 <div>
                   <label htmlFor="startDate" className="block text-sm font-medium text-gray-700 mb-2">
                     Start Date *
@@ -296,7 +276,6 @@ export default function ContractBase({
                   {errors.startDate && <p className="mt-1 text-sm text-red-600">{errors.startDate}</p>}
                 </div>
 
-                {/* Contract Tenor (Calculated) */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Contract Tenor (Calculated)
@@ -309,7 +288,6 @@ export default function ContractBase({
                   </p>
                 </div>
 
-                {/* End Date */}
                 <div>
                   <label htmlFor="endDate" className="block text-sm font-medium text-gray-700 mb-2">
                     End Date *
@@ -326,7 +304,6 @@ export default function ContractBase({
                   {errors.endDate && <p className="mt-1 text-sm text-red-600">{errors.endDate}</p>}
                 </div>
 
-                {/* Type (was Unit) */}
                 <div>
                   <label htmlFor="unit" className="block text-sm font-medium text-gray-700 mb-2">
                     Type
@@ -343,7 +320,6 @@ export default function ContractBase({
                   </select>
                 </div>
 
-                {/* Status */}
                 <div>
                   <label htmlFor="status" className="block text-sm font-medium text-gray-700 mb-2">
                     Status
@@ -361,13 +337,11 @@ export default function ContractBase({
               </div>
             </div>
 
-            {/* Right Column - Contract Summary */}
             <div>
               <h3 className="text-lg font-semibold text-gray-800 mb-4">📊 Contract Summary</h3>
               
               {(formData.annualVolume > 0 || formData.timeSeriesData?.length) && formData.strikePrice > 0 ? (
                 <div className="space-y-6">
-                  {/* Basic Contract Info */}
                   <div className="bg-gray-50 rounded-lg p-4 space-y-3">
                     <div className="flex justify-between items-center">
                       <span className="text-gray-600 font-medium">Trade Direction:</span>
@@ -390,78 +364,19 @@ export default function ContractBase({
                       </span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-gray-600 font-medium">Average Strike Price:</span>
-                      <span className="text-gray-900 font-semibold">
-                        ${(() => {
-                          if (formData.pricingType === 'timeseries' && formData.priceTimeSeries?.length) {
-                            const avgPrice = formData.priceTimeSeries.reduce((sum, price) => sum + price, 0) / formData.priceTimeSeries.length;
-                            return avgPrice.toFixed(2);
-                          }
-                          return formData.strikePrice?.toFixed(2) || '0.00';
-                        })()} / Year
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-gray-600 font-medium">Annual Volume (avg.):</span>
-                      <span className="text-gray-900 font-semibold">
+                      <span className="text-gray-600 font-medium">Load Weighted Price:</span>
+                      <span className="text-blue-700 font-semibold">
                         {(() => {
-                          if (formData.timeSeriesData?.length && formData.yearsCovered?.length) {
-                            const avgVolume = (formData.totalVolume || formData.annualVolume) / formData.yearsCovered.length;
-                            return avgVolume.toLocaleString(undefined, { maximumFractionDigits: 0 });
+                          if (formData.lwpTimeSeries?.length) {
+                            const avg = formData.lwpTimeSeries.reduce((a, b) => a + b, 0) / formData.lwpTimeSeries.length;
+                            const min = Math.min(...formData.lwpTimeSeries);
+                            const max = Math.max(...formData.lwpTimeSeries);
+                            return min === max ? `${avg.toFixed(1)}%` : `${min.toFixed(1)}%-${max.toFixed(1)}%`;
+                          } else {
+                            return `${(formData.lwpPercentage || 100).toFixed(1)}%`;
                           }
-                          return formData.annualVolume?.toLocaleString() || '0';
-                        })()} MWh / Year
+                        })()}
                       </span>
-                    </div>
-                  </div>
-
-                  {/* Monthly Grid */}
-                  <div>
-                    <h4 className="text-md font-semibold text-gray-800 mb-3">Monthly Breakdown</h4>
-                    <div className="grid grid-cols-4 gap-2 text-xs">
-                      {['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'].map((month, index) => {
-                        // Calculate monthly volume
-                        let monthlyVolume = 0;
-                        if (formData.timeSeriesData?.length) {
-                          // Use actual data if available - take average across years for this month
-                          const monthData = formData.timeSeriesData.filter(data => {
-                            const monthIndex = parseInt(data.period.split('-')[1]) - 1;
-                            return monthIndex === index;
-                          });
-                          if (monthData.length > 0) {
-                            monthlyVolume = monthData.reduce((sum, data) => sum + data.volume, 0) / monthData.length;
-                          }
-                        } else {
-                          // Use percentage-based calculation
-                          const volumeShapes = {
-                            flat: [8.33, 8.33, 8.33, 8.33, 8.33, 8.33, 8.33, 8.33, 8.33, 8.33, 8.33, 8.33],
-                            solar: [6.5, 7.2, 8.8, 9.5, 10.2, 8.9, 9.1, 9.8, 8.6, 7.4, 6.8, 7.2],
-                            wind: [11.2, 10.8, 9.2, 7.8, 6.5, 5.9, 6.2, 7.1, 8.4, 9.6, 10.8, 11.5],
-                            custom: [5.0, 6.0, 7.5, 9.0, 11.0, 12.5, 13.0, 12.0, 10.5, 8.5, 7.0, 6.0]
-                          };
-                          const percentages = volumeShapes[formData.volumeShape] || volumeShapes.flat;
-                          monthlyVolume = (formData.annualVolume * percentages[index]) / 100;
-                        }
-
-                        // Calculate monthly price
-                        let monthlyPrice = formData.strikePrice;
-                        if (formData.pricingType === 'timeseries' && formData.priceTimeSeries?.length) {
-                          if (formData.priceInterval === 'monthly') {
-                            monthlyPrice = formData.priceTimeSeries[index] || formData.strikePrice;
-                          } else if (formData.priceInterval === 'quarterly') {
-                            const quarterIndex = Math.floor(index / 3);
-                            monthlyPrice = formData.priceTimeSeries[quarterIndex] || formData.strikePrice;
-                          }
-                        }
-
-                        return (
-                          <div key={month} className="bg-white border border-gray-200 rounded p-2 text-center">
-                            <div className="font-semibold text-gray-800 mb-1">{month}</div>
-                            <div className="text-blue-600 font-medium">${monthlyPrice.toFixed(0)}</div>
-                            <div className="text-gray-600">{monthlyVolume.toLocaleString(undefined, { maximumFractionDigits: 0 })} MWh</div>
-                          </div>
-                        );
-                      })}
                     </div>
                   </div>
                 </div>
@@ -473,10 +388,8 @@ export default function ContractBase({
             </div>
           </div>
 
-          {/* Configuration Editor Buttons */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
             
-            {/* Volume Configuration */}
             <div className="border border-gray-200 rounded-lg p-6">
               <div className="flex justify-between items-center mb-4">
                 <h4 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
@@ -510,7 +423,6 @@ export default function ContractBase({
               </div>
             </div>
 
-            {/* Price Configuration */}
             <div className="border border-gray-200 rounded-lg p-6">
               <div className="flex justify-between items-center mb-4">
                 <h4 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
@@ -549,7 +461,6 @@ export default function ContractBase({
               </div>
             </div>
 
-            {/* Contract Requirements Configuration */}
             <div className="border border-gray-200 rounded-lg p-6">
               <div className="flex justify-between items-center mb-4">
                 <h4 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
@@ -580,9 +491,47 @@ export default function ContractBase({
                 </div>
               </div>
             </div>
+
+            <div className="border border-gray-200 rounded-lg p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h4 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                  ⚖️ Load Weighted Price (LWP)
+                </h4>
+                <button
+                  type="button"
+                  onClick={() => setShowLWPEditor(true)}
+                  className="bg-indigo-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-indigo-600 transition-colors"
+                >
+                  Configure LWP
+                </button>
+              </div>
+              
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Data Source:</span>
+                  <span className="font-medium">
+                    {formData.lwpTimeSeries?.length ? 'Time Series' : 'Fixed Percentage'}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">LWP Value:</span>
+                  <span className="font-medium">
+                    {(() => {
+                      if (formData.lwpTimeSeries?.length) {
+                        const avg = formData.lwpTimeSeries.reduce((a, b) => a + b, 0) / formData.lwpTimeSeries.length;
+                        const min = Math.min(...formData.lwpTimeSeries);
+                        const max = Math.max(...formData.lwpTimeSeries);
+                        return min === max ? `${avg.toFixed(1)}%` : `${min.toFixed(1)}%-${max.toFixed(1)}%`;
+                      } else {
+                        return `${(formData.lwpPercentage || 100).toFixed(1)}%`;
+                      }
+                    })()}
+                  </span>
+                </div>
+              </div>
+            </div>
           </div>
 
-          {/* Form Actions */}
           <div className="flex gap-4 pt-6 border-t border-gray-200">
             <button
               onClick={onSave}
@@ -601,7 +550,6 @@ export default function ContractBase({
           </div>
         </div>
 
-        {/* Volume Editor Modal */}
         {showVolumeEditor && (
           <ContractVolumeEditor
             formData={formData}
@@ -611,7 +559,6 @@ export default function ContractBase({
           />
         )}
 
-        {/* Price Editor Modal */}
         {showPriceEditor && (
           <ContractPriceEditor
             formData={formData}
@@ -622,7 +569,6 @@ export default function ContractBase({
           />
         )}
 
-        {/* Requirements Editor Modal */}
         {showRequirementsEditor && (
           <ContractRequirementsEditor
             formData={formData}
@@ -630,6 +576,16 @@ export default function ContractBase({
             settings={settings}
             onInputChange={onInputChange}
             onClose={() => setShowRequirementsEditor(false)}
+          />
+        )}
+
+        {showLWPEditor && (
+          <ContractLWPEditor
+            formData={formData}
+            errors={errors}
+            settings={settings}
+            onInputChange={onInputChange}
+            onClose={() => setShowLWPEditor(false)}
           />
         )}
       </div>
