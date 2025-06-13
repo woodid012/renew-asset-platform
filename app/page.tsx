@@ -14,7 +14,6 @@ import MarkToMarketTab from './components/MarkToMarketTab';
 import TimeSeriesOutputTab from './components/TimeSeriesOutputTab';
 import SettingsTab from './components/SettingsTab';
 
-
 interface TimeSeriesRow {
   buysell: string;
   deal_name: string;
@@ -43,18 +42,16 @@ interface VolumeShapeData {
   [key: string]: number[];
 }
 
-// ADD Variables Creation as a new tab (keeping MtM):
+// Updated tabs array
 const tabs = [
-  //{ id: 'summary', label: 'Contract Summary' },
   { id: 'input', label: 'Contract Input' },
-
   { id: 'price-curve', label: 'Price Curves' },
-  { id: 'mark-to-market', label: 'Mark to Market' }, // KEEP existing MtM tab
-      { id: 'time-series', label: 'Time Series Output' },
-  //{ id: 'variables', label: 'Variables Creation' }, // NEW tab
-
+  { id: 'mark-to-market', label: 'Mark to Market' },
+  { id: 'time-series', label: 'Time Series Output' },
+  //{ id: 'variables', label: 'Variables Creation' }
   { id: 'settings', label: 'Settings' },
 ];
+
 const defaultSettings: SettingsData = {
   contractTypes: {
     retail: [
@@ -116,7 +113,7 @@ export default function EnergyContractManagement() {
     WA: [79.80, 73.50, 67.90, 65.40, 71.20, 77.60, 83.90, 86.10, 81.40, 74.70, 70.20, 76.50]
   });
 
-  // Volume shape profiles (monthly percentages) - will be managed by settings
+  // Volume shape profiles (monthly percentages)
   const [volumeShapes, setVolumeShapes] = useState<VolumeShapeData>(defaultSettings.volumeShapes);
 
   // Load settings from localStorage on mount
@@ -185,7 +182,7 @@ export default function EnergyContractManagement() {
     }
   };
 
-const updateContract = async (updatedContract: Contract) => {
+  const updateContract = async (updatedContract: Contract) => {
     try {
       const response = await fetch('/api/contracts', {
         method: 'PUT',
@@ -198,19 +195,16 @@ const updateContract = async (updatedContract: Contract) => {
       if (response.ok) {
         const updated = await response.json();
 
-        // FIXED: Proper state update to replace the contract in the array
         setContracts(prev =>
           prev.map(contract => {
-            // Match by _id first, then id as fallback
             const isMatch = (contract._id && updated._id && contract._id === updated._id) ||
                           (contract.id && updated.id && contract.id === updated.id) ||
-                          (contract.name === updated.name); // fallback to name
+                          (contract.name === updated.name);
 
             return isMatch ? updated : contract;
           })
         );
 
-        // Update selected contract if it matches
         if (selectedContract) {
           const isSelectedMatch = (selectedContract._id && updated._id && selectedContract._id === updated._id) ||
                                 (selectedContract.id && updated.id && selectedContract.id === updated.id) ||
@@ -232,9 +226,10 @@ const updateContract = async (updatedContract: Contract) => {
       throw error;
     }
   };
- const deleteContract = async (contractId: string): Promise<void> => {
+
+  const deleteContract = async (contractId: string): Promise<void> => {
     try {
-      const res = await fetch(`/api/contracts/${contractId}`, {
+      const res = await fetch(`/api/contracts?id=${contractId}`, {
         method: 'DELETE',
       });
 
@@ -244,16 +239,13 @@ const updateContract = async (updatedContract: Contract) => {
 
       setContracts(prev => prev.filter(c => c._id !== contractId));
 
-      // Add this check to clear the selection if the deleted contract was selected
       if (selectedContract && selectedContract._id === contractId) {
         setSelectedContract(null);
       }
     } catch (error) {
       console.error('Failed to delete contract', error);
-      // Optionally show an error to the user
     }
   };
-
 
   const updateMarketPrices = (newPrices: PriceCurveData) => {
     setMarketPrices(newPrices);
@@ -261,7 +253,6 @@ const updateContract = async (updatedContract: Contract) => {
 
   const updateVolumeShapes = (newShapes: VolumeShapeData) => {
     setVolumeShapes(newShapes);
-    // Also update in settings
     setSettings(prev => ({
       ...prev,
       volumeShapes: newShapes
@@ -271,25 +262,6 @@ const updateContract = async (updatedContract: Contract) => {
   const updateSettings = (newSettings: SettingsData) => {
     setSettings(newSettings);
     setVolumeShapes(newSettings.volumeShapes);
-  };
-
-  // Common props to pass to all tabs
-  const commonProps = {
-    contracts,
-    selectedContract,
-    setSelectedContract,
-    timeSeriesData,
-    setTimeSeriesData,
-    isLoading,
-    setIsLoading,
-    marketPrices,
-    volumeShapes,
-    updateMarketPrices,
-    updateVolumeShapes,
-    addContract,
-    updateContract,
-    deleteContract,
-    settings,
   };
 
   if (isInitialLoading) {
@@ -341,13 +313,49 @@ const updateContract = async (updatedContract: Contract) => {
           </div>
         </div>
 
-        {/* Tab Content */}
+        {/* Tab Content - Each component gets only the props it needs */}
         <div className="min-h-96">
          
-          {activeTab === 'input' && <ContractInputTab {...commonProps} />}
-          {activeTab === 'price-curve' && <PriceCurveTab {...commonProps} />}
-          {activeTab === 'mark-to-market' && <MarkToMarketTab {...commonProps} />}
-          {activeTab === 'time-series' && <TimeSeriesOutputTab {...commonProps} />}
+          {activeTab === 'input' && (
+            <ContractInputTab
+              contracts={contracts}
+              settings={settings}
+              addContract={addContract}
+              updateContract={updateContract}
+              deleteContract={deleteContract}
+            />
+          )}
+
+          {activeTab === 'price-curve' && (
+            <PriceCurveTab />
+          )}
+
+          {activeTab === 'mark-to-market' && (
+            <MarkToMarketTab 
+              contracts={contracts}
+            />
+          )}
+
+          {activeTab === 'time-series' && (
+            <TimeSeriesOutputTab
+              contracts={contracts}
+              timeSeriesData={timeSeriesData}
+              setTimeSeriesData={setTimeSeriesData}
+              isLoading={isLoading}
+              setIsLoading={setIsLoading}
+              marketPrices={marketPrices}
+              volumeShapes={volumeShapes}
+            />
+          )}
+
+          {activeTab === 'variables' && (
+            <VariablesCreationTab
+              contracts={contracts}
+              marketPrices={marketPrices}
+              settings={settings}
+            />
+          )}
+
           {activeTab === 'settings' && (
             <SettingsTab
               settings={settings}
