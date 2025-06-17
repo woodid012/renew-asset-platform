@@ -5,16 +5,14 @@ import { useState, useEffect } from 'react';
 import Head from 'next/head';
 
 // Import tab components
-import { Contract, SettingsData, TimeSeriesRow } from './types'; // NEW: Import TimeSeriesRow from common types
+import { Contract, SettingsData, TimeSeriesRow } from './types'; // Import TimeSeriesRow from common types
 
 import ContractSummaryTab from './components/ContractSummaryTab';
 import ContractInputTab from './components/ContractInputTab';
-import PriceCurveTab from './components/PriceCurveTab'; // This component
+import PriceCurveTab from './components/PriceCurveTab';
 import MarkToMarketTab from './components/MarkToMarketTab';
 import TimeSeriesOutputTab from './components/TimeSeriesOutputTab';
 import SettingsTab from './components/SettingsTab';
-
-// REMOVED: Local TimeSeriesRow interface - now using common types
 
 interface PriceCurveData {
   [key: string]: number[];
@@ -80,7 +78,10 @@ export default function EnergyContractManagement() {
   const [activeTab, setActiveTab] = useState('input');
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [selectedContract, setSelectedContract] = useState<Contract | null>(null);
-  const [timeSeriesData, setTimeSeriesData] = useState<TimeSeriesRow[]>([]); // NOW: Using common TimeSeriesRow type
+  
+  // FIXED: Initialize with empty array of correct type
+  const [timeSeriesData, setTimeSeriesData] = useState<TimeSeriesRow[]>([]);
+  
   const [isLoading, setIsLoading] = useState(false);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [settings, setSettings] = useState<SettingsData>(defaultSettings);
@@ -96,6 +97,14 @@ export default function EnergyContractManagement() {
 
   // Volume shape profiles (monthly percentages)
   const [volumeShapes, setVolumeShapes] = useState<VolumeShapeData>(defaultSettings.volumeShapes);
+
+  // ADDED: Clear time series data when switching tabs to prevent stale data issues
+  useEffect(() => {
+    if (activeTab !== 'time-series') {
+      // Clear time series data when not on time series tab to prevent type issues
+      setTimeSeriesData([]);
+    }
+  }, [activeTab]);
 
   // Load settings from localStorage on mount
   useEffect(() => {
@@ -270,7 +279,7 @@ export default function EnergyContractManagement() {
         <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white p-8 rounded-xl mb-8 shadow-lg">
           <h1 className="text-4xl font-bold mb-3">Energy Contract Management System</h1>
           <p className="text-blue-100 text-lg">
-            Manage wholesale, retail, and offtake energy contracts with flexible volume profiling and time series output
+            Manage wholesale, retail, and offtake energy contracts with Load Weighted Pricing and time series output
           </p>
         </div>
 
