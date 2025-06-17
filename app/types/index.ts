@@ -1,4 +1,4 @@
-// app/types/index.ts - Updated with LWP Support
+// app/types/index.ts - Updated with LWP Support and TimeSeriesRow
 
 export interface TimeSeriesDataPoint {
   period: string; // YYYY-MM format
@@ -33,6 +33,30 @@ export interface ContractRequirement {
   completed: boolean;
   priority: 'low' | 'medium' | 'high';
   category: string;
+}
+
+// NEW: Time Series Output Row with LWP Support
+export interface TimeSeriesRow {
+  buysell: string;
+  deal_name: string;
+  state: string;
+  type: string;
+  month_start: number;
+  year: number;
+  fy: number;
+  unit: string;
+  scenario: string;
+  sub_type: string;
+  volume_pct: number;
+  volume_mwh: string;
+  strike_price: number;
+  strike_price_x_volume: number;
+  market_price: number;
+  market_price_x_volume: number;
+  lwp_percentage: number; // NEW: LWP percentage field
+  lwp_price: number; // NEW: LWP price field
+  lwp_value: number; // NEW: LWP value field
+  net_mtm: number; // NOW: Based on LWP instead of market price
 }
 
 export interface Contract {
@@ -89,7 +113,7 @@ export interface Contract {
   // Contract requirements
   contractRequirements?: ContractRequirement[];
 
-  // NEW: Load Weighted Price (LWP) Configuration
+  // Load Weighted Price (LWP) Configuration
   lwpPercentage?: number; // Default LWP percentage (default: 100%)
   lwpTimeSeries?: number[]; // Future: Monthly LWP percentages [95, 98, 100, 102, ...]
   lwpInterval?: 'monthly' | 'quarterly' | 'yearly'; // Future: LWP interval matching price/volume intervals

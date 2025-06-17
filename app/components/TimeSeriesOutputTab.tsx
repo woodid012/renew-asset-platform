@@ -1,28 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Contract, SettingsData, TimeSeriesDataPoint, PriceCurve } from '@/app/types';
-
-
-interface TimeSeriesRow {
-  buysell: string;
-  deal_name: string;
-  state: string;
-  type: string;
-  month_start: number;
-  year: number;
-  fy: number;
-  unit: string;
-  scenario: string;
-  sub_type: string;
-  volume_pct: number;
-  volume_mwh: string;
-  strike_price: number;
-  strike_price_x_volume: number;
-  market_price: number;
-  market_price_x_volume: number;
-  net_mtm: number;
-}
+import { Contract, SettingsData, TimeSeriesDataPoint, TimeSeriesRow } from '@/app/types';
 
 interface EnhancedTimeSeriesOutputTabProps {
   contracts: Contract[];
@@ -122,6 +101,66 @@ const VolumeUtils = {
   }
 };
 
+// LWP calculation utilities (adapted from MtM engine)
+const LWPUtils = {
+  /**
+   * Get LWP percentage for a specific period
+   */
+  getLWPPercentageForPeriod: (contract: Contract, monthIndex: number, year: number): number => {
+    const targetPeriod = `${year}-${(monthIndex + 1).toString().padStart(2, '0')}`;
+    
+    // PRIORITY 1: Read from timeSeriesData if available (your database structure)
+    if (contract.timeSeriesData && contract.timeSeriesData.length > 0) {
+      // Find exact period match
+      const periodData = contract.timeSeriesData.find(data => 
+        data.period === targetPeriod || data.period === `${targetPeriod}-01`
+      );
+      
+      if (periodData && periodData.lwpPercentage !== undefined) {
+        const lwpValue = periodData.lwpPercentage;
+        
+        // Smart conversion: if value is less than 10, assume it's already a percentage multiplier
+        // e.g., 0.98 = 98%, 1.03 = 103%, but 95 = 95%
+        const convertedValue = lwpValue < 10 ? lwpValue * 100 : lwpValue;
+        return convertedValue;
+      }
+    }
+
+    // PRIORITY 2: Use lwpTimeSeries if available
+    if (contract.lwpTimeSeries && contract.lwpTimeSeries.length > 0) {
+      if (contract.lwpInterval === 'monthly') {
+        const value = contract.lwpTimeSeries[monthIndex] || (contract.lwpPercentage || 100);
+        return value;
+      } else if (contract.lwpInterval === 'quarterly') {
+        const quarterIndex = Math.floor(monthIndex / 3);
+        const value = contract.lwpTimeSeries[quarterIndex] || (contract.lwpPercentage || 100);
+        return value;
+      } else if (contract.lwpInterval === 'yearly') {
+        const value = contract.lwpTimeSeries[0] || (contract.lwpPercentage || 100);
+        return value;
+      }
+    }
+
+    // PRIORITY 3: Use single LWP percentage from contract
+    if (contract.lwpPercentage !== undefined) {
+      // Apply same smart conversion logic
+      const lwpValue = contract.lwpPercentage;
+      const convertedValue = lwpValue < 10 ? lwpValue * 100 : lwpValue;
+      return convertedValue;
+    }
+
+    // DEFAULT: 100% (no LWP adjustment)
+    return 100;
+  },
+
+  /**
+   * Calculate Load Weighted Price
+   */
+  calculateLWP: (marketPrice: number, lwpPercentage: number): number => {
+    return marketPrice * (lwpPercentage / 100);
+  }
+};
+
 export default function EnhancedTimeSeriesOutputTab({
   contracts,
   timeSeriesData,
@@ -193,7 +232,6 @@ export default function EnhancedTimeSeriesOutputTab({
   };
 
   // Helper function to get strike price for a given period
-// Helper function to get strike price for a given period
   const getStrikePrice = (contract: Contract, monthIndex: number, year: number): number => {
     // Handle time series based pricing
     if (contract.pricingType === 'timeseries' && contract.priceTimeSeries && contract.priceTimeSeries.length > 0) {
@@ -216,7 +254,6 @@ export default function EnhancedTimeSeriesOutputTab({
     }
     
     // Fallback for 'fixed', 'custom_time_of_day', or any other unhandled pricing types.
-    // This ensures that even new, unhandled pricing types will gracefully use the base strike price.
     return contract.strikePrice;
   };
 
@@ -266,9 +303,9 @@ export default function EnhancedTimeSeriesOutputTab({
           }
 
           if (interval === 'M') {
-            // Monthly data generation
+            // Monthly data generation with LWP
             months.forEach((month, index) => {
-              const buySell = contract.type === 'retail' ? 'Sell' : 'Buy';
+              const buySell = contract.direction === 'sell' ? 'Sell' : 'Buy';
               
               // Get volume data (either from time series or percentage)
               const volumeData = VolumeUtils.getVolumeForPeriod(contract, selectedYear, index + 1);
@@ -283,14 +320,22 @@ export default function EnhancedTimeSeriesOutputTab({
               const marketPrice = getMarketPrice(contract.state, index);
               const strikePrice = getStrikePrice(contract, index, selectedYear);
               
+              // Calculate LWP for this period
+              const lwpPercentage = LWPUtils.getLWPPercentageForPeriod(contract, index, selectedYear);
+              const lwpPrice = LWPUtils.calculateLWP(marketPrice, lwpPercentage);
+              
               const strikePriceXVolume = actualVolume * strikePrice;
               const marketPriceXVolume = actualVolume * marketPrice;
+              const lwpValue = actualVolume * lwpPrice;
               
-              let netMtM;
-              if (contract.type === 'retail') {
-                netMtM = strikePriceXVolume - marketPriceXVolume;
+              // Calculate net MtM using LWP instead of market price
+              let netMtM: number;
+              if (contract.direction === 'sell') {
+                // Sell: Revenue - LWP Value (what we could have gotten)
+                netMtM = strikePriceXVolume - lwpValue;
               } else {
-                netMtM = marketPriceXVolume - strikePriceXVolume;
+                // Buy: LWP Value - Cost (what we pay vs what we should pay)
+                netMtM = lwpValue - strikePriceXVolume;
               }
               
               // Determine the FY for this record
@@ -318,14 +363,18 @@ export default function EnhancedTimeSeriesOutputTab({
                 strike_price_x_volume: strikePriceXVolume,
                 market_price: marketPrice,
                 market_price_x_volume: marketPriceXVolume,
+                lwp_percentage: lwpPercentage,
+                lwp_price: lwpPrice,
+                lwp_value: lwpValue,
                 net_mtm: netMtM
               });
             });
           } else if (interval === 'Y') {
-            // Yearly data generation
+            // Yearly data generation with LWP
             let totalVolume = 0;
             let totalMarketValue = 0;
             let totalStrikeValue = 0;
+            let totalLWPValue = 0;
             let totalVolumeWeighted = 0;
             
             if (VolumeUtils.hasMonthlyData(contract)) {
@@ -337,9 +386,14 @@ export default function EnhancedTimeSeriesOutputTab({
                   const monthMarketPrice = getMarketPrice(contract.state, monthIndex);
                   const monthStrikePrice = getStrikePrice(contract, monthIndex, selectedYear);
                   
+                  // Calculate LWP for each month
+                  const monthLWPPercentage = LWPUtils.getLWPPercentageForPeriod(contract, monthIndex, selectedYear);
+                  const monthLWPPrice = LWPUtils.calculateLWP(monthMarketPrice, monthLWPPercentage);
+                  
                   totalVolume += data.volume;
                   totalMarketValue += data.volume * monthMarketPrice;
                   totalStrikeValue += data.volume * monthStrikePrice;
+                  totalLWPValue += data.volume * monthLWPPrice;
                   totalVolumeWeighted += data.volume;
                 }
               });
@@ -352,8 +406,13 @@ export default function EnhancedTimeSeriesOutputTab({
                 const monthMarketPrice = getMarketPrice(contract.state, monthIndex);
                 const monthStrikePrice = getStrikePrice(contract, monthIndex, selectedYear);
                 
+                // Calculate LWP for each month
+                const monthLWPPercentage = LWPUtils.getLWPPercentageForPeriod(contract, monthIndex, selectedYear);
+                const monthLWPPrice = LWPUtils.calculateLWP(monthMarketPrice, monthLWPPercentage);
+                
                 totalMarketValue += monthVolume * monthMarketPrice;
                 totalStrikeValue += monthVolume * monthStrikePrice;
+                totalLWPValue += monthVolume * monthLWPPrice;
                 totalVolumeWeighted += monthVolume;
               });
             }
@@ -364,19 +423,22 @@ export default function EnhancedTimeSeriesOutputTab({
             
             const avgMarketPrice = totalVolumeWeighted > 0 ? totalMarketValue / totalVolumeWeighted : getMarketPrice(contract.state, 0);
             const avgStrikePrice = totalVolumeWeighted > 0 ? totalStrikeValue / totalVolumeWeighted : contract.strikePrice;
+            const avgLWPPrice = totalVolumeWeighted > 0 ? totalLWPValue / totalVolumeWeighted : avgMarketPrice;
+            const avgLWPPercentage = avgMarketPrice > 0 ? (avgLWPPrice / avgMarketPrice) * 100 : 100;
             
             const strikePriceXVolume = totalVolume * avgStrikePrice;
             const marketPriceXVolume = totalVolume * avgMarketPrice;
             
-            let netMtM;
-            if (contract.type === 'retail') {
-              netMtM = strikePriceXVolume - marketPriceXVolume;
+            // Calculate net MtM using LWP
+            let netMtM: number;
+            if (contract.direction === 'sell') {
+              netMtM = strikePriceXVolume - totalLWPValue;
             } else {
-              netMtM = marketPriceXVolume - strikePriceXVolume;
+              netMtM = totalLWPValue - strikePriceXVolume;
             }
             
             outputData.push({
-              buysell: contract.type === 'retail' ? 'Sell' : 'Buy',
+              buysell: contract.direction === 'sell' ? 'Sell' : 'Buy',
               deal_name: contract.name,
               state: contract.state,
               type: contract.category,
@@ -392,6 +454,9 @@ export default function EnhancedTimeSeriesOutputTab({
               strike_price_x_volume: strikePriceXVolume,
               market_price: avgMarketPrice,
               market_price_x_volume: marketPriceXVolume,
+              lwp_percentage: avgLWPPercentage,
+              lwp_price: avgLWPPrice,
+              lwp_value: totalLWPValue,
               net_mtm: netMtM
             });
           }
@@ -402,7 +467,7 @@ export default function EnhancedTimeSeriesOutputTab({
         alert('No data was generated. Please check your contracts and try again.');
       } else {
         setTimeSeriesData(outputData);
-        console.log(`Generated ${outputData.length} time series records for ${yearsToProcess.length} year(s)`);
+        console.log(`Generated ${outputData.length} time series records with LWP for ${yearsToProcess.length} year(s)`);
       }
     } catch (error) {
       console.error('Error generating time series:', error);
@@ -429,7 +494,8 @@ export default function EnhancedTimeSeriesOutputTab({
     const headers = [
       'Buy/Sell', 'Deal Name', 'State', 'Type', 'Month', 'Year', 'FY', 'Unit',
       'Scenario', 'Sub Type', 'Volume %', 'Volume (MWh)', 'Strike Price',
-      'Strike Price × Volume', 'Market Price', 'Market Price × Volume', 'Net MtM'
+      'Strike Price × Volume', 'Market Price', 'Market Price × Volume', 
+      'LWP %', 'LWP Price', 'LWP Value', 'Net MtM (LWP-based)'
     ];
 
     const csvContent = [
@@ -451,6 +517,9 @@ export default function EnhancedTimeSeriesOutputTab({
         row.strike_price_x_volume.toFixed(2),
         row.market_price.toFixed(2),
         row.market_price_x_volume.toFixed(2),
+        row.lwp_percentage.toFixed(1),
+        row.lwp_price.toFixed(2),
+        row.lwp_value.toFixed(2),
         row.net_mtm.toFixed(2)
       ].join(','))
     ].join('\n');
@@ -459,7 +528,7 @@ export default function EnhancedTimeSeriesOutputTab({
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `energy_contracts_timeseries_${year}_${scenario}.csv`;
+    a.download = `energy_contracts_timeseries_lwp_${year}_${scenario}.csv`;
     a.click();
     window.URL.revokeObjectURL(url);
   };
@@ -470,7 +539,7 @@ export default function EnhancedTimeSeriesOutputTab({
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `energy_contracts_timeseries_${year}_${scenario}.json`;
+    a.download = `energy_contracts_timeseries_lwp_${year}_${scenario}.json`;
     a.click();
     window.URL.revokeObjectURL(url);
   };
@@ -483,6 +552,8 @@ export default function EnhancedTimeSeriesOutputTab({
     totalRows: timeSeriesData.length,
     totalVolume: timeSeriesData.reduce((sum, row) => sum + parseFloat(row.volume_mwh), 0),
     totalMtM: timeSeriesData.reduce((sum, row) => sum + row.net_mtm, 0),
+    totalLWPValue: timeSeriesData.reduce((sum, row) => sum + row.lwp_value, 0),
+    avgLWPPercentage: timeSeriesData.length > 0 ? timeSeriesData.reduce((sum, row) => sum + row.lwp_percentage, 0) / timeSeriesData.length : 100,
     uniqueContracts: new Set(timeSeriesData.map(row => row.deal_name)).size,
     uniqueStates: new Set(timeSeriesData.map(row => row.state)).size,
   };
@@ -496,10 +567,28 @@ export default function EnhancedTimeSeriesOutputTab({
       {/* Generation Controls */}
       <div className="bg-white rounded-xl p-6 shadow-md border border-gray-200">
         <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-3">
-          🔧 Enhanced Time Series Generation Controls
+          🔧 Enhanced Time Series Generation Controls (with LWP)
         </h2>
         
         <div className="space-y-6">
+          {/* LWP Information Box */}
+          <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+            <h3 className="text-lg font-semibold text-blue-800 mb-2">💡 Load Weighted Price (LWP) Integration</h3>
+            <p className="text-blue-700 text-sm mb-2">
+              This time series now uses Load Weighted Prices (LWP) instead of raw market prices for MtM calculations.
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+              <div>
+                <strong className="text-blue-800">Net MtM Calculation:</strong>
+                <div className="text-blue-600">Now based on LWP Price (Market Price × LWP%)</div>
+              </div>
+              <div>
+                <strong className="text-blue-800">LWP Sources:</strong>
+                <div className="text-blue-600">Contract LWP%, Time Series Data, or 100% default</div>
+              </div>
+            </div>
+          </div>
+
           {/* Contract Data Summary */}
           <div>
             <h3 className="text-lg font-semibold text-gray-800 mb-4">📊 Contract Data Overview</h3>
@@ -668,9 +757,9 @@ export default function EnhancedTimeSeriesOutputTab({
       {timeSeriesData.length > 0 && (
         <div className="bg-white rounded-xl p-6 shadow-md border border-gray-200">
           <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-3">
-            📈 Generation Summary
+            📈 Generation Summary (LWP-based)
           </h2>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-4">
             <div className="bg-blue-50 rounded-lg p-4 text-center">
               <div className="text-2xl font-bold text-blue-600">{summaryStats.totalRows.toLocaleString()}</div>
               <div className="text-sm text-gray-600 font-medium">Total Rows</div>
@@ -683,15 +772,19 @@ export default function EnhancedTimeSeriesOutputTab({
               <div className={`text-2xl font-bold ${summaryStats.totalMtM >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                 {summaryStats.totalMtM >= 0 ? '+' : ''}${summaryStats.totalMtM.toLocaleString()}
               </div>
-              <div className="text-sm text-gray-600 font-medium">Net MtM</div>
+              <div className="text-sm text-gray-600 font-medium">Net MtM (LWP)</div>
+            </div>
+            <div className="bg-indigo-50 rounded-lg p-4 text-center">
+              <div className="text-2xl font-bold text-indigo-600">${summaryStats.totalLWPValue.toLocaleString()}</div>
+              <div className="text-sm text-gray-600 font-medium">Total LWP Value</div>
+            </div>
+            <div className="bg-cyan-50 rounded-lg p-4 text-center">
+              <div className="text-2xl font-bold text-cyan-600">{summaryStats.avgLWPPercentage.toFixed(1)}%</div>
+              <div className="text-sm text-gray-600 font-medium">Avg LWP %</div>
             </div>
             <div className="bg-yellow-50 rounded-lg p-4 text-center">
               <div className="text-2xl font-bold text-yellow-600">{summaryStats.uniqueContracts}</div>
               <div className="text-sm text-gray-600 font-medium">Contracts</div>
-            </div>
-            <div className="bg-indigo-50 rounded-lg p-4 text-center">
-              <div className="text-2xl font-bold text-indigo-600">{summaryStats.uniqueStates}</div>
-              <div className="text-sm text-gray-600 font-medium">States</div>
             </div>
             <div className="bg-gray-50 rounded-lg p-4 text-center">
               <div className="text-2xl font-bold text-gray-600">{year === 'all' ? 'All Years' : `${yearType} ${year}`}</div>
@@ -705,7 +798,7 @@ export default function EnhancedTimeSeriesOutputTab({
       <div className="bg-white rounded-xl p-6 shadow-md border border-gray-200">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-3">
-            📈 Enhanced Time Series Output
+            📈 Enhanced Time Series Output (LWP-based)
           </h2>
           {timeSeriesData.length > 0 && (
             <div className="flex gap-2">
@@ -741,23 +834,25 @@ export default function EnhancedTimeSeriesOutputTab({
                 <th className="text-left p-3 font-semibold text-gray-700">Volume (MWh)</th>
                 <th className="text-left p-3 font-semibold text-gray-700">Strike Price</th>
                 <th className="text-left p-3 font-semibold text-gray-700">Market Price</th>
-                <th className="text-left p-3 font-semibold text-gray-700">Net MtM</th>
+                <th className="text-left p-3 font-semibold text-gray-700">LWP %</th>
+                <th className="text-left p-3 font-semibold text-gray-700">LWP Price</th>
+                <th className="text-left p-3 font-semibold text-gray-700">Net MtM (LWP)</th>
                 <th className="text-left p-3 font-semibold text-gray-700">Data Source</th>
               </tr>
             </thead>
             <tbody>
               {timeSeriesData.length === 0 ? (
                 <tr>
-                  <td colSpan={14} className="text-center py-12 text-gray-500">
+                  <td colSpan={16} className="text-center py-12 text-gray-500">
                     <div className="space-y-2">
                       <div className="text-4xl">📊</div>
-                      <div>Click "Generate Time Series" to see output data</div>
+                      <div>Click "Generate Time Series" to see LWP-based output data</div>
                       <div className="text-sm">
                         {contracts.filter(c => c.status === 'active').length === 0 ? 
                           'No active contracts found - add contracts in the Contract Input tab' : 
                           availableYears.length === 0 ?
                           'No valid years found for contracts - check contract dates or upload volume data' :
-                          `Ready to generate data for ${contracts.filter(c => c.status === 'active').length} active contracts`
+                          `Ready to generate LWP-based data for ${contracts.filter(c => c.status === 'active').length} active contracts`
                         }
                       </div>
                     </div>
@@ -789,6 +884,16 @@ export default function EnhancedTimeSeriesOutputTab({
                       <td className="p-3 font-medium">{parseFloat(row.volume_mwh).toLocaleString()}</td>
                       <td className="p-3">${row.strike_price.toFixed(2)}</td>
                       <td className="p-3">${row.market_price.toFixed(2)}</td>
+                      <td className="p-3">
+                        <span className="text-blue-700 font-medium">
+                          {row.lwp_percentage.toFixed(1)}%
+                        </span>
+                      </td>
+                      <td className="p-3">
+                        <span className="text-green-700 font-medium">
+                          ${row.lwp_price.toFixed(2)}
+                        </span>
+                      </td>
                       <td className={`p-3 font-semibold ${row.net_mtm >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                         ${row.net_mtm.toLocaleString()}
                       </td>
