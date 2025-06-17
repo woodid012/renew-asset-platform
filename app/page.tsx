@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react';
 import Head from 'next/head';
 
 // Import tab components
-import { Contract, SettingsData } from './types';
+import { Contract, SettingsData, TimeSeriesRow } from './types'; // NEW: Import TimeSeriesRow from common types
 
 import ContractSummaryTab from './components/ContractSummaryTab';
 import ContractInputTab from './components/ContractInputTab';
@@ -14,25 +14,7 @@ import MarkToMarketTab from './components/MarkToMarketTab';
 import TimeSeriesOutputTab from './components/TimeSeriesOutputTab';
 import SettingsTab from './components/SettingsTab';
 
-interface TimeSeriesRow {
-  buysell: string;
-  deal_name: string;
-  state: string;
-  type: string;
-  month_start: number;
-  year: number;
-  fy: number;
-  unit: string;
-  scenario: string;
-  sub_type: string;
-  volume_pct: number;
-  volume_mwh: string;
-  strike_price: number;
-  strike_price_x_volume: number;
-  market_price: number;
-  market_price_x_volume: number;
-  net_mtm: number;
-}
+// REMOVED: Local TimeSeriesRow interface - now using common types
 
 interface PriceCurveData {
   [key: string]: number[];
@@ -98,7 +80,7 @@ export default function EnergyContractManagement() {
   const [activeTab, setActiveTab] = useState('input');
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [selectedContract, setSelectedContract] = useState<Contract | null>(null);
-  const [timeSeriesData, setTimeSeriesData] = useState<TimeSeriesRow[]>([]);
+  const [timeSeriesData, setTimeSeriesData] = useState<TimeSeriesRow[]>([]); // NOW: Using common TimeSeriesRow type
   const [isLoading, setIsLoading] = useState(false);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [settings, setSettings] = useState<SettingsData>(defaultSettings);
