@@ -1,4 +1,4 @@
-import { calculateAssetRevenue } from './revenueCalculations';
+import { calculateAssetRevenue } from '@/components/RevCalculations';
 import { calculateStressRevenue } from '@/components/ValuationAnalysis_Calcs';
 
 /**
