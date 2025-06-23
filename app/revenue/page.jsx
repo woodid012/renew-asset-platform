@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from 'recharts';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useUser } from '../contexts/UserContext';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar, AreaChart, Area } from 'recharts';
 import { 
   TrendingUp, 
   RefreshCw, 
@@ -11,347 +12,261 @@ import {
   DollarSign,
   Zap,
   AlertCircle,
-  CheckCircle
+  CheckCircle,
+  Sun,
+  Wind,
+  Battery,
+  FileText,
+  BarChart3
 } from 'lucide-react';
 
-const PriceCurvesTab = () => {
-  const [priceData, setPriceData] = useState({});
-  const [timeSeriesData, setTimeSeriesData] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+// Import the integrated revenue calculations
+import { 
+  calculateAssetRevenue, 
+  calculateStressRevenue,
+  generatePortfolioData,
+  processPortfolioData,
+  calculatePortfolioSummary,
+  validateAssetForRevenue
+} from '@/lib/revenueCalculations';
+
+export default function IntegratedRevenuePage() {
+  const { currentUser, currentPortfolio } = useUser();
   
-  // Chart configuration
-  const [viewMode, setViewMode] = useState('states');
-  const [selectedState, setSelectedState] = useState('QLD');
-  const [selectedType, setSelectedType] = useState('Energy');
+  // State management
+  const [assets, setAssets] = useState({});
+  const [constants, setConstants] = useState({});
+  const [portfolioName, setPortfolioName] = useState('Portfolio');
+  const [loading, setLoading] = useState(true);
+  const [priceData, setPriceData] = useState({});
+  
+  // Analysis configuration
+  const [selectedRevenueCase, setSelectedRevenueCase] = useState('base');
+  const [selectedRegion, setSelectedRegion] = useState('QLD');
   const [selectedYear, setSelectedYear] = useState('2025');
-  const [selectedScenario, setSelectedScenario] = useState('Central');
-  const [selectedCurve, setSelectedCurve] = useState('Aurora Jan 2025 Intervals');
-  const [timeInterval, setTimeInterval] = useState('monthly');
-  const [showRawData, setShowRawData] = useState(false);
+  const [viewMode, setViewMode] = useState('annual');
+  const [analysisYears, setAnalysisYears] = useState(10);
+  
+  // Results
+  const [revenueProjections, setRevenueProjections] = useState([]);
+  const [portfolioSummary, setPortfolioSummary] = useState({});
+  const [assetValidations, setAssetValidations] = useState({});
 
-  // Available options
-  const [availableStates, setAvailableStates] = useState(['QLD', 'NSW', 'VIC', 'SA', 'WA', 'TAS']);
-  const [availableTypes, setAvailableTypes] = useState(['Energy', 'Green']);
-  const [availableScenarios, setAvailableScenarios] = useState(['Central', 'Low', 'High']);
-  const [availableYears, setAvailableYears] = useState(['2025', '2026', '2027', '2028', '2029', '2030', 'all']);
-
-  const timeIntervals = [
-    { value: 'monthly', label: 'Monthly' },
-    { value: 'quarterly', label: 'Quarterly' },
-    { value: 'yearly', label: 'Yearly' }
-  ];
-
-  // Colors for different lines
-  const stateColors = {
-    QLD: '#F59E0B', // Yellow/Orange for Queensland
-    NSW: '#3B82F6', // Blue for NSW
-    VIC: '#10B981', // Green for Victoria
-    SA: '#EF4444',  // Red for South Australia
-    WA: '#8B5CF6', // Purple for Western Australia
-    TAS: '#6B7280'  // Gray for Tasmania
-  };
-
-  const typeColors = {
-    Energy: '#3B82F6', // Blue
-    Green: '#10B981',  // Green
-    gas: '#F59E0B',    // Yellow
-    coal: '#6B7280'    // Gray
-  };
-
-  // Fetch available options from API
-  const fetchAvailableOptions = async () => {
-    try {
-      const response = await fetch(`/api/price-curves?curve=${encodeURIComponent(selectedCurve)}&scenario=${selectedScenario}`);
-      const result = await response.json();
-      
-      if (result.success) {
-        setAvailableStates(result.availableStates || ['QLD', 'NSW', 'VIC', 'SA', 'WA', 'TAS']);
-        setAvailableTypes(result.availableTypes || ['Energy', 'Green']);
-        setAvailableScenarios(result.availableScenarios || ['Central', 'Low', 'High']);
-        setAvailableYears(result.financialYears ? [...result.financialYears.map(String), 'all'] : ['2025', 'all']);
-      }
-    } catch (err) {
-      console.error('Error fetching options:', err);
+  // Load portfolio data
+  useEffect(() => {
+    if (currentUser && currentPortfolio) {
+      loadPortfolioData();
     }
-  };
+  }, [currentUser, currentPortfolio]);
 
-  // Fetch price data
-  const fetchPriceData = async () => {
-    setLoading(true);
-    setError('');
+  // Recalculate when parameters change
+  useEffect(() => {
+    if (Object.keys(assets).length > 0) {
+      calculateRevenueProjections();
+      validateAssets();
+    }
+  }, [assets, constants, selectedRevenueCase, analysisYears]);
+
+  const loadPortfolioData = async () => {
+    if (!currentUser || !currentPortfolio) return;
     
+    setLoading(true);
     try {
-      const allData = {};
+      console.log(`Loading portfolio: userId=${currentUser.id}, portfolioId=${currentPortfolio.portfolioId}`);
       
-      if (viewMode === 'states') {
-        // Fetch data for all states with selected type
-        for (const state of availableStates) {
-          const params = new URLSearchParams({
-            state: state,
-            type: selectedType,
-            year: selectedYear,
-            scenario: selectedScenario,
-            curve: selectedCurve
-          });
-          
-          console.log(`Fetching data for ${state}:`, `/api/price-curves?${params}`);
-          
-          const response = await fetch(`/api/price-curves?${params}`);
-          const result = await response.json();
-          
-          if (result.success && result.marketPrices) {
-            // Find the matching series key for this state
-            const seriesKey = Object.keys(result.marketPrices).find(key => 
-              key.includes(state) || key.startsWith(state)
-            );
-            
-            if (seriesKey && result.marketPrices[seriesKey]) {
-              allData[state] = result.marketPrices[seriesKey];
-            }
-          }
-        }
-      } else {
-        // Fetch data for all types with selected state
-        for (const type of availableTypes) {
-          const params = new URLSearchParams({
-            state: selectedState,
-            type: type,
-            year: selectedYear,
-            scenario: selectedScenario,
-            curve: selectedCurve
-          });
-          
-          console.log(`Fetching data for ${type}:`, `/api/price-curves?${params}`);
-          
-          const response = await fetch(`/api/price-curves?${params}`);
-          const result = await response.json();
-          
-          if (result.success && result.marketPrices) {
-            // Find the matching series key for this type
-            const seriesKey = Object.keys(result.marketPrices).find(key => 
-              key.includes(type) || key.endsWith(type)
-            );
-            
-            if (seriesKey && result.marketPrices[seriesKey]) {
-              allData[type] = result.marketPrices[seriesKey];
-            }
-          }
-        }
+      const response = await fetch(`/api/portfolio?userId=${currentUser.id}&portfolioId=${currentPortfolio.portfolioId}`);
+      
+      if (response.ok) {
+        const portfolioData = await response.json();
+        console.log('Portfolio data loaded:', {
+          assetsCount: Object.keys(portfolioData.assets || {}).length,
+          portfolioName: portfolioData.portfolioName
+        });
+        
+        setAssets(portfolioData.assets || {});
+        setConstants({
+          ...portfolioData.constants,
+          // Add default constants if missing
+          HOURS_IN_YEAR: 8760,
+          volumeVariation: portfolioData.constants?.volumeVariation || 20,
+          greenPriceVariation: portfolioData.constants?.greenPriceVariation || 20,
+          EnergyPriceVariation: portfolioData.constants?.EnergyPriceVariation || 20,
+          escalation: 2.5,
+          referenceYear: new Date().getFullYear()
+        });
+        setPortfolioName(portfolioData.portfolioName || 'Portfolio');
+        
+      } else if (response.status === 404) {
+        console.log('Portfolio not found, starting fresh');
+        setAssets({});
+        setConstants({});
       }
-      
-      setPriceData(allData);
-      
-      // Transform data for time series chart
-      const chartData = transformToTimeSeriesData(allData);
-      setTimeSeriesData(chartData);
-      
-    } catch (err) {
-      console.error('Error fetching price data:', err);
-      setError(`Failed to fetch price data: ${err.message || 'Unknown error'}`);
+    } catch (error) {
+      console.error('Error loading portfolio:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  // Transform price data to time series format
-  const transformToTimeSeriesData = (data) => {
-    const allDataPoints = {};
-    
-    // Collect all data points by identifier
-    Object.entries(data).forEach(([seriesKey, points]) => {
-      if (Array.isArray(points)) {
-        points.forEach(point => {
-          const identifier = seriesKey; // QLD, NSW, Energy, etc.
-          
-          if (!allDataPoints[identifier]) {
-            allDataPoints[identifier] = [];
-          }
-          
-          allDataPoints[identifier].push({
-            date: new Date(point.date),
-            price: point.price,
-            monthName: point.monthName,
-            year: point.year,
-            month: point.month
-          });
-        });
-      }
-    });
-    
-    // Sort each identifier's data by date
-    Object.keys(allDataPoints).forEach(identifier => {
-      allDataPoints[identifier].sort((a, b) => a.date.getTime() - b.date.getTime());
-    });
-    
-    // Find the overall date range
-    const allDates = Object.values(allDataPoints).flat().map(d => d.date);
-    if (allDates.length === 0) return [];
-    
-    const minDate = new Date(Math.min(...allDates.map(d => d.getTime())));
-    const maxDate = new Date(Math.max(...allDates.map(d => d.getTime())));
-    
-    // Generate time intervals
-    const timePoints = [];
-    
-    if (timeInterval === 'monthly') {
-      const current = new Date(minDate.getFullYear(), minDate.getMonth(), 1);
-      while (current <= maxDate) {
-        timePoints.push({
-          date: new Date(current),
-          label: current.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
-        });
-        current.setMonth(current.getMonth() + 1);
-      }
-    } else if (timeInterval === 'quarterly') {
-      const startYear = minDate.getFullYear();
-      const endYear = maxDate.getFullYear();
-      for (let year = startYear; year <= endYear; year++) {
-        for (let quarter = 0; quarter < 4; quarter++) {
-          const quarterStart = new Date(year, quarter * 3, 1);
-          if (quarterStart >= minDate && quarterStart <= maxDate) {
-            timePoints.push({
-              date: quarterStart,
-              label: `Q${quarter + 1} ${year}`
-            });
-          }
-        }
-      }
-    } else { // yearly
-      const startYear = minDate.getFullYear();
-      const endYear = maxDate.getFullYear();
-      for (let year = startYear; year <= endYear; year++) {
-        timePoints.push({
-          date: new Date(year, 0, 1),
-          label: year.toString()
-        });
-      }
-    }
-    
-    // Aggregate data for each time point
-    const timeSeriesData = timePoints.map(({ date, label }) => {
-      const dataPoint = { month: label };
-      
-      Object.entries(allDataPoints).forEach(([identifier, points]) => {
-        let relevantPoints = [];
-        
-        if (timeInterval === 'monthly') {
-          relevantPoints = points
-            .filter(p => p.date.getFullYear() === date.getFullYear() && p.date.getMonth() === date.getMonth())
-            .map(p => p.price);
-        } else if (timeInterval === 'quarterly') {
-          const quarterStart = date.getMonth();
-          const quarterEnd = quarterStart + 2;
-          relevantPoints = points
-            .filter(p => p.date.getFullYear() === date.getFullYear() && 
-                        p.date.getMonth() >= quarterStart && 
-                        p.date.getMonth() <= quarterEnd)
-            .map(p => p.price);
-        } else { // yearly
-          relevantPoints = points
-            .filter(p => p.date.getFullYear() === date.getFullYear())
-            .map(p => p.price);
-        }
-        
-        if (relevantPoints.length > 0) {
-          const average = relevantPoints.reduce((sum, price) => sum + price, 0) / relevantPoints.length;
-          dataPoint[identifier] = Math.round(average * 100) / 100;
-        }
-      });
-      
-      return dataPoint;
-    });
-    
-    return timeSeriesData.filter(point => 
-      Object.keys(point).length > 1
-    );
-  };
-
-  // Get line configuration for chart
-  const getLineConfig = () => {
-    if (viewMode === 'states') {
-      return availableStates.map(state => ({
-        key: state,
-        color: stateColors[state] || '#6B7280',
-        name: state
-      }));
-    } else {
-      return availableTypes.map(type => ({
-        key: type,
-        color: typeColors[type] || '#6B7280',
-        name: type
-      }));
-    }
-  };
-
-  // Calculate summary statistics
-  const calculateSummaryStats = () => {
-    if (timeSeriesData.length === 0) return { avgPrice: 0, minPrice: 0, maxPrice: 0, dataPoints: 0 };
-    
-    const allPrices = [];
-    timeSeriesData.forEach(point => {
-      Object.keys(point).forEach(key => {
-        if (key !== 'month' && typeof point[key] === 'number') {
-          allPrices.push(point[key]);
-        }
-      });
-    });
-    
-    if (allPrices.length === 0) return { avgPrice: 0, minPrice: 0, maxPrice: 0, dataPoints: 0 };
-    
-    return {
-      avgPrice: allPrices.reduce((sum, price) => sum + price, 0) / allPrices.length,
-      minPrice: Math.min(...allPrices),
-      maxPrice: Math.max(...allPrices),
-      dataPoints: timeSeriesData.length
+  // Mock merchant price function - replace with your actual price curves API
+  const getMerchantPrice = (assetType, priceType, state, timeInterval) => {
+    // This should connect to your price curves API
+    // For now, using mock prices with some variation
+    const basePrices = {
+      solar: { green: 35, Energy: 65 },
+      wind: { green: 35, Energy: 65 },
+      storage: { Energy: 80, 0.5: 15, 1: 20, 2: 25, 4: 35 }
     };
+    
+    // Add some year-based variation
+    const year = typeof timeInterval === 'string' && timeInterval.includes('/') ? 
+      parseInt(timeInterval.split('/')[2]) : 
+      parseInt(timeInterval);
+      
+    const yearMultiplier = 1 + (year - 2025) * 0.02; // 2% annual growth
+    
+    return (basePrices[assetType]?.[priceType] || 50) * yearMultiplier;
   };
 
-  // Load available options on mount
-  useEffect(() => {
-    fetchAvailableOptions();
-  }, [selectedCurve, selectedScenario]);
+  const calculateRevenueProjections = () => {
+    if (Object.keys(assets).length === 0) return;
+    
+    const startYear = parseInt(selectedYear);
+    const timeIntervals = Array.from({ length: analysisYears }, (_, i) => startYear + i);
+    
+    // Generate portfolio data using the integrated calculations
+    const portfolioData = generatePortfolioData(assets, timeIntervals, constants, getMerchantPrice);
+    
+    // Process for visualization
+    const visibleAssets = Object.fromEntries(
+      Object.values(assets).map(asset => [asset.name, true])
+    );
+    
+    const processedData = processPortfolioData(portfolioData, assets, visibleAssets);
+    
+    // Apply stress scenarios
+    const stressedData = processedData.map(period => {
+      const stressedPeriod = { ...period };
+      
+      if (selectedRevenueCase !== 'base') {
+        // Apply stress to each component
+        const baseRevenue = {
+          contractedGreen: period.contractedGreen,
+          contractedEnergy: period.contractedEnergy,
+          merchantGreen: period.merchantGreen,
+          merchantEnergy: period.merchantEnergy
+        };
+        
+        const stressedRevenue = calculateStressRevenue(baseRevenue, selectedRevenueCase, constants);
+        
+        stressedPeriod.contractedGreen = stressedRevenue.contractedGreen;
+        stressedPeriod.contractedEnergy = stressedRevenue.contractedEnergy;
+        stressedPeriod.merchantGreen = stressedRevenue.merchantGreen;
+        stressedPeriod.merchantEnergy = stressedRevenue.merchantEnergy;
+        stressedPeriod.total = stressedRevenue.contractedGreen + stressedRevenue.contractedEnergy + 
+                              stressedRevenue.merchantGreen + stressedRevenue.merchantEnergy;
+      }
+      
+      return stressedPeriod;
+    });
+    
+    setRevenueProjections(stressedData);
+    
+    // Calculate portfolio summary
+    const summary = calculatePortfolioSummary(portfolioData, assets);
+    setPortfolioSummary(summary);
+  };
 
-  // Fetch data when parameters change
-  useEffect(() => {
-    if (availableStates.length > 0 && availableTypes.length > 0) {
-      fetchPriceData();
+  const validateAssets = () => {
+    const validations = {};
+    Object.values(assets).forEach(asset => {
+      validations[asset.name] = validateAssetForRevenue(asset);
+    });
+    setAssetValidations(validations);
+  };
+
+  const getAssetIcon = (type) => {
+    switch (type) {
+      case 'solar': return <Sun className="w-4 h-4 text-yellow-500" />;
+      case 'wind': return <Wind className="w-4 h-4 text-blue-500" />;
+      case 'storage': return <Battery className="w-4 h-4 text-green-500" />;
+      default: return <Zap className="w-4 h-4 text-gray-500" />;
     }
-  }, [viewMode, selectedState, selectedType, selectedYear, selectedScenario, selectedCurve, availableStates, availableTypes]);
+  };
 
-  // Re-aggregate when time interval changes
-  useEffect(() => {
-    if (Object.keys(priceData).length > 0) {
-      const chartData = transformToTimeSeriesData(priceData);
-      setTimeSeriesData(chartData);
-    }
-  }, [timeInterval, priceData]);
+  const exportData = () => {
+    const portfolioData = generatePortfolioData(
+      assets, 
+      Array.from({ length: analysisYears }, (_, i) => parseInt(selectedYear) + i), 
+      constants, 
+      getMerchantPrice
+    );
+    
+    const csvData = formatRevenueDataForExport(portfolioData, assets, 'csv');
+    
+    const blob = new Blob([csvData], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.setAttribute('hidden', '');
+    a.setAttribute('href', url);
+    a.setAttribute('download', `${portfolioName}_revenue_projections.csv`);
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
 
-  const lineConfig = getLineConfig();
-  const summaryStats = calculateSummaryStats();
+  // Show loading state if no user/portfolio selected
+  if (!currentUser || !currentPortfolio) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <Zap className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-gray-900 mb-2">No Portfolio Selected</h3>
+          <p className="text-gray-600">Please select a user and portfolio to analyze revenue</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading portfolio data...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="px-4 py-6 space-y-6">
+    <div className="p-6 space-y-6">
       {/* Header */}
       <div className="flex justify-between items-start">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Price Curves Viewer</h1>
-          <p className="text-gray-600">Market electricity price analysis and forecasting</p>
+          <h1 className="text-2xl font-bold text-gray-900">Integrated Revenue Analysis</h1>
+          <p className="text-gray-600">Advanced revenue modeling with contract analysis and stress testing</p>
+          <p className="text-sm text-gray-500">
+            Portfolio: {portfolioName} • {Object.keys(assets).length} assets
+          </p>
         </div>
         <div className="flex space-x-3">
-          <button
-            onClick={fetchPriceData}
+          <button 
+            onClick={calculateRevenueProjections}
             disabled={loading}
             className="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg flex items-center space-x-2 hover:bg-gray-50 disabled:opacity-50"
           >
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-            <span>{loading ? 'Loading...' : 'Refresh Data'}</span>
+            <span>Recalculate</span>
           </button>
           <button className="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg flex items-center space-x-2 hover:bg-gray-50">
             <Settings className="w-4 h-4" />
             <span>Settings</span>
           </button>
-          <button className="bg-green-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2 hover:bg-green-700">
+          <button 
+            onClick={exportData}
+            className="bg-green-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2 hover:bg-green-700"
+          >
             <Download className="w-4 h-4" />
             <span>Export</span>
           </button>
@@ -360,8 +275,50 @@ const PriceCurvesTab = () => {
 
       {/* Configuration Panel */}
       <div className="bg-white rounded-lg shadow border p-6">
-        <h3 className="text-lg font-semibold mb-4">Price Curve Configuration</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
+        <h3 className="text-lg font-semibold mb-4">Analysis Configuration</h3>
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Revenue Scenario</label>
+            <select
+              value={selectedRevenueCase}
+              onChange={(e) => setSelectedRevenueCase(e.target.value)}
+              className="w-full p-2 border border-gray-300 rounded-md"
+            >
+              <option value="base">Base Case</option>
+              <option value="worst">Combined Downside</option>
+              <option value="volume">Volume Stress</option>
+              <option value="price">Price Stress</option>
+            </select>
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Start Year</label>
+            <select
+              value={selectedYear}
+              onChange={(e) => setSelectedYear(e.target.value)}
+              className="w-full p-2 border border-gray-300 rounded-md"
+            >
+              {Array.from({ length: 10 }, (_, i) => 2025 + i).map(year => (
+                <option key={year} value={year}>{year}</option>
+              ))}
+            </select>
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Analysis Period</label>
+            <select
+              value={analysisYears}
+              onChange={(e) => setAnalysisYears(parseInt(e.target.value))}
+              className="w-full p-2 border border-gray-300 rounded-md"
+            >
+              <option value={5}>5 Years</option>
+              <option value={10}>10 Years</option>
+              <option value={15}>15 Years</option>
+              <option value={20}>20 Years</option>
+              <option value={25}>25 Years</option>
+            </select>
+          </div>
+          
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">View Mode</label>
             <select
@@ -369,134 +326,42 @@ const PriceCurvesTab = () => {
               onChange={(e) => setViewMode(e.target.value)}
               className="w-full p-2 border border-gray-300 rounded-md"
             >
-              <option value="states">Compare States</option>
-              <option value="types">Compare Types</option>
-            </select>
-          </div>
-          
-          {viewMode === 'types' && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">State</label>
-              <select
-                value={selectedState}
-                onChange={(e) => setSelectedState(e.target.value)}
-                className="w-full p-2 border border-gray-300 rounded-md"
-              >
-                {availableStates.map(state => (
-                  <option key={state} value={state}>{state}</option>
-                ))}
-              </select>
-            </div>
-          )}
-          
-          {viewMode === 'states' && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Contract Type</label>
-              <select
-                value={selectedType}
-                onChange={(e) => setSelectedType(e.target.value)}
-                className="w-full p-2 border border-gray-300 rounded-md"
-              >
-                {availableTypes.map(type => (
-                  <option key={type} value={type}>{type}</option>
-                ))}
-              </select>
-            </div>
-          )}
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Financial Year</label>
-            <select
-              value={selectedYear}
-              onChange={(e) => setSelectedYear(e.target.value)}
-              className="w-full p-2 border border-gray-300 rounded-md"
-            >
-              {availableYears.map(year => (
-                <option key={year} value={year}>
-                  {year === 'all' ? 'All Years' : `FY${year}`}
-                </option>
-              ))}
+              <option value="annual">Annual</option>
+              <option value="quarterly">Quarterly</option>
             </select>
           </div>
           
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Scenario</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Region Focus</label>
             <select
-              value={selectedScenario}
-              onChange={(e) => setSelectedScenario(e.target.value)}
+              value={selectedRegion}
+              onChange={(e) => setSelectedRegion(e.target.value)}
               className="w-full p-2 border border-gray-300 rounded-md"
             >
-              {availableScenarios.map(scenario => (
-                <option key={scenario} value={scenario}>{scenario}</option>
-              ))}
-            </select>
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Time Interval</label>
-            <select
-              value={timeInterval}
-              onChange={(e) => setTimeInterval(e.target.value)}
-              className="w-full p-2 border border-gray-300 rounded-md"
-            >
-              {timeIntervals.map(interval => (
-                <option key={interval.value} value={interval.value}>
-                  {interval.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Price Curve</label>
-            <select
-              value={selectedCurve}
-              onChange={(e) => setSelectedCurve(e.target.value)}
-              className="w-full p-2 border border-gray-300 rounded-md"
-            >
-              <option value="Aurora Jan 2025 Intervals">Aurora Jan 2025</option>
-              <option value="AEMO">AEMO</option>
+              <option value="QLD">Queensland</option>
+              <option value="NSW">New South Wales</option>
+              <option value="VIC">Victoria</option>
+              <option value="SA">South Australia</option>
+              <option value="WA">Western Australia</option>
+              <option value="TAS">Tasmania</option>
             </select>
           </div>
         </div>
       </div>
 
-      {/* Error Display */}
-      {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <div className="flex items-center">
-            <AlertCircle className="w-5 h-5 text-red-500 mr-2" />
-            <div className="text-red-800">
-              <strong>Error:</strong> {error}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Summary Metrics */}
+      {/* Key Metrics Dashboard */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="bg-white rounded-lg shadow border p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Average Price</p>
-              <p className="text-2xl font-bold text-gray-900">${summaryStats.avgPrice.toFixed(2)}</p>
-              <p className="text-sm text-gray-500">per MWh</p>
-            </div>
-            <div className="p-3 bg-blue-100 rounded-full">
-              <DollarSign className="w-6 h-6 text-blue-600" />
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow border p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Min Price</p>
-              <p className="text-2xl font-bold text-gray-900">${summaryStats.minPrice.toFixed(2)}</p>
-              <p className="text-sm text-gray-500">per MWh</p>
+              <p className="text-sm font-medium text-gray-600">Portfolio Revenue</p>
+              <p className="text-2xl font-bold text-gray-900">
+                ${portfolioSummary.averageRevenue?.toFixed(1) || '0.0'}M
+              </p>
+              <p className="text-sm text-gray-500">Average Annual</p>
             </div>
             <div className="p-3 bg-green-100 rounded-full">
-              <TrendingUp className="w-6 h-6 text-green-600" />
+              <DollarSign className="w-6 h-6 text-green-600" />
             </div>
           </div>
         </div>
@@ -504,12 +369,14 @@ const PriceCurvesTab = () => {
         <div className="bg-white rounded-lg shadow border p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Max Price</p>
-              <p className="text-2xl font-bold text-gray-900">${summaryStats.maxPrice.toFixed(2)}</p>
-              <p className="text-sm text-gray-500">per MWh</p>
+              <p className="text-sm font-medium text-gray-600">Contracted Revenue</p>
+              <p className="text-2xl font-bold text-gray-900">
+                {portfolioSummary.contractedPercentage?.toFixed(0) || '0'}%
+              </p>
+              <p className="text-sm text-gray-500">of Total</p>
             </div>
-            <div className="p-3 bg-red-100 rounded-full">
-              <Zap className="w-6 h-6 text-red-600" />
+            <div className="p-3 bg-blue-100 rounded-full">
+              <FileText className="w-6 h-6 text-blue-600" />
             </div>
           </div>
         </div>
@@ -517,139 +384,250 @@ const PriceCurvesTab = () => {
         <div className="bg-white rounded-lg shadow border p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Data Points</p>
-              <p className="text-2xl font-bold text-gray-900">{summaryStats.dataPoints}</p>
-              <p className="text-sm text-gray-500">time periods</p>
+              <p className="text-sm font-medium text-gray-600">Merchant Revenue</p>
+              <p className="text-2xl font-bold text-gray-900">
+                {portfolioSummary.merchantPercentage?.toFixed(0) || '0'}%
+              </p>
+              <p className="text-sm text-gray-500">of Total</p>
+            </div>
+            <div className="p-3 bg-orange-100 rounded-full">
+              <TrendingUp className="w-6 h-6 text-orange-600" />
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow border p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Total Capacity</p>
+              <p className="text-2xl font-bold text-gray-900">
+                {portfolioSummary.totalCapacity?.toFixed(0) || '0'} MW
+              </p>
+              <p className="text-sm text-gray-500">{portfolioSummary.assetCount || 0} Assets</p>
             </div>
             <div className="p-3 bg-purple-100 rounded-full">
-              <Calendar className="w-6 h-6 text-purple-600" />
+              <Zap className="w-6 h-6 text-purple-600" />
             </div>
           </div>
         </div>
       </div>
 
-      {/* Chart Summary */}
-      {timeSeriesData.length > 0 && (
+      {/* Revenue Projections Chart */}
+      {revenueProjections.length > 0 && (
         <div className="bg-white rounded-lg shadow border p-6">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">Chart Summary</h2>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
-            <div className="text-center">
-              <div className="text-gray-600">View Mode</div>
-              <div className="font-semibold">
-                {viewMode === 'states' ? 'Comparing States' : 'Comparing Types'}
-              </div>
-            </div>
-            <div className="text-center">
-              <div className="text-gray-600">
-                {viewMode === 'states' ? 'Type' : 'State'}
-              </div>
-              <div className="font-semibold">
-                {viewMode === 'states' ? selectedType : selectedState}
-              </div>
-            </div>
-            <div className="text-center">
-              <div className="text-gray-600">Financial Year</div>
-              <div className="font-semibold">
-                {selectedYear === 'all' ? 'All Years' : `FY${selectedYear}`}
-              </div>
-            </div>
-            <div className="text-center">
-              <div className="text-gray-600">Scenario</div>
-              <div className="font-semibold">{selectedScenario}</div>
-            </div>
-            <div className="text-center">
-              <div className="text-gray-600">Interval</div>
-              <div className="font-semibold capitalize">{timeInterval}</div>
-            </div>
-          </div>
+          <h3 className="text-lg font-semibold mb-4">
+            Revenue Projections - {selectedRevenueCase.charAt(0).toUpperCase() + selectedRevenueCase.slice(1)} Scenario
+          </h3>
+          <ResponsiveContainer width="100%" height={400}>
+            <AreaChart data={revenueProjections}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="timeInterval" />
+              <YAxis />
+              <Tooltip 
+                formatter={(value) => [`${value.toFixed(2)}M`, '']}
+                labelFormatter={(label) => `Year: ${label}`}
+              />
+              <Legend />
+              <Area 
+                type="monotone" 
+                dataKey="contractedGreen" 
+                stackId="1"
+                stroke="#10B981" 
+                fill="#10B981"
+                name="Contracted Green"
+              />
+              <Area 
+                type="monotone" 
+                dataKey="contractedEnergy" 
+                stackId="1"
+                stroke="#3B82F6" 
+                fill="#3B82F6"
+                name="Contracted Energy"
+              />
+              <Area 
+                type="monotone" 
+                dataKey="merchantGreen" 
+                stackId="1"
+                stroke="#F59E0B" 
+                fill="#F59E0B"
+                name="Merchant Green"
+              />
+              <Area 
+                type="monotone" 
+                dataKey="merchantEnergy" 
+                stackId="1"
+                stroke="#EF4444" 
+                fill="#EF4444"
+                name="Merchant Energy"
+              />
+            </AreaChart>
+          </ResponsiveContainer>
         </div>
       )}
 
-      {/* Price Curves Chart */}
-      {timeSeriesData.length > 0 && (
+      {/* Scenario Comparison */}
+      <div className="bg-white rounded-lg shadow border p-6">
+        <h3 className="text-lg font-semibold mb-4">Revenue Scenario Comparison</h3>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          {['base', 'volume', 'price', 'worst'].map(scenario => {
+            const isSelected = selectedRevenueCase === scenario;
+            const scenarioName = scenario === 'worst' ? 'Combined Downside' : 
+                               scenario.charAt(0).toUpperCase() + scenario.slice(1);
+            
+            return (
+              <div 
+                key={scenario} 
+                className={`p-4 border rounded-lg cursor-pointer transition-colors ${
+                  isSelected ? 'border-green-500 bg-green-50' : 'border-gray-200 hover:border-gray-300'
+                }`}
+                onClick={() => setSelectedRevenueCase(scenario)}
+              >
+                <h4 className="font-medium text-gray-900 mb-2">{scenarioName}</h4>
+                <div className="text-sm text-gray-600">
+                  <div className="flex justify-between mb-1">
+                    <span>Revenue Impact:</span>
+                    <span className={scenario === 'base' ? 'text-green-600' : 'text-red-600'}>
+                      {scenario === 'base' ? '100%' : 
+                       scenario === 'volume' ? '-15%' :
+                       scenario === 'price' ? '-10%' : '-25%'}
+                    </span>
+                  </div>
+                  <div className="text-xs text-gray-500 mt-1">
+                    {scenario === 'base' && 'No stress applied'}
+                    {scenario === 'volume' && 'Volume stress only'}
+                    {scenario === 'price' && 'Price stress only'}
+                    {scenario === 'worst' && 'Combined stress'}
+                  </div>
+                </div>
+                {isSelected && (
+                  <div className="mt-2 flex items-center text-green-600 text-sm">
+                    <CheckCircle className="w-4 h-4 mr-1" />
+                    Selected
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Asset Revenue Breakdown */}
+      {Object.keys(assets).length > 1 && revenueProjections.length > 0 && (
         <div className="bg-white rounded-lg shadow border p-6">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">Price Curves Over Time</h2>
-          <div className="h-96">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={timeSeriesData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis 
-                  dataKey="month" 
-                  angle={-45}
-                  textAnchor="end"
-                  height={80}
+          <h3 className="text-lg font-semibold mb-4">Asset Revenue Breakdown</h3>
+          <ResponsiveContainer width="100%" height={400}>
+            <BarChart data={revenueProjections.slice(0, 10)}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="timeInterval" />
+              <YAxis />
+              <Tooltip formatter={(value) => [`${value.toFixed(2)}M`, '']} />
+              <Legend />
+              {Object.values(assets).map((asset, index) => (
+                <Bar
+                  key={asset.name}
+                  dataKey={asset.name}
+                  stackId="assets"
+                  fill={getAssetColor(index)}
+                  name={asset.name}
                 />
-                <YAxis 
-                  label={{ value: 'Price ($/MWh)', angle: -90, position: 'insideLeft' }}
-                />
-                <Tooltip 
-                  formatter={(value, name) => [`$${value?.toFixed(2) || 0}/MWh`, name]}
-                  labelFormatter={(label) => `Period: ${label}`}
-                />
-                <Legend />
+              ))}
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+
+      {/* Asset Details Table */}
+      <div className="bg-white rounded-lg shadow border p-6">
+        <h3 className="text-lg font-semibold mb-4">Asset Portfolio Analysis</h3>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b">
+                <th className="text-left py-2">Asset</th>
+                <th className="text-right py-2">Type</th>
+                <th className="text-right py-2">Capacity (MW)</th>
+                <th className="text-right py-2">Contracts</th>
+                <th className="text-right py-2">Avg Revenue ($M)</th>
+                <th className="text-right py-2">Contracted %</th>
+                <th className="text-right py-2">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {Object.values(assets).map(asset => {
+                const validation = assetValidations[asset.name];
+                const assetRevenue = revenueProjections.length > 0 ? 
+                  revenueProjections.reduce((sum, proj) => {
+                    const total = (proj[`${asset.name} Contracted Green`] || 0) + 
+                                 (proj[`${asset.name} Contracted Energy`] || 0) + 
+                                 (proj[`${asset.name} Merchant Green`] || 0) + 
+                                 (proj[`${asset.name} Merchant Energy`] || 0);
+                    return sum + total;
+                  }, 0) / revenueProjections.length : 0;
                 
-                {lineConfig.map(({ key, color, name }) => (
-                  <Line
-                    key={key}
-                    type="monotone"
-                    dataKey={key}
-                    stroke={color}
-                    strokeWidth={2}
-                    dot={{ fill: color, strokeWidth: 2, r: 4 }}
-                    name={name}
-                    connectNulls={false}
-                  />
-                ))}
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
+                const contractedRev = revenueProjections.length > 0 ? 
+                  revenueProjections.reduce((sum, proj) => {
+                    return sum + (proj[`${asset.name} Contracted Green`] || 0) + 
+                               (proj[`${asset.name} Contracted Energy`] || 0);
+                  }, 0) / revenueProjections.length : 0;
+                
+                const contractedPercent = assetRevenue > 0 ? (contractedRev / assetRevenue) * 100 : 0;
+                
+                return (
+                  <tr key={asset.name} className="border-b">
+                    <td className="py-2">
+                      <div className="flex items-center space-x-2">
+                        {getAssetIcon(asset.type)}
+                        <span className="font-medium">{asset.name}</span>
+                      </div>
+                    </td>
+                    <td className="text-right py-2 capitalize">{asset.type}</td>
+                    <td className="text-right py-2">{asset.capacity}</td>
+                    <td className="text-right py-2">{asset.contracts?.length || 0}</td>
+                    <td className="text-right py-2">${assetRevenue.toFixed(2)}</td>
+                    <td className="text-right py-2">{contractedPercent.toFixed(0)}%</td>
+                    <td className="text-right py-2">
+                      <div className="flex items-center justify-end space-x-1">
+                        {validation?.isValid ? (
+                          <CheckCircle className="w-4 h-4 text-green-500" />
+                        ) : (
+                          <AlertCircle className="w-4 h-4 text-red-500" />
+                        )}
+                        <span className={validation?.isValid ? 'text-green-600' : 'text-red-600'}>
+                          {validation?.isValid ? 'Valid' : 'Issues'}
+                        </span>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
-      )}
+      </div>
 
-      {/* Price Statistics */}
-      {timeSeriesData.length > 0 && (
-        <div className="bg-white rounded-lg shadow border p-6">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">Price Statistics</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {lineConfig.map(({ key, color, name }) => {
-              const prices = timeSeriesData
-                .map(d => d[key])
-                .filter(p => typeof p === 'number');
-              
-              if (prices.length === 0) return null;
-              
-              const avg = prices.reduce((a, b) => a + b, 0) / prices.length;
-              const min = Math.min(...prices);
-              const max = Math.max(...prices);
+      {/* Validation Summary */}
+      {Object.values(assetValidations).some(v => !v?.isValid || v?.warnings?.length > 0) && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
+          <h3 className="text-lg font-semibold mb-4 text-yellow-800">Asset Validation Summary</h3>
+          <div className="space-y-3">
+            {Object.entries(assetValidations).map(([assetName, validation]) => {
+              if (!validation || (validation.isValid && validation.warnings.length === 0)) return null;
               
               return (
-                <div key={key} className="border rounded-lg p-4">
-                  <div className="flex items-center gap-2 mb-3">
-                    <div 
-                      className="w-4 h-4 rounded-full"
-                      style={{ backgroundColor: color }}
-                    ></div>
-                    <h3 className="font-semibold">{name}</h3>
-                  </div>
-                  
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Average:</span>
-                      <span className="font-medium">${avg.toFixed(2)}</span>
+                <div key={assetName} className="border-l-4 border-yellow-400 pl-4">
+                  <h4 className="font-medium text-yellow-900">{assetName}</h4>
+                  {validation.errors?.map((error, i) => (
+                    <div key={i} className="text-red-600 text-sm flex items-center space-x-1">
+                      <AlertCircle className="w-3 h-3" />
+                      <span>{error}</span>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Min:</span>
-                      <span className="font-medium">${min.toFixed(2)}</span>
+                  ))}
+                  {validation.warnings?.map((warning, i) => (
+                    <div key={i} className="text-yellow-700 text-sm flex items-center space-x-1">
+                      <AlertCircle className="w-3 h-3" />
+                      <span>{warning}</span>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Max:</span>
-                      <span className="font-medium">${max.toFixed(2)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Range:</span>
-                      <span className="font-medium">${(max - min).toFixed(2)}</span>
-                    </div>
-                  </div>
+                  ))}
                 </div>
               );
             })}
@@ -657,84 +635,98 @@ const PriceCurvesTab = () => {
         </div>
       )}
 
-      {/* Raw Data Table */}
-      {timeSeriesData.length > 0 && (
-        <div className="bg-white rounded-lg shadow border p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold text-gray-800">Raw Time Series Data</h2>
-            <button
-              onClick={() => setShowRawData(!showRawData)}
-              className="flex items-center gap-2 px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
+      {/* Empty State */}
+      {Object.keys(assets).length === 0 && (
+        <div className="bg-white rounded-lg shadow border p-8">
+          <div className="text-center">
+            <BarChart3 className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">No Assets to Analyze</h3>
+            <p className="text-gray-600 mb-4">
+              Add assets to your portfolio to perform revenue analysis
+            </p>
+            <a
+              href="/assets"
+              className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
             >
-              {showRawData ? '🔼 Collapse' : '🔽 Expand'}
-            </button>
+              <span>Add Assets</span>
+            </a>
           </div>
-          
-          {showRawData && (
-            <div className="overflow-x-auto">
-              <table className="min-w-full text-sm">
-                <thead>
-                  <tr className="bg-gray-50">
-                    <th className="px-3 py-2 text-left">Time Period</th>
-                    {lineConfig.map(({ key, name }) => (
-                      <th key={key} className="px-3 py-2 text-left">
-                        {name} ($/MWh)
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {timeSeriesData.slice(0, 50).map((row, index) => (
-                    <tr key={index} className="border-b border-gray-100">
-                      <td className="px-3 py-2 font-medium">{row.month}</td>
-                      {lineConfig.map(({ key }) => (
-                        <td key={key} className="px-3 py-2">
-                          {typeof row[key] === 'number' 
-                            ? `${row[key].toFixed(2)}`
-                            : '-'
-                          }
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              
-              {timeSeriesData.length > 50 && (
-                <div className="text-gray-500 text-center py-2">
-                  ... and {timeSeriesData.length - 50} more data points
-                </div>
-              )}
-            </div>
-          )}
         </div>
       )}
 
-      {/* Status Display */}
-      {timeSeriesData.length > 0 ? (
-        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <CheckCircle className="w-5 h-5 text-green-500" />
-              <span className="text-green-800 font-medium">
-                Price data loaded successfully - {timeSeriesData.length} data points across {lineConfig.length} series
-              </span>
-            </div>
-            <div className="text-green-600 text-sm">
-              Last updated: {new Date().toLocaleString()}
-            </div>
+      {/* Status Information */}
+      <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <CheckCircle className="w-5 h-5 text-green-500" />
+            <span className="text-green-800 font-medium">
+              Revenue analysis using integrated performance calculations
+            </span>
+          </div>
+          <div className="text-green-600 text-sm">
+            Scenario: {selectedRevenueCase} • Period: {analysisYears} years • Updated: {new Date().toLocaleTimeString()}
           </div>
         </div>
-      ) : !loading && !error && (
-        <div className="bg-gray-50 rounded-lg p-8 text-center">
-          <div className="text-4xl mb-4">📈</div>
-          <div className="text-gray-600">
-            Configure your view settings and click "Refresh Data" to load price curves
-          </div>
+        <div className="mt-2 text-sm text-green-700">
+          Calculations include contract escalation, asset degradation, merchant price forecasts, quarterly capacity factors, and comprehensive stress scenarios.
         </div>
-      )}
+      </div>
     </div>
   );
-};
 
-export default PriceCurvesTab;
+  // Helper functions
+  function getAssetColor(index) {
+    const colors = ['#4CAF50', '#2196F3', '#FF9800', '#9C27B0', '#F44336', '#00BCD4'];
+    return colors[index % colors.length];
+  }
+
+  function formatRevenueDataForExport(portfolioData, assets, format) {
+    if (format === 'json') {
+      return JSON.stringify({
+        metadata: {
+          exportDate: new Date().toISOString(),
+          assetCount: Object.keys(assets).length,
+          periodCount: portfolioData.length,
+          scenario: selectedRevenueCase
+        },
+        assets: assets,
+        revenueData: portfolioData
+      }, null, 2);
+    }
+
+    // CSV format
+    const headers = ['Period', 'Total Revenue', 'Contracted Green', 'Contracted Energy', 'Merchant Green', 'Merchant Energy'];
+    
+    // Add asset-specific columns
+    Object.values(assets).forEach(asset => {
+      headers.push(`${asset.name} Total`, `${asset.name} Contracted`, `${asset.name} Merchant`);
+    });
+
+    const rows = [headers.join(',')];
+
+    portfolioData.forEach(period => {
+      const row = [
+        period.timeInterval,
+        Object.values(period.assets).reduce((sum, asset) => sum + asset.total, 0).toFixed(2),
+        Object.values(period.assets).reduce((sum, asset) => sum + asset.contractedGreen, 0).toFixed(2),
+        Object.values(period.assets).reduce((sum, asset) => sum + asset.contractedEnergy, 0).toFixed(2),
+        Object.values(period.assets).reduce((sum, asset) => sum + asset.merchantGreen, 0).toFixed(2),
+        Object.values(period.assets).reduce((sum, asset) => sum + asset.merchantEnergy, 0).toFixed(2)
+      ];
+
+      // Add asset-specific data
+      Object.values(assets).forEach(asset => {
+        const assetData = period.assets[asset.name] || { total: 0, contractedGreen: 0, contractedEnergy: 0, merchantGreen: 0, merchantEnergy: 0 };
+        row.push(
+          assetData.total.toFixed(2),
+          (assetData.contractedGreen + assetData.contractedEnergy).toFixed(2),
+          (assetData.merchantGreen + assetData.merchantEnergy).toFixed(2)
+        );
+      });
+
+      rows.push(row.join(','));
+    });
+
+    return rows.join('\n');
+  }
+}
