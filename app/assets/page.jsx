@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react';
+import { useUser } from '../contexts/UserContext';
 import { 
   Plus, 
   Edit, 
@@ -22,6 +23,7 @@ import {
 } from 'lucide-react';
 
 const EnhancedAssetManagement = () => {
+  const { currentUser, currentPortfolio } = useUser();
   const [assets, setAssets] = useState({});
   const [constants, setConstants] = useState({});
   const [portfolioName, setPortfolioName] = useState('Portfolio Name');
@@ -29,10 +31,7 @@ const EnhancedAssetManagement = () => {
   const [editingAsset, setEditingAsset] = useState(null);
   const [activeTab, setActiveTab] = useState('basic');
   const [importing, setImporting] = useState(false);
-  
-  // Current user and portfolio - replace with your auth system
-  const currentUser = '6853b044dd2ecce8ba519ba5';
-  const currentPortfolio = 'zebre';
+  const [loading, setLoading] = useState(true);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -59,14 +58,19 @@ const EnhancedAssetManagement = () => {
     contracts: []
   });
 
-  // Load portfolio data on mount
+  // Load portfolio data when user or portfolio changes
   useEffect(() => {
-    loadPortfolioData();
-  }, []);
+    if (currentUser && currentPortfolio) {
+      loadPortfolioData();
+    }
+  }, [currentUser, currentPortfolio]);
 
   const loadPortfolioData = async () => {
+    if (!currentUser || !currentPortfolio) return;
+    
+    setLoading(true);
     try {
-      const response = await fetch(`/api/portfolio/${currentUser}/${currentPortfolio}`);
+      const response = await fetch(`/api/portfolio?userId=${currentUser.id}&portfolioId=${currentPortfolio.portfolioId}`);
       if (response.ok) {
         const portfolioData = await response.json();
         setAssets(portfolioData.assets || {});
@@ -75,17 +79,26 @@ const EnhancedAssetManagement = () => {
       } else if (response.status === 404) {
         // Portfolio doesn't exist, start fresh
         console.log('Creating new portfolio');
+        setAssets({});
+        setConstants({});
+        setPortfolioName(currentPortfolio.portfolioName || 'Portfolio Name');
       } else {
         console.error('Failed to load portfolio');
       }
     } catch (error) {
       console.error('Error loading portfolio:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
   const savePortfolioData = async () => {
+    if (!currentUser || !currentPortfolio) return;
+    
     try {
       const portfolioData = {
+        userId: currentUser.id,
+        portfolioId: currentPortfolio.portfolioId,
         version: '2.0',
         portfolioName,
         assets,
@@ -95,7 +108,7 @@ const EnhancedAssetManagement = () => {
         exportDate: new Date().toISOString()
       };
 
-      const response = await fetch(`/api/portfolio/${currentUser}/${currentPortfolio}`, {
+      const response = await fetch('/api/portfolio', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -295,7 +308,7 @@ const EnhancedAssetManagement = () => {
       assets,
       constants,
       analysisMode: 'simple',
-      activePortfolio: currentPortfolio,
+      activePortfolio: currentPortfolio?.portfolioId,
       priceSource: 'merchant_price_monthly.csv'
     };
 
@@ -333,20 +346,22 @@ const EnhancedAssetManagement = () => {
       setConstants(importData.constants || {});
       setPortfolioName(importData.portfolioName || 'Imported Portfolio');
 
-      // Save to MongoDB
+      // Save to MongoDB using correct API structure
       const portfolioData = {
+        userId: currentUser.id,
+        portfolioId: currentPortfolio.portfolioId,
         version: importData.version || '2.0',
         portfolioName: importData.portfolioName || 'Imported Portfolio',
         assets: importData.assets || {},
         constants: importData.constants || {},
         analysisMode: importData.analysisMode || 'simple',
-        activePortfolio: importData.activePortfolio || currentPortfolio,
+        activePortfolio: importData.activePortfolio || currentPortfolio.portfolioId,
         portfolioSource: file.name,
         priceSource: importData.priceSource || 'merchant_price_monthly.csv',
         exportDate: importData.exportDate || new Date().toISOString()
       };
 
-      const response = await fetch(`/api/portfolio/${currentUser}/${currentPortfolio}`, {
+      const response = await fetch('/api/portfolio', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -401,6 +416,30 @@ const EnhancedAssetManagement = () => {
     return Object.values(constants.assetCosts || {}).reduce((sum, costs) => sum + (costs.capex || 0), 0);
   };
 
+  // Show loading state if user/portfolio not selected
+  if (!currentUser || !currentPortfolio) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <Zap className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-gray-900 mb-2">No Portfolio Selected</h3>
+          <p className="text-gray-600">Please select a user and portfolio to manage assets</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading portfolio data...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="px-4 py-6 space-y-6">
       {/* Header */}
@@ -418,6 +457,9 @@ const EnhancedAssetManagement = () => {
           <p className="text-gray-600">
             {Object.keys(assets).length} assets • {calculateTotalCapacity().toFixed(1)} MW • 
             ${calculateTotalValue().toFixed(1)}M CAPEX
+          </p>
+          <p className="text-sm text-gray-500">
+            User: {currentUser.name} • Portfolio: {currentPortfolio.portfolioName}
           </p>
         </div>
         <div className="flex space-x-3">
