@@ -10,6 +10,7 @@ export const UserProvider = ({ children }) => {
   const [users, setUsers] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
   const [currentPortfolio, setCurrentPortfolio] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   // Default values
   const defaultUserId = '6853b044dd2ecce8ba519ba5';
@@ -19,67 +20,75 @@ export const UserProvider = ({ children }) => {
   useEffect(() => {
     const fetchUsers = async () => {
       try {
+        setLoading(true);
         const response = await fetch('/api/users');
         if (response.ok) {
           const data = await response.json();
           setUsers(data);
 
-          // Set the default user and portfolio
-          const defaultUser = data.find(user => user.id === defaultUserId);
-          if (defaultUser) {
-            setCurrentUser(defaultUser);
-            const defaultPortfolio = defaultUser.portfolios.find(p => p.portfolioId === defaultPortfolioId);
-            if (defaultPortfolio) {
-              setCurrentPortfolio(defaultPortfolio);
-            } else if (defaultUser.portfolios.length > 0) {
-              // Fallback to the first portfolio if the default is not found
-              setCurrentPortfolio(defaultUser.portfolios[0]);
-            }
+          // Try to restore from localStorage first
+          const savedUserId = localStorage.getItem('selectedUserId');
+          const savedPortfolioId = localStorage.getItem('selectedPortfolioId');
+
+          let targetUserId = savedUserId || defaultUserId;
+          let targetPortfolioId = savedPortfolioId || defaultPortfolioId;
+
+          // Find the target user
+          const targetUser = data.find(user => user.id === targetUserId);
+          
+          if (targetUser) {
+            // Refresh user data to get current portfolio info
+            await selectUser(targetUserId, targetPortfolioId);
           } else if (data.length > 0) {
-            // Fallback to the first user if the default is not found
-            setCurrentUser(data[0]);
-            if (data[0].portfolios.length > 0) {
-              setCurrentPortfolio(data[0].portfolios[0]);
-            }
+            // Fallback to the first user if target not found
+            await selectUser(data[0].id);
           }
         }
       } catch (error) {
         console.error('Failed to fetch users:', error);
+      } finally {
+        setLoading(false);
       }
     };
     fetchUsers();
   }, []);
 
-  // Update portfolio when user changes
-  useEffect(() => {
-    if (currentUser && currentUser.portfolios.length > 0) {
-        // If the current portfolio doesn't belong to the new user, update it
-        if (!currentUser.portfolios.some(p => p.portfolioId === currentPortfolio?.portfolioId)) {
-            setCurrentPortfolio(currentUser.portfolios[0]);
-        }
-    } else {
-      setCurrentPortfolio(null);
-    }
-  }, [currentUser, currentPortfolio]);
-
-  // Function to select a user by ID
-  const selectUser = async (userId) => {
+  // Function to select a user by ID and optionally a specific portfolio
+  const selectUser = async (userId, preferredPortfolioId = null) => {
     try {
       const response = await fetch(`/api/users?userId=${userId}`);
       if (response.ok) {
         const userData = await response.json();
         setCurrentUser(userData);
         
-        // Update users list
+        // Update users list with fresh data
         setUsers(prev => prev.map(user => 
           user.id === userId ? userData : user
         ));
         
-        // Set first portfolio as default
+        // Save to localStorage
+        localStorage.setItem('selectedUserId', userId);
+        
+        // Select portfolio
         if (userData.portfolios && userData.portfolios.length > 0) {
-          setCurrentPortfolio(userData.portfolios[0]);
+          let portfolioToSelect = null;
+          
+          if (preferredPortfolioId) {
+            portfolioToSelect = userData.portfolios.find(p => p.portfolioId === preferredPortfolioId);
+          }
+          
+          if (!portfolioToSelect) {
+            // Fallback to default or first portfolio
+            portfolioToSelect = userData.portfolios.find(p => p.portfolioId === defaultPortfolioId) || userData.portfolios[0];
+          }
+          
+          setCurrentPortfolio(portfolioToSelect);
+          if (portfolioToSelect) {
+            localStorage.setItem('selectedPortfolioId', portfolioToSelect.portfolioId);
+          }
         } else {
           setCurrentPortfolio(null);
+          localStorage.removeItem('selectedPortfolioId');
         }
       }
     } catch (error) {
@@ -93,7 +102,15 @@ export const UserProvider = ({ children }) => {
       const portfolio = currentUser.portfolios.find(p => p.portfolioId === portfolioId);
       if (portfolio) {
         setCurrentPortfolio(portfolio);
+        localStorage.setItem('selectedPortfolioId', portfolioId);
       }
+    }
+  };
+
+  // Function to refresh current user's portfolio data
+  const refreshUserPortfolios = async () => {
+    if (currentUser) {
+      await selectUser(currentUser.id, currentPortfolio?.portfolioId);
     }
   };
 
@@ -116,6 +133,8 @@ export const UserProvider = ({ children }) => {
         // Set the default portfolio if created
         if (newUser.portfolios && newUser.portfolios.length > 0) {
           setCurrentPortfolio(newUser.portfolios[0]);
+          localStorage.setItem('selectedUserId', newUser.id);
+          localStorage.setItem('selectedPortfolioId', newUser.portfolios[0].portfolioId);
         }
         
         return newUser;
@@ -158,26 +177,8 @@ export const UserProvider = ({ children }) => {
       if (response.ok) {
         const result = await response.json();
         
-        // Update current user's portfolios
-        const newPortfolio = {
-          portfolioId: portfolioData.portfolioId,
-          portfolioName: portfolioData.portfolioName,
-          lastUpdated: new Date().toISOString(),
-          assetCount: 0
-        };
-        
-        const updatedUser = {
-          ...currentUser,
-          portfolios: [...currentUser.portfolios, newPortfolio]
-        };
-        
-        setCurrentUser(updatedUser);
-        setCurrentPortfolio(newPortfolio);
-        
-        // Update users list
-        setUsers(prev => prev.map(user => 
-          user.id === currentUser.id ? updatedUser : user
-        ));
+        // Refresh user data to get updated portfolios list
+        await refreshUserPortfolios();
         
         return result;
       } else {
@@ -200,8 +201,10 @@ export const UserProvider = ({ children }) => {
     selectUser,
     selectPortfolio,
     createUser,
-    createPortfolio
-  }), [users, currentUser, currentPortfolio]);
+    createPortfolio,
+    refreshUserPortfolios,
+    loading
+  }), [users, currentUser, currentPortfolio, loading]);
 
   return (
     <UserContext.Provider value={value}>

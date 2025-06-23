@@ -1,136 +1,226 @@
 'use client'
 
-import { useState, useEffect } from 'react';
-import { 
-  LineChart, 
-  Line, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  Legend, 
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  Area,
-  AreaChart
-} from 'recharts';
-import { 
-  TrendingUp, 
-  DollarSign, 
-  Calendar,
-  Download,
-  Settings,
-  Sun,
-  Wind,
-  Battery,
-  Zap
-} from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from 'recharts';
+import { TrendingUp, DollarSign, Calendar, Download, Settings, RefreshCw, Sun, Wind, Battery, Zap } from 'lucide-react';
 
-const RevenueAnalysis = () => {
-  const [selectedAsset, setSelectedAsset] = useState('all');
-  const [selectedTimeframe, setSelectedTimeframe] = useState('annual');
-  const [marketCurve, setMarketCurve] = useState('baseload');
+export default function MarketPriceIntegration() {
   const [assets, setAssets] = useState([]);
-  const [revenueData, setRevenueData] = useState([]);
-  const [marketPrices, setMarketPrices] = useState([]);
-  const [cashFlowData, setCashFlowData] = useState([]);
+  const [priceData, setPriceData] = useState({});
+  const [revenueProjections, setRevenueProjections] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  // Mock assets and data - replace with API calls
+  // Configuration state
+  const [selectedRegion, setSelectedRegion] = useState('QLD');
+  const [selectedScenario, setSelectedScenario] = useState('Central');
+  const [selectedCurve, setSelectedCurve] = useState('Aurora Jan 2025 Intervals');
+  const [selectedYear, setSelectedYear] = useState('2025');
+  const [viewMode, setViewMode] = useState('monthly');
+
+  // Available options
+  const availableRegions = ['QLD', 'NSW', 'VIC', 'SA', 'WA', 'TAS'];
+  const availableScenarios = ['Central', 'Low', 'High'];
+  const availableYears = ['2025', '2026', '2027', '2028', '2029', '2030'];
+
+  // Fetch assets from your existing API
   useEffect(() => {
-    // Mock assets
-    setAssets([
-      { id: 'all', name: 'All Assets', type: 'portfolio' },
-      { id: 1, name: 'Solar Farm Alpha', type: 'solar', capacity: 100 },
-      { id: 2, name: 'Wind Farm Beta', type: 'wind', capacity: 120 },
-      { id: 3, name: 'Battery Storage', type: 'battery', capacity: 30 }
-    ]);
+    fetchAssets();
+  }, []);
 
-    // Mock market price curves
-    setMarketPrices([
-      { year: 2024, baseload: 65, solar: 45, wind: 55, green: 75 },
-      { year: 2025, baseload: 68, solar: 47, wind: 57, green: 78 },
-      { year: 2026, baseload: 70, solar: 49, wind: 59, green: 80 },
-      { year: 2027, baseload: 72, solar: 51, wind: 61, green: 82 },
-      { year: 2028, baseload: 74, solar: 53, wind: 63, green: 84 },
-      { year: 2029, baseload: 76, solar: 55, wind: 65, green: 86 },
-      { year: 2030, baseload: 78, solar: 57, wind: 67, green: 88 }
-    ]);
-
-    // Generate revenue projections
-    generateRevenueData();
-    generateCashFlowData();
-  }, [selectedAsset, marketCurve]);
-
-  const generateRevenueData = () => {
-    const years = Array.from({ length: 7 }, (_, i) => 2024 + i);
-    const data = years.map(year => {
-      const basePrice = getMarketPrice(year);
-      return {
-        year,
-        solarRevenue: calculateAssetRevenue('solar', year, basePrice * 0.85),
-        windRevenue: calculateAssetRevenue('wind', year, basePrice * 0.95),
-        batteryRevenue: calculateAssetRevenue('battery', year, basePrice * 1.2),
-        totalRevenue: calculateAssetRevenue('solar', year, basePrice * 0.85) + 
-                     calculateAssetRevenue('wind', year, basePrice * 0.95) + 
-                     calculateAssetRevenue('battery', year, basePrice * 1.2)
-      };
-    });
-    setRevenueData(data);
-  };
-
-  const generateCashFlowData = () => {
-    const years = Array.from({ length: 20 }, (_, i) => 2024 + i);
-    const data = years.map(year => {
-      const revenue = calculateTotalRevenue(year);
-      const opex = revenue * 0.15; // 15% of revenue as OPEX
-      const depreciation = year <= 2029 ? 8 : 4; // Higher depreciation in early years
-      const ebitda = revenue - opex;
-      const netCashFlow = ebitda - depreciation;
-      
-      return {
-        year,
-        revenue: Math.round(revenue * 10) / 10,
-        opex: Math.round(opex * 10) / 10,
-        ebitda: Math.round(ebitda * 10) / 10,
-        netCashFlow: Math.round(netCashFlow * 10) / 10
-      };
-    });
-    setCashFlowData(data);
-  };
-
-  const getMarketPrice = (year) => {
-    const priceData = marketPrices.find(p => p.year === year);
-    return priceData ? priceData[marketCurve] : 70;
-  };
-
-  const calculateAssetRevenue = (assetType, year, price) => {
-    const asset = assets.find(a => a.type === assetType);
-    if (!asset) return 0;
-    
-    const capacity = asset.capacity;
-    const capacityFactor = getCapacityFactor(assetType);
-    const hoursPerYear = 8760;
-    const degradation = Math.pow(0.995, year - 2024); // 0.5% annual degradation
-    
-    const generation = capacity * capacityFactor * hoursPerYear * degradation / 1000; // MWh
-    return generation * price / 1000000; // Convert to millions
-  };
-
-  const calculateTotalRevenue = (year) => {
-    const basePrice = getMarketPrice(year);
-    return calculateAssetRevenue('solar', year, basePrice * 0.85) + 
-           calculateAssetRevenue('wind', year, basePrice * 0.95) + 
-           calculateAssetRevenue('battery', year, basePrice * 1.2);
-  };
-
-  const getCapacityFactor = (assetType) => {
-    switch (assetType) {
-      case 'solar': return 0.25;
-      case 'wind': return 0.35;
-      case 'battery': return 0.15;
-      default: return 0.25;
+  // Fetch price data when parameters change
+  useEffect(() => {
+    if (assets.length > 0) {
+      fetchPriceData();
     }
+  }, [selectedRegion, selectedScenario, selectedCurve, selectedYear, assets]);
+
+  // Calculate revenue projections when price data changes
+  useEffect(() => {
+    if (Object.keys(priceData).length > 0) {
+      calculateRevenueProjections();
+    }
+  }, [priceData, assets]);
+
+  const fetchAssets = async () => {
+    try {
+      // Fetch from your existing assets API
+      const response = await fetch('/api/assets?userId=6853b044dd2ecce8ba519ba5&portfolioId=zebre');
+      if (response.ok) {
+        const assetsData = await response.json();
+        // Convert your asset format to our format
+        const convertedAssets = assetsData.map((asset) => ({
+          id: asset.id,
+          name: asset.name,
+          type: asset.type || 'solar', // Default to solar if not specified
+          capacity: asset.capacity || 0,
+          region: asset.location || 'QLD', // Use location as region, default to QLD
+          contractType: 'Energy' // Default to Energy contracts
+        }));
+        setAssets(convertedAssets);
+      } else {
+        // Fallback to mock data if API fails
+        const mockAssets = [
+          { id: '1', name: 'Solar Farm Alpha', type: 'solar', capacity: 100, region: 'QLD', contractType: 'Energy' },
+          { id: '2', name: 'Wind Farm Beta', type: 'wind', capacity: 120, region: 'NSW', contractType: 'Energy' },
+          { id: '3', name: 'Battery Storage', type: 'battery', capacity: 30, region: 'VIC', contractType: 'Energy' },
+          { id: '4', name: 'Green Solar Farm', type: 'solar', capacity: 80, region: 'QLD', contractType: 'Green' }
+        ];
+        setAssets(mockAssets);
+      }
+    } catch (err) {
+      console.error('Error fetching assets:', err);
+      // Use mock data as fallback
+      const mockAssets = [
+        { id: '1', name: 'Solar Farm Alpha', type: 'solar', capacity: 100, region: 'QLD', contractType: 'Energy' },
+        { id: '2', name: 'Wind Farm Beta', type: 'wind', capacity: 120, region: 'NSW', contractType: 'Energy' },
+        { id: '3', name: 'Battery Storage', type: 'battery', capacity: 30, region: 'VIC', contractType: 'Energy' }
+      ];
+      setAssets(mockAssets);
+    }
+  };
+
+  const fetchPriceData = async () => {
+    setLoading(true);
+    setError('');
+    
+    try {
+      const allPriceData = {};
+      
+      // Fetch data for each unique combination of region and contract type
+      const uniqueCombinations = new Set(
+        assets.map(asset => `${asset.region || selectedRegion}-${asset.contractType || 'Energy'}`)
+      );
+
+      for (const combination of uniqueCombinations) {
+        const [region, contractType] = combination.split('-');
+        
+        const params = new URLSearchParams({
+          state: region,
+          type: contractType,
+          year: selectedYear,
+          scenario: selectedScenario,
+          curve: selectedCurve
+        });
+        
+        console.log(`Fetching price data for ${region}-${contractType}:`, `/api/price-curves?${params}`);
+        
+        const response = await fetch(`/api/price-curves?${params}`);
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const result = await response.json();
+        
+        if (result.success && result.marketPrices) {
+          // The API returns marketPrices as an object with series keys
+          Object.entries(result.marketPrices).forEach(([seriesKey, points]) => {
+            // Use a simplified key for easier access
+            const simplifiedKey = `${region}-${contractType}`;
+            allPriceData[simplifiedKey] = points;
+          });
+        } else {
+          console.warn(`No data found for ${region}-${contractType}:`, result);
+        }
+      }
+      
+      setPriceData(allPriceData);
+      console.log('Fetched price data:', Object.keys(allPriceData));
+      
+    } catch (err) {
+      console.error('Error fetching price data:', err);
+      setError(`Failed to fetch market price data: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const calculateRevenueProjections = () => {
+    if (Object.keys(priceData).length === 0) {
+      console.log('No price data available for revenue calculations');
+      return;
+    }
+
+    const projections = [];
+    
+    // Get all unique months from price data
+    const allMonths = new Set();
+    Object.values(priceData).forEach(points => {
+      if (Array.isArray(points)) {
+        points.forEach(point => {
+          if (point.year && point.monthName) {
+            allMonths.add(`${point.year}-${point.monthName}`);
+          }
+        });
+      }
+    });
+    
+    if (allMonths.size === 0) {
+      console.log('No valid months found in price data');
+      return;
+    }
+    
+    const sortedMonths = Array.from(allMonths).sort();
+    console.log('Processing months:', sortedMonths);
+    
+    sortedMonths.forEach(monthKey => {
+      const [year, monthName] = monthKey.split('-');
+      const yearNum = parseInt(year);
+      
+      if (isNaN(yearNum)) return;
+      
+      const assetRevenues = {};
+      let totalRevenue = 0;
+      let totalPrice = 0;
+      let priceCount = 0;
+      
+      assets.forEach(asset => {
+        const priceSeriesKey = `${asset.region || selectedRegion}-${asset.contractType || 'Energy'}`;
+        const pricePoints = priceData[priceSeriesKey] || [];
+        
+        const monthPrice = pricePoints.find(point => 
+          point.year === yearNum && point.monthName === monthName
+        );
+        
+        if (monthPrice && monthPrice.price > 0) {
+          const revenue = calculateAssetRevenue(asset, monthPrice.price, monthName);
+          assetRevenues[asset.id] = revenue;
+          totalRevenue += revenue;
+          totalPrice += monthPrice.price;
+          priceCount++;
+        } else {
+          assetRevenues[asset.id] = 0;
+        }
+      });
+      
+      const averagePrice = priceCount > 0 ? totalPrice / priceCount : 0;
+      
+      projections.push({
+        year: yearNum,
+        month: monthName,
+        assetRevenues,
+        totalRevenue,
+        averagePrice
+      });
+    });
+    
+    console.log(`Generated ${projections.length} revenue projections`);
+    setRevenueProjections(projections);
+  };
+
+  const calculateAssetRevenue = (asset, price, month) => {
+    // Get capacity factor based on asset type
+    const capacityFactors = {
+      solar: 0.25,
+      wind: 0.35,
+      battery: 0.15
+    };
+    
+    const capacityFactor = capacityFactors[asset.type];
+    const hoursInMonth = 730; // Approximate
+    const generation = asset.capacity * capacityFactor * hoursInMonth / 1000; // Convert to MWh
+    
+    return generation * price / 1000000; // Convert to millions
   };
 
   const getAssetIcon = (type) => {
@@ -142,22 +232,28 @@ const RevenueAnalysis = () => {
     }
   };
 
-  const currentYearRevenue = revenueData.find(d => d.year === 2024)?.totalRevenue || 0;
-  const projectedGrowth = revenueData.length > 1 ? 
-    ((revenueData[revenueData.length - 1]?.totalRevenue - currentYearRevenue) / currentYearRevenue * 100) : 0;
+  const totalPortfolioRevenue = revenueProjections.reduce((sum, proj) => sum + proj.totalRevenue, 0);
+  const averageMonthlyRevenue = revenueProjections.length > 0 ? totalPortfolioRevenue / revenueProjections.length : 0;
+  const averageMarketPrice = revenueProjections.length > 0 
+    ? revenueProjections.reduce((sum, proj) => sum + proj.averagePrice, 0) / revenueProjections.length 
+    : 0;
 
   return (
-    <div className="px-4 py-6 space-y-6">
+    <div className="p-6 space-y-6">
       {/* Header */}
       <div className="flex justify-between items-start">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Revenue Analysis</h1>
-          <p className="text-gray-600">Project cash flows and market curve integration</p>
+          <h1 className="text-2xl font-bold text-gray-900">Market Price Integration</h1>
+          <p className="text-gray-600">Real-time pricing for portfolio revenue analysis</p>
         </div>
         <div className="flex space-x-3">
-          <button className="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg flex items-center space-x-2 hover:bg-gray-50">
-            <Settings className="w-4 h-4" />
-            <span>Settings</span>
+          <button 
+            onClick={fetchPriceData}
+            disabled={loading}
+            className="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg flex items-center space-x-2 hover:bg-gray-50 disabled:opacity-50"
+          >
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+            <span>{loading ? 'Loading...' : 'Refresh Data'}</span>
           </button>
           <button className="bg-green-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2 hover:bg-green-700">
             <Download className="w-4 h-4" />
@@ -166,59 +262,92 @@ const RevenueAnalysis = () => {
         </div>
       </div>
 
-      {/* Controls */}
-      <div className="bg-white rounded-lg shadow border p-4">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {/* Configuration Panel */}
+      <div className="bg-white rounded-lg shadow border p-6">
+        <h3 className="text-lg font-semibold mb-4">Market Data Configuration</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Asset</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Region</label>
             <select
-              value={selectedAsset}
-              onChange={(e) => setSelectedAsset(e.target.value)}
+              value={selectedRegion}
+              onChange={(e) => setSelectedRegion(e.target.value)}
               className="w-full p-2 border border-gray-300 rounded-md"
             >
-              {assets.map(asset => (
-                <option key={asset.id} value={asset.id}>
-                  {asset.name}
-                </option>
+              {availableRegions.map(region => (
+                <option key={region} value={region}>{region}</option>
               ))}
             </select>
           </div>
+          
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Market Curve</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Scenario</label>
             <select
-              value={marketCurve}
-              onChange={(e) => setMarketCurve(e.target.value)}
+              value={selectedScenario}
+              onChange={(e) => setSelectedScenario(e.target.value)}
               className="w-full p-2 border border-gray-300 rounded-md"
             >
-              <option value="baseload">Baseload</option>
-              <option value="solar">Solar</option>
-              <option value="wind">Wind</option>
-              <option value="green">Green Premium</option>
+              {availableScenarios.map(scenario => (
+                <option key={scenario} value={scenario}>{scenario}</option>
+              ))}
             </select>
           </div>
+          
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Timeframe</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Year</label>
             <select
-              value={selectedTimeframe}
-              onChange={(e) => setSelectedTimeframe(e.target.value)}
+              value={selectedYear}
+              onChange={(e) => setSelectedYear(e.target.value)}
               className="w-full p-2 border border-gray-300 rounded-md"
             >
-              <option value="annual">Annual</option>
-              <option value="quarterly">Quarterly</option>
+              {availableYears.map(year => (
+                <option key={year} value={year}>{year}</option>
+              ))}
+            </select>
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Curve</label>
+            <select
+              value={selectedCurve}
+              onChange={(e) => setSelectedCurve(e.target.value)}
+              className="w-full p-2 border border-gray-300 rounded-md"
+            >
+              <option value="Aurora Jan 2025 Intervals">Aurora Jan 2025</option>
+              <option value="AEMO">AEMO</option>
+            </select>
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">View Mode</label>
+            <select
+              value={viewMode}
+              onChange={(e) => setViewMode(e.target.value)}
+              className="w-full p-2 border border-gray-300 rounded-md"
+            >
               <option value="monthly">Monthly</option>
+              <option value="yearly">Yearly</option>
             </select>
           </div>
         </div>
       </div>
+
+      {/* Error Display */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <div className="text-red-800">
+            <strong>Error:</strong> {error}
+          </div>
+        </div>
+      )}
 
       {/* Key Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="bg-white rounded-lg shadow border p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Current Revenue</p>
+              <p className="text-sm font-medium text-gray-600">Portfolio Revenue</p>
               <p className="text-2xl font-bold text-gray-900">
-                ${currentYearRevenue.toFixed(1)}M
+                ${totalPortfolioRevenue.toFixed(1)}M
               </p>
             </div>
             <div className="p-3 bg-green-100 rounded-full">
@@ -230,9 +359,9 @@ const RevenueAnalysis = () => {
         <div className="bg-white rounded-lg shadow border p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">7-Year Growth</p>
+              <p className="text-sm font-medium text-gray-600">Avg Monthly Revenue</p>
               <p className="text-2xl font-bold text-gray-900">
-                {projectedGrowth.toFixed(1)}%
+                ${averageMonthlyRevenue.toFixed(2)}M
               </p>
             </div>
             <div className="p-3 bg-blue-100 rounded-full">
@@ -244,9 +373,9 @@ const RevenueAnalysis = () => {
         <div className="bg-white rounded-lg shadow border p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Market Price</p>
+              <p className="text-sm font-medium text-gray-600">Avg Market Price</p>
               <p className="text-2xl font-bold text-gray-900">
-                ${getMarketPrice(2024)}/MWh
+                ${averageMarketPrice.toFixed(0)}/MWh
               </p>
             </div>
             <div className="p-3 bg-yellow-100 rounded-full">
@@ -258,9 +387,9 @@ const RevenueAnalysis = () => {
         <div className="bg-white rounded-lg shadow border p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Contract Period</p>
+              <p className="text-sm font-medium text-gray-600">Active Assets</p>
               <p className="text-2xl font-bold text-gray-900">
-                20 Years
+                {assets.length}
               </p>
             </div>
             <div className="p-3 bg-purple-100 rounded-full">
@@ -272,151 +401,98 @@ const RevenueAnalysis = () => {
 
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Revenue Projection Chart */}
+        {/* Revenue Projections Chart */}
         <div className="bg-white rounded-lg shadow border p-6">
           <h3 className="text-lg font-semibold mb-4">Revenue Projections</h3>
           <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={revenueData}>
+            <LineChart data={revenueProjections}>
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="year" />
+              <XAxis dataKey="month" angle={-45} textAnchor="end" height={60} />
               <YAxis />
-              <Tooltip formatter={(value) => [`$${value.toFixed(1)}M`, '']} />
+              <Tooltip formatter={(value) => [`$${value.toFixed(2)}M`, '']} />
               <Legend />
               <Line 
                 type="monotone" 
-                dataKey="solarRevenue" 
-                stroke="#EAB308" 
-                strokeWidth={2}
-                name="Solar Revenue"
-              />
-              <Line 
-                type="monotone" 
-                dataKey="windRevenue" 
-                stroke="#3B82F6" 
-                strokeWidth={2}
-                name="Wind Revenue"
-              />
-              <Line 
-                type="monotone" 
-                dataKey="batteryRevenue" 
+                dataKey="totalRevenue" 
                 stroke="#10B981" 
                 strokeWidth={2}
-                name="Battery Revenue"
-              />
-              <Line 
-                type="monotone" 
-                dataKey="totalRevenue" 
-                stroke="#6366F1" 
-                strokeWidth={3}
                 name="Total Revenue"
               />
             </LineChart>
           </ResponsiveContainer>
         </div>
 
-        {/* Market Price Curves */}
+        {/* Market Price Chart */}
         <div className="bg-white rounded-lg shadow border p-6">
-          <h3 className="text-lg font-semibold mb-4">Market Price Curves</h3>
+          <h3 className="text-lg font-semibold mb-4">Market Prices</h3>
           <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={marketPrices}>
+            <LineChart data={revenueProjections}>
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="year" />
+              <XAxis dataKey="month" angle={-45} textAnchor="end" height={60} />
               <YAxis />
-              <Tooltip formatter={(value) => [`$${value}/MWh`, '']} />
+              <Tooltip formatter={(value) => [`$${value.toFixed(0)}/MWh`, '']} />
               <Legend />
               <Line 
                 type="monotone" 
-                dataKey="baseload" 
-                stroke="#6B7280" 
-                strokeWidth={2}
-                name="Baseload"
-              />
-              <Line 
-                type="monotone" 
-                dataKey="solar" 
-                stroke="#EAB308" 
-                strokeWidth={2}
-                name="Solar"
-              />
-              <Line 
-                type="monotone" 
-                dataKey="wind" 
+                dataKey="averagePrice" 
                 stroke="#3B82F6" 
                 strokeWidth={2}
-                name="Wind"
-              />
-              <Line 
-                type="monotone" 
-                dataKey="green" 
-                stroke="#10B981" 
-                strokeWidth={2}
-                name="Green Premium"
+                name="Average Price"
               />
             </LineChart>
           </ResponsiveContainer>
         </div>
       </div>
 
-      {/* Cash Flow Analysis */}
-      <div className="bg-white rounded-lg shadow border p-6">
-        <h3 className="text-lg font-semibold mb-4">20-Year Cash Flow Projection</h3>
-        <ResponsiveContainer width="100%" height={400}>
-          <AreaChart data={cashFlowData}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="year" />
-            <YAxis />
-            <Tooltip formatter={(value) => [`$${value.toFixed(1)}M`, '']} />
-            <Legend />
-            <Area 
-              type="monotone" 
-              dataKey="revenue" 
-              stackId="1"
-              stroke="#10B981" 
-              fill="#10B981"
-              fillOpacity={0.6}
-              name="Revenue"
-            />
-            <Area 
-              type="monotone" 
-              dataKey="opex" 
-              stackId="2"
-              stroke="#EF4444" 
-              fill="#EF4444"
-              fillOpacity={0.6}
-              name="OPEX"
-            />
-            <Line 
-              type="monotone" 
-              dataKey="netCashFlow" 
-              stroke="#6366F1" 
-              strokeWidth={3}
-              name="Net Cash Flow"
-            />
-          </AreaChart>
-        </ResponsiveContainer>
-      </div>
+      {/* Asset Revenue Breakdown */}
+      {revenueProjections.length > 0 && (
+        <div className="bg-white rounded-lg shadow border p-6">
+          <h3 className="text-lg font-semibold mb-4">Asset Revenue Breakdown</h3>
+          <ResponsiveContainer width="100%" height={400}>
+            <BarChart data={revenueProjections.slice(0, 12)}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="month" angle={-45} textAnchor="end" height={60} />
+              <YAxis />
+              <Tooltip formatter={(value) => [`$${value.toFixed(2)}M`, '']} />
+              <Legend />
+              {assets.map((asset, index) => (
+                <Bar
+                  key={asset.id}
+                  dataKey={`assetRevenues.${asset.id}`}
+                  stackId="assets"
+                  fill={`hsl(${index * 60}, 70%, 50%)`}
+                  name={asset.name}
+                />
+              ))}
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
 
-      {/* Asset Breakdown Table */}
+      {/* Asset Details Table */}
       <div className="bg-white rounded-lg shadow border p-6">
-        <h3 className="text-lg font-semibold mb-4">Asset Revenue Breakdown (2024)</h3>
+        <h3 className="text-lg font-semibold mb-4">Asset Portfolio Details</h3>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b">
                 <th className="text-left py-2">Asset</th>
+                <th className="text-right py-2">Type</th>
                 <th className="text-right py-2">Capacity (MW)</th>
-                <th className="text-right py-2">Generation (GWh)</th>
-                <th className="text-right py-2">Price ($/MWh)</th>
-                <th className="text-right py-2">Revenue ($M)</th>
-                <th className="text-right py-2">% of Total</th>
+                <th className="text-right py-2">Region</th>
+                <th className="text-right py-2">Contract Type</th>
+                <th className="text-right py-2">Total Revenue ($M)</th>
+                <th className="text-right py-2">Avg Monthly ($M)</th>
               </tr>
             </thead>
             <tbody>
-              {assets.filter(a => a.type !== 'portfolio').map(asset => {
-                const generation = asset.capacity * getCapacityFactor(asset.type) * 8.76;
-                const price = getMarketPrice(2024) * (asset.type === 'solar' ? 0.85 : asset.type === 'wind' ? 0.95 : 1.2);
-                const revenue = generation * price / 1000;
-                const percentage = (revenue / currentYearRevenue) * 100;
+              {assets.map(asset => {
+                const totalAssetRevenue = revenueProjections.reduce(
+                  (sum, proj) => sum + (proj.assetRevenues[asset.id] || 0), 0
+                );
+                const avgMonthlyAssetRevenue = revenueProjections.length > 0 
+                  ? totalAssetRevenue / revenueProjections.length 
+                  : 0;
                 
                 return (
                   <tr key={asset.id} className="border-b">
@@ -426,11 +502,12 @@ const RevenueAnalysis = () => {
                         <span>{asset.name}</span>
                       </div>
                     </td>
+                    <td className="text-right py-2 capitalize">{asset.type}</td>
                     <td className="text-right py-2">{asset.capacity}</td>
-                    <td className="text-right py-2">{generation.toFixed(1)}</td>
-                    <td className="text-right py-2">${price.toFixed(0)}</td>
-                    <td className="text-right py-2">${revenue.toFixed(1)}</td>
-                    <td className="text-right py-2">{percentage.toFixed(1)}%</td>
+                    <td className="text-right py-2">{asset.region || selectedRegion}</td>
+                    <td className="text-right py-2">{asset.contractType || 'Energy'}</td>
+                    <td className="text-right py-2">${totalAssetRevenue.toFixed(2)}</td>
+                    <td className="text-right py-2">${avgMonthlyAssetRevenue.toFixed(2)}</td>
                   </tr>
                 );
               })}
@@ -438,8 +515,23 @@ const RevenueAnalysis = () => {
           </table>
         </div>
       </div>
+
+      {/* Status */}
+      {revenueProjections.length > 0 && (
+        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+              <span className="text-green-800 font-medium">
+                Market data loaded successfully - {revenueProjections.length} data points across {assets.length} assets
+              </span>
+            </div>
+            <div className="text-green-600 text-sm">
+              Last updated: {new Date().toLocaleString()}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
-};
-
-export default RevenueAnalysis;
+}
