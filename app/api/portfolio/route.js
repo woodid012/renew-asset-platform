@@ -8,70 +8,31 @@ export async function GET(request) {
     const db = client.db('energy_contracts') // Using your existing database name
     
     const { searchParams } = new URL(request.url)
-    const userId = searchParams.get('userId')
-    const portfolioId = searchParams.get('portfolioId')
+    const userId = searchParams.get('userId') || '6853b044dd2ecce8ba519ba5'
+    const portfolioId = searchParams.get('portfolioId') || 'zebre'
     
-    // Build query - if no specific portfolio, get the active one
-    let query = {}
-    if (userId) {
-      query.userId = userId
-    }
-    if (portfolioId) {
-      query.portfolioId = portfolioId
-    }
+    // Get portfolio from your existing collection
+    const portfolio = await db.collection('portfolios').findOne({
+      userId: userId,
+      portfolioId: portfolioId
+    })
     
-    // Get portfolio(s) from your existing collection
-    const portfolios = await db.collection('portfolios').find(query).toArray()
-    
-    if (portfolios.length === 0) {
-      return NextResponse.json({ error: 'No portfolios found' }, { status: 404 })
+    if (!portfolio) {
+      return NextResponse.json({ error: 'Portfolio not found' }, { status: 404 })
     }
     
-    // Use the first portfolio (or specific one if portfolioId provided)
-    const portfolio = portfolios[0]
-    
-    // Extract assets from the portfolio structure
-    const assets = portfolio.assets || {}
-    const assetArray = Object.values(assets).filter(asset => asset && asset.name)
-    
-    // Calculate portfolio metrics
-    const totalCapacity = assetArray.reduce((sum, asset) => sum + (parseFloat(asset.capacity) || 0), 0)
-    const totalProjects = assetArray.length
-    
-    // Calculate total revenue (based on asset data)
-    const totalRevenue = assetArray.reduce((sum, asset) => {
-      const capacityFactor = getCapacityFactor(asset.type)
-      const price = parseFloat(asset.ppaPrice) || 65 // Default price if no PPA
-      const capacity = parseFloat(asset.capacity) || 0
-      const annualGeneration = capacity * capacityFactor * 8760 / 1000 // MWh
-      const revenue = annualGeneration * price / 1000000 // Convert to millions
-      return sum + revenue
-    }, 0)
-    
-    // Calculate weighted average IRR
-    const totalCapex = assetArray.reduce((sum, asset) => sum + (parseFloat(asset.totalCapex) || 0), 0)
-    const avgIRR = totalCapex > 0 ? (totalRevenue / totalCapex) * 100 * 0.75 : 0 // Simplified IRR calc
-    
-    // Format asset data for dashboard
-    const portfolioAssets = assetArray.map(asset => ({
-      name: asset.name,
-      type: asset.type || 'solar',
-      capacity: parseFloat(asset.capacity) || 0,
-      status: asset.status || 'planning',
-      location: asset.location || 'Australia'
-    }))
-    
+    // Return the full portfolio structure
     const portfolioData = {
+      version: portfolio.version || '2.0',
+      portfolioName: portfolio.portfolioName || 'Portfolio',
       portfolioId: portfolio.portfolioId,
-      portfolioName: portfolio.portfolioName,
-      totalCapacity: Math.round(totalCapacity * 10) / 10,
-      totalProjects,
-      totalRevenue: Math.round(totalRevenue * 100) / 100,
-      irr: Math.round(avgIRR * 10) / 10,
-      assets: portfolioAssets,
-      analysisMode: portfolio.analysisMode,
-      priceSource: portfolio.priceSource,
-      lastUpdated: portfolio.lastUpdated || portfolio.updatedAt
+      userId: portfolio.userId,
+      assets: portfolio.assets || {},
+      constants: portfolio.constants || {},
+      analysisMode: portfolio.analysisMode || 'simple',
+      priceSource: portfolio.priceSource || 'merchant_price_monthly.csv',
+      lastUpdated: portfolio.lastUpdated,
+      createdAt: portfolio.createdAt
     }
     
     return NextResponse.json(portfolioData)
@@ -85,13 +46,117 @@ export async function GET(request) {
   }
 }
 
-// Helper function to get capacity factor by asset type
-function getCapacityFactor(assetType) {
-  switch (assetType?.toLowerCase()) {
-    case 'solar': return 0.25
-    case 'wind': return 0.35
-    case 'battery': return 0.15
-    case 'hybrid': return 0.30
-    default: return 0.25
+// POST - Create or update portfolio
+export async function POST(request) {
+  try {
+    const client = await clientPromise
+    const db = client.db('energy_contracts')
+    
+    const portfolioData = await request.json()
+    
+    // Use defaults if not provided
+    const userId = portfolioData.userId || '6853b044dd2ecce8ba519ba5'
+    const portfolioId = portfolioData.portfolioId || 'zebre'
+    
+    // Validate portfolio structure
+    if (!portfolioData.assets && !portfolioData.portfolioName) {
+      return NextResponse.json(
+        { error: 'Invalid portfolio data structure' },
+        { status: 400 }
+      )
+    }
+    
+    // Prepare the portfolio document
+    const portfolioDoc = {
+      userId,
+      portfolioId,
+      portfolioName: portfolioData.portfolioName || 'Portfolio',
+      version: portfolioData.version || '2.0',
+      assets: portfolioData.assets || {},
+      constants: portfolioData.constants || {},
+      analysisMode: portfolioData.analysisMode || 'simple',
+      activePortfolio: portfolioData.activePortfolio || portfolioId,
+      portfolioSource: portfolioData.portfolioSource,
+      priceSource: portfolioData.priceSource || 'merchant_price_monthly.csv',
+      lastUpdated: new Date(),
+      exportDate: portfolioData.exportDate
+    }
+    
+    // Check if portfolio exists
+    const existingPortfolio = await db.collection('portfolios').findOne({
+      userId: userId,
+      portfolioId: portfolioId
+    })
+    
+    let result
+    if (existingPortfolio) {
+      // Update existing portfolio
+      portfolioDoc.createdAt = existingPortfolio.createdAt
+      result = await db.collection('portfolios').updateOne(
+        { userId, portfolioId },
+        { $set: portfolioDoc }
+      )
+    } else {
+      // Create new portfolio
+      portfolioDoc.createdAt = new Date()
+      result = await db.collection('portfolios').insertOne(portfolioDoc)
+    }
+    
+    if (!result.acknowledged && !result.matchedCount) {
+      return NextResponse.json(
+        { error: 'Failed to save portfolio' },
+        { status: 500 }
+      )
+    }
+    
+    return NextResponse.json({
+      success: true,
+      portfolioId,
+      message: existingPortfolio ? 'Portfolio updated successfully' : 'Portfolio created successfully',
+      lastUpdated: portfolioDoc.lastUpdated
+    }, { status: existingPortfolio ? 200 : 201 })
+    
+  } catch (error) {
+    console.error('Portfolio POST error:', error)
+    return NextResponse.json(
+      { error: 'Failed to save portfolio' },
+      { status: 500 }
+    )
+  }
+}
+
+// DELETE - Remove portfolio
+export async function DELETE(request) {
+  try {
+    const client = await clientPromise
+    const db = client.db('energy_contracts')
+    
+    const { searchParams } = new URL(request.url)
+    const userId = searchParams.get('userId') || '6853b044dd2ecce8ba519ba5'
+    const portfolioId = searchParams.get('portfolioId') || 'zebre'
+    
+    const result = await db.collection('portfolios').deleteOne({
+      userId: userId,
+      portfolioId: portfolioId
+    })
+    
+    if (result.deletedCount === 0) {
+      return NextResponse.json(
+        { error: 'Portfolio not found' },
+        { status: 404 }
+      )
+    }
+    
+    return NextResponse.json({
+      success: true,
+      message: 'Portfolio deleted successfully'
+    })
+    
+  } catch (error) {
+    console.error('Portfolio DELETE error:', error)
+    return NextResponse.json(
+      { error: 'Failed to delete portfolio' },
+      { status: 500 }
+    )
   }
 }
