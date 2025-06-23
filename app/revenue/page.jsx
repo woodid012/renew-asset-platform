@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useUser } from '../contexts/UserContext';
+import { useMerchantPrices } from '@/app/contexts/MerchantPriceProvider';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar, AreaChart, Area } from 'recharts';
 import { 
   TrendingUp, 
@@ -32,6 +33,7 @@ import {
 
 export default function IntegratedRevenuePage() {
   const { currentUser, currentPortfolio } = useUser();
+  const { getMerchantPrice } = useMerchantPrices();
   
   // State management
   const [assets, setAssets] = useState({});
@@ -91,8 +93,8 @@ export default function IntegratedRevenuePage() {
           volumeVariation: portfolioData.constants?.volumeVariation || 20,
           greenPriceVariation: portfolioData.constants?.greenPriceVariation || 20,
           EnergyPriceVariation: portfolioData.constants?.EnergyPriceVariation || 20,
-          escalation: 2.5,
-          referenceYear: new Date().getFullYear()
+          escalation: 2.5, // Hardcoded for now
+          referenceYear: 2025 // Hardcoded for now
         });
         setPortfolioName(portfolioData.portfolioName || 'Portfolio');
         
@@ -106,26 +108,6 @@ export default function IntegratedRevenuePage() {
     } finally {
       setLoading(false);
     }
-  };
-
-  // Mock merchant price function - replace with your actual price curves API
-  const getMerchantPrice = (assetType, priceType, state, timeInterval) => {
-    // This should connect to your price curves API
-    // For now, using mock prices with some variation
-    const basePrices = {
-      solar: { green: 35, Energy: 65 },
-      wind: { green: 35, Energy: 65 },
-      storage: { Energy: 80, 0.5: 15, 1: 20, 2: 25, 4: 35 }
-    };
-    
-    // Add some year-based variation
-    const year = typeof timeInterval === 'string' && timeInterval.includes('/') ? 
-      parseInt(timeInterval.split('/')[2]) : 
-      parseInt(timeInterval);
-      
-    const yearMultiplier = 1 + (year - 2025) * 0.02; // 2% annual growth
-    
-    return (basePrices[assetType]?.[priceType] || 50) * yearMultiplier;
   };
 
   const calculateRevenueProjections = () => {

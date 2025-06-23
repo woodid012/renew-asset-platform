@@ -5,7 +5,8 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { UserProvider } from './contexts/UserContext'
-import UserSelector from './components/UserSelector' // <-- CORRECTED PATH
+import { MerchantPriceProvider } from './contexts/MerchantPriceProvider' // Fixed import path
+import UserSelector from './components/UserSelector'
 import { 
   Building2, 
   Home, 
@@ -200,9 +201,11 @@ export default function RootLayout({ children }) {
       </head>
       <body className="bg-gray-50">
         <UserProvider>
-          <LayoutContent>
-            {children}
-          </LayoutContent>
+          <MerchantPriceProvider>
+            <LayoutContent>
+              {children}
+            </LayoutContent>
+          </MerchantPriceProvider>
         </UserProvider>
       </body>
     </html>

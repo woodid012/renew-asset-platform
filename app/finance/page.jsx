@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useUser } from '../contexts/UserContext';
+import { useMerchantPrices } from '@/app/contexts/MerchantPriceProvider';
 import { 
   PieChart, 
   Pie, 
@@ -32,7 +33,8 @@ import {
   Settings,
   Download,
   RefreshCw,
-  Zap
+  Zap,
+  Plus
 } from 'lucide-react';
 
 // Import revenue calculation functions
@@ -40,6 +42,7 @@ import { calculateAssetRevenue, calculateStressRevenue } from '@/lib/revenueCalc
 
 const ProjectFinance = () => {
   const { currentUser, currentPortfolio } = useUser();
+
   
   // State management
   const [assets, setAssets] = useState({});
