@@ -1,4 +1,7 @@
 // MerchantPriceProvider.jsx
+
+'use client'
+
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import Papa from 'papaparse';
 import _ from 'lodash';

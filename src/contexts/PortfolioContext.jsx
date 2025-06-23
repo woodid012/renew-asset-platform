@@ -1,4 +1,7 @@
 // src/contexts/PortfolioContext.jsx - Updated for MongoDB
+
+'use client'
+
 import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
 import Papa from 'papaparse';
 import _ from 'lodash';

@@ -1,3 +1,4 @@
+'use client'
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { usePortfolio } from '@/contexts/PortfolioContext';
 import { useEarAnalysis } from '@/components/EarCalculations';

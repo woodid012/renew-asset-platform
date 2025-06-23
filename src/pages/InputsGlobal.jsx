@@ -1,3 +1,5 @@
+'use client'
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -13,6 +15,7 @@ import {
   DEFAULT_PRICE_SETTINGS,
   UI_CONSTANTS
 } from '@/lib/default_constants';
+
 
 // PriceChart Component (previously separate)
 const PriceChart = () => {

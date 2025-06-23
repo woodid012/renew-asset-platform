@@ -1,4 +1,8 @@
 // src/contexts/ScenarioContext.jsx - Enhanced with Global Integration
+
+'use client'
+
+
 import React, { createContext, useContext, useState, useCallback } from 'react';
 
 const ScenarioContext = createContext();

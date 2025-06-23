@@ -1,3 +1,4 @@
+'use client'
 // src/pages/ScenarioManager.jsx - Updated Scenario Manager with Global Context
 import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';

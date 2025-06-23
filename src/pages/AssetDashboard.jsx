@@ -1,3 +1,4 @@
+'use client'
 // pages/AssetDashboard.jsx
 import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
