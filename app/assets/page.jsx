@@ -18,8 +18,7 @@ import {
   Settings,
   TrendingUp,
   Copy,
-  Upload,
-  Download
+  Upload
 } from 'lucide-react';
 
 const EnhancedAssetManagement = () => {
@@ -44,17 +43,11 @@ const EnhancedAssetManagement = () => {
     constructionStartDate: '',
     constructionDuration: 18,
     assetStartDate: '',
-    
-    // Performance factors
     qtrCapacityFactor_q1: '',
     qtrCapacityFactor_q2: '',
     qtrCapacityFactor_q3: '',
     qtrCapacityFactor_q4: '',
-    
-    // Storage specific
     volume: '',
-    
-    // Contracts array
     contracts: []
   });
 
@@ -70,30 +63,42 @@ const EnhancedAssetManagement = () => {
     
     setLoading(true);
     try {
+      console.log(`Loading portfolio: userId=${currentUser.id}, portfolioId=${currentPortfolio.portfolioId}`);
+      
       const response = await fetch(`/api/portfolio?userId=${currentUser.id}&portfolioId=${currentPortfolio.portfolioId}`);
+      
       if (response.ok) {
         const portfolioData = await response.json();
+        console.log('Portfolio data loaded:', {
+          assetsCount: Object.keys(portfolioData.assets || {}).length,
+          portfolioName: portfolioData.portfolioName,
+          version: portfolioData.version
+        });
+        
         setAssets(portfolioData.assets || {});
         setConstants(portfolioData.constants || {});
         setPortfolioName(portfolioData.portfolioName || 'Portfolio Name');
+        
       } else if (response.status === 404) {
-        // Portfolio doesn't exist, start fresh
-        console.log('Creating new portfolio');
+        console.log('Portfolio not found, starting fresh');
         setAssets({});
         setConstants({});
         setPortfolioName(currentPortfolio.portfolioName || 'Portfolio Name');
       } else {
-        console.error('Failed to load portfolio');
+        console.error('Failed to load portfolio, status:', response.status);
       }
     } catch (error) {
       console.error('Error loading portfolio:', error);
+      setAssets({});
+      setConstants({});
+      setPortfolioName('Portfolio Name');
     } finally {
       setLoading(false);
     }
   };
 
   const savePortfolioData = async () => {
-    if (!currentUser || !currentPortfolio) return;
+    if (!currentUser || !currentPortfolio) return false;
     
     try {
       const portfolioData = {
@@ -108,29 +113,36 @@ const EnhancedAssetManagement = () => {
         exportDate: new Date().toISOString()
       };
 
+      console.log('Saving portfolio:', {
+        userId: portfolioData.userId,
+        portfolioId: portfolioData.portfolioId,
+        assetsCount: Object.keys(portfolioData.assets || {}).length,
+        portfolioName: portfolioData.portfolioName
+      });
+
       const response = await fetch('/api/portfolio', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(portfolioData),
       });
 
       if (response.ok) {
-        console.log('Portfolio saved successfully');
+        const result = await response.json();
+        console.log('Portfolio saved successfully:', result);
+        return true;
       } else {
-        console.error('Failed to save portfolio');
+        const errorData = await response.json();
+        console.error('Failed to save portfolio:', errorData);
+        return false;
       }
     } catch (error) {
       console.error('Error saving portfolio:', error);
+      return false;
     }
   };
 
   const handleInputChange = (field, value) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
+    setFormData(prev => ({ ...prev, [field]: value }));
   };
 
   const handleContractChange = (contractIndex, field, value) => {
@@ -178,7 +190,6 @@ const EnhancedAssetManagement = () => {
       let updatedAssets;
 
       if (editingAsset) {
-        // Update existing asset
         assetId = editingAsset.id;
         updatedAssets = {
           ...assets,
@@ -189,7 +200,6 @@ const EnhancedAssetManagement = () => {
           }
         };
       } else {
-        // Create new asset - find next available ID
         const existingIds = Object.keys(assets).map(id => parseInt(id)).filter(id => !isNaN(id));
         assetId = existingIds.length > 0 ? Math.max(...existingIds) + 1 : 1;
         
@@ -206,7 +216,6 @@ const EnhancedAssetManagement = () => {
 
       setAssets(updatedAssets);
       
-      // Initialize asset costs if needed
       if (!constants.assetCosts) {
         setConstants(prev => ({ ...prev, assetCosts: {} }));
       }
@@ -275,7 +284,6 @@ const EnhancedAssetManagement = () => {
       delete updatedAssets[assetId];
       setAssets(updatedAssets);
       
-      // Also remove from asset costs
       if (constants.assetCosts && assets[assetId]) {
         const updatedConstants = { ...constants };
         delete updatedConstants.assetCosts[assets[assetId].name];
@@ -300,27 +308,6 @@ const EnhancedAssetManagement = () => {
     setShowForm(true);
   };
 
-  const exportPortfolio = () => {
-    const exportData = {
-      version: '2.0',
-      exportDate: new Date().toISOString(),
-      portfolioName,
-      assets,
-      constants,
-      analysisMode: 'simple',
-      activePortfolio: currentPortfolio?.portfolioId,
-      priceSource: 'merchant_price_monthly.csv'
-    };
-
-    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${portfolioName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
   const handleImportFile = async (event) => {
     const file = event.target.files[0];
     if (!file) return;
@@ -336,17 +323,16 @@ const EnhancedAssetManagement = () => {
       const fileContent = await file.text();
       const importData = JSON.parse(fileContent);
       
-      // Validate the import data structure
       if (!importData.assets || !importData.version) {
         throw new Error('Invalid portfolio file format');
       }
 
-      // Update local state
-      setAssets(importData.assets || {});
-      setConstants(importData.constants || {});
-      setPortfolioName(importData.portfolioName || 'Imported Portfolio');
+      console.log('Importing data:', {
+        assetsCount: Object.keys(importData.assets || {}).length,
+        portfolioName: importData.portfolioName,
+        version: importData.version
+      });
 
-      // Save to MongoDB using correct API structure
       const portfolioData = {
         userId: currentUser.id,
         portfolioId: currentPortfolio.portfolioId,
@@ -361,29 +347,41 @@ const EnhancedAssetManagement = () => {
         exportDate: importData.exportDate || new Date().toISOString()
       };
 
+      console.log('Saving portfolio data:', portfolioData);
+
       const response = await fetch('/api/portfolio', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(portfolioData),
       });
 
-      if (response.ok) {
-        alert(`Portfolio imported successfully!\n\n` +
-              `• ${Object.keys(importData.assets || {}).length} assets loaded\n` +
-              `• Portfolio name: ${importData.portfolioName || 'Imported Portfolio'}\n` +
-              `• Data saved to MongoDB`);
-      } else {
-        throw new Error('Failed to save portfolio to database');
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to save portfolio to database');
       }
+
+      const saveResult = await response.json();
+      console.log('Portfolio saved successfully:', saveResult);
+
+      setAssets(importData.assets || {});
+      setConstants(importData.constants || {});
+      setPortfolioName(importData.portfolioName || 'Imported Portfolio');
+
+      alert(`Portfolio imported and saved successfully!\n\n` +
+            `• ${Object.keys(importData.assets || {}).length} assets loaded\n` +
+            `• Portfolio name: ${importData.portfolioName || 'Imported Portfolio'}\n` +
+            `• Data saved to database`);
 
     } catch (error) {
       console.error('Import error:', error);
       alert(`Import failed: ${error.message}`);
+      
+      if (currentUser && currentPortfolio) {
+        console.log('Reloading existing portfolio data...');
+        loadPortfolioData();
+      }
     } finally {
       setImporting(false);
-      // Reset the file input
       event.target.value = '';
     }
   };
@@ -459,7 +457,7 @@ const EnhancedAssetManagement = () => {
             ${calculateTotalValue().toFixed(1)}M CAPEX
           </p>
           <p className="text-sm text-gray-500">
-            User: {currentUser.name} • Portfolio: {currentPortfolio.portfolioName}
+            User: {currentUser.name} • Portfolio: {currentPortfolio.portfolioId}
           </p>
         </div>
         <div className="flex space-x-3">
@@ -470,13 +468,6 @@ const EnhancedAssetManagement = () => {
           >
             <Upload className="w-4 h-4" />
             <span>{importing ? 'Importing...' : 'Import'}</span>
-          </button>
-          <button
-            onClick={exportPortfolio}
-            className="bg-gray-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2 hover:bg-gray-700"
-          >
-            <Download className="w-4 h-4" />
-            <span>Export</span>
           </button>
           <button
             onClick={() => setShowForm(true)}
