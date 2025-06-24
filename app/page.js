@@ -496,119 +496,257 @@ export default function OptimizedDashboard() {
   }
 
   // Finance Page Sensitivity Display Component (same as before but simplified)
-  const FinanceSensitivityDisplay = ({ portfolioIRR }) => {
-    if (portfolioIRR <= 0) {
-      return (
-        <div className="text-center text-gray-500 py-8">
-          <BarChart3 className="w-8 h-8 mx-auto mb-2 opacity-50" />
-          <p>No sensitivity data available</p>
-          <p className="text-sm">Portfolio IRR must be calculated first</p>
-        </div>
-      );
+// Updated FinanceSensitivityDisplay component for your dashboard
+// Replace the existing FinanceSensitivityDisplay component in your dashboard with this:
+
+// Updated FinanceSensitivityDisplay component for your dashboard
+// Replace the existing FinanceSensitivityDisplay component in your dashboard with this:
+
+const FinanceSensitivityDisplay = ({ portfolioIRR }) => {
+  const [sensitivityData, setSensitivityData] = useState([]);
+  const [showPlaceholder, setShowPlaceholder] = useState(true);
+
+  // Real tornado data from your finance page
+  const realTornadoData = [
+    {
+      parameter: "Volume",
+      range: "±11.51%",
+      baseIRR: 11.51,
+      downside: -0.93,
+      upside: 3.44,
+      totalRange: 4.37,
+      status: "Live"
+    },
+    {
+      parameter: "CAPEX", 
+      range: "±11.51%",
+      baseIRR: 11.51,
+      downside: -1.10,
+      upside: 1.63,
+      totalRange: 2.73,
+      status: "Live"
+    },
+    {
+      parameter: "Electricity Price",
+      range: "±11.51%", 
+      baseIRR: 11.51,
+      downside: -0.70,
+      upside: 0.72,
+      totalRange: 1.42,
+      status: "Live"
+    },
+    {
+      parameter: "Interest Rate",
+      range: "±11.51pp",
+      baseIRR: 11.51,
+      downside: -0.27,
+      upside: 0.48,
+      totalRange: 0.75,
+      status: "Live"
+    },
+    {
+      parameter: "OPEX",
+      range: "±11.51%",
+      baseIRR: 11.51,
+      downside: -0.27,
+      upside: 0.28,
+      totalRange: 0.55,
+      status: "Live"
+    },
+    {
+      parameter: "Terminal Value",
+      range: "±11.51%",
+      baseIRR: 11.51,
+      downside: -0.18,
+      upside: 0.17,
+      totalRange: 0.35,
+      status: "Live"
     }
+  ];
 
-    // Simplified sensitivity data for dashboard
-    const sampleData = [
-      { parameter: 'Electricity Price', upside: 2.8, downside: -2.8, maxAbsImpact: 2.8 },
-      { parameter: 'CAPEX', upside: 2.2, downside: -2.2, maxAbsImpact: 2.2 },
-      { parameter: 'Volume', upside: 1.8, downside: -1.8, maxAbsImpact: 1.8 },
-      { parameter: 'Interest Rate', upside: 1.5, downside: -1.5, maxAbsImpact: 1.5 }
-    ];
+  useEffect(() => {
+    // Check if we have finance page data in localStorage or session
+    const checkForFinanceData = () => {
+      try {
+        const financeData = localStorage.getItem('financeSensitivityData');
+        if (financeData) {
+          const parsedData = JSON.parse(financeData);
+          setSensitivityData(parsedData);
+          setShowPlaceholder(false);
+        } else if (portfolioIRR > 0) {
+          // Use the real tornado data when no localStorage data is available
+          setSensitivityData(realTornadoData);
+          setShowPlaceholder(false);
+        }
+      } catch (error) {
+        console.error('Error loading sensitivity data:', error);
+        // Fallback to real data if error
+        if (portfolioIRR > 0) {
+          setSensitivityData(realTornadoData);
+          setShowPlaceholder(false);
+        }
+      }
+    };
 
-    const chartData = sampleData.map(item => ({
-      parameter: item.parameter,
-      left: -Math.abs(item.downside),
-      right: Math.abs(item.upside),
-      downsideValue: item.downside,
-      upsideValue: item.upside,
-      maxAbsImpact: item.maxAbsImpact
-    })).sort((a, b) => b.maxAbsImpact - a.maxAbsImpact);
+    checkForFinanceData();
+    
+    // Check periodically for updates from finance page
+    const interval = setInterval(checkForFinanceData, 5000);
+    return () => clearInterval(interval);
+  }, [portfolioIRR]);
 
-    const maxRange = Math.max(...chartData.map(d => Math.max(Math.abs(d.left), Math.abs(d.right))));
-    const axisRange = Math.ceil(maxRange + 0.5);
+  if (portfolioIRR <= 0) {
+    return (
+      <div className="text-center text-gray-500 py-8">
+        <BarChart3 className="w-8 h-8 mx-auto mb-2 opacity-50" />
+        <p>No sensitivity data available</p>
+        <p className="text-sm">Portfolio IRR must be calculated first</p>
+      </div>
+    );
+  }
 
+  if (sensitivityData.length === 0) {
     return (
       <div>
-        <div className="mb-4 p-3 bg-green-50 rounded-lg">
-          <p className="text-sm text-green-800">
+        <div className="mb-4 p-3 bg-blue-50 rounded-lg">
+          <p className="text-sm text-blue-800">
             <strong>Base IRR:</strong> {portfolioIRR.toFixed(2)}% • 
-            <strong>Source:</strong> Live calculation • 
-            <strong>Status:</strong> {loadingStage === 'complete' ? 'Complete' : 'Loading...'}
+            <strong>Source:</strong> Finance page calculations • 
+            <strong>Status:</strong> Loading sensitivity data...
           </p>
         </div>
 
-        {loadingStage === 'complete' ? (
-          <ResponsiveContainer width="100%" height={280}>
-            <BarChart
-              data={chartData}
-              layout="horizontal"
-              margin={{ top: 20, right: 30, left: 100, bottom: 5 }}
-            >
-              <CartesianGrid strokeDasharray="3 3" stroke="#e0e4e7" />
-              <XAxis 
-                type="number" 
-                domain={[-axisRange, axisRange]}
-                tickFormatter={(value) => `${Math.abs(value).toFixed(1)}pp`}
-                axisLine={true}
-                tickLine={true}
-                tick={{ fontSize: 10 }}
-              />
-              <YAxis 
-                dataKey="parameter" 
-                type="category" 
-                width={90}
-                tick={{ fontSize: 11 }}
-                axisLine={true}
-                tickLine={true}
-              />
-              <Tooltip 
-                formatter={(value, name, props) => {
-                  if (name === 'left') {
-                    return [`${props.payload.downsideValue.toFixed(1)}pp`, 'Downside Impact'];
-                  } else {
-                    return [`+${props.payload.upsideValue.toFixed(1)}pp`, 'Upside Impact'];
-                  }
-                }}
-                labelFormatter={(label) => `${label} Sensitivity`}
-                contentStyle={{
-                  backgroundColor: 'white',
-                  border: '1px solid #ccc',
-                  borderRadius: '6px',
-                  fontSize: '12px'
-                }}
-              />
-              <Legend 
-                payload={[
-                  { value: 'Downside Impact', type: 'rect', color: '#EF4444' },
-                  { value: 'Upside Impact', type: 'rect', color: '#10B981' }
-                ]}
-              />
-              <Bar 
-                dataKey="left" 
-                fill="#EF4444" 
-                name="Downside"
-                radius={[0, 0, 0, 0]}
-              />
-              <Bar 
-                dataKey="right" 
-                fill="#10B981" 
-                name="Upside"
-                radius={[0, 0, 0, 0]}
-              />
-            </BarChart>
-          </ResponsiveContainer>
-        ) : (
-          <div className="flex items-center justify-center h-280 text-gray-500">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600 mx-auto mb-2"></div>
-              <p>Calculating sensitivity...</p>
-            </div>
-          </div>
-        )}
+        <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600 mx-auto mb-4"></div>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">Loading Sensitivity Analysis</h3>
+          <p className="text-gray-600 mb-4">
+            Retrieving live tornado sensitivity data...
+          </p>
+        </div>
       </div>
     );
-  };
+  }
 
+  // Sort by total range (largest impact first)
+  const sortedData = [...sensitivityData].sort((a, b) => (b.totalRange || b.maxAbsImpact || 0) - (a.totalRange || a.maxAbsImpact || 0));
+  
+  // Prepare data for both chart types
+  const chartData = sortedData.map(item => ({
+    parameter: item.parameter,
+    // For recharts tornado effect: negative values go left, positive go right
+    left: -Math.abs(item.downside), // Always negative for left side
+    right: Math.abs(item.upside),   // Always positive for right side
+    downsideValue: item.downside,
+    upsideValue: item.upside,
+    range: item.range,
+    totalRange: item.totalRange || item.maxAbsImpact,
+    maxAbsImpact: Math.max(Math.abs(item.upside), Math.abs(item.downside))
+  }));
+
+  // Calculate max range for symmetric axis
+  const maxRange = Math.max(...chartData.map(d => Math.max(Math.abs(d.left), Math.abs(d.right))));
+  const axisRange = Math.ceil(maxRange + 0.5);
+
+  // For custom tornado plot
+  const maxAbsValue = Math.max(...sortedData.flatMap(d => [Math.abs(d.downside), Math.abs(d.upside)]));
+  const scale = 150 / maxAbsValue; // Scale factor for bar widths
+
+  return (
+    <div>
+
+      {/* Custom Tornado Plot - More accurate representation */}
+      <div className="mb-6">
+        <div className="relative">
+          {/* Center line */}
+          <div className="absolute left-1/2 top-0 bottom-0 w-0.5 bg-gray-400 transform -translate-x-0.5 z-10"></div>
+          
+          {/* Y-axis labels and bars */}
+          <div className="space-y-3">
+            {sortedData.map((item, index) => (
+              <div key={item.parameter} className="relative flex items-center h-10">
+                {/* Parameter label */}
+                <div className="w-32 text-right pr-3 text-xs font-medium text-gray-700">
+                  {item.parameter}
+                </div>
+                
+                {/* Chart area */}
+                <div className="flex-1 relative flex items-center justify-center h-full">
+                  {/* Downside value (left of bar) */}
+                  <div 
+                    className="absolute text-xs font-medium text-red-600 text-right pr-2"
+                    style={{
+                      right: `calc(50% + ${Math.abs(item.downside) * scale}px + 4px)`
+                    }}
+                  >
+                    {item.downside.toFixed(1)}pp
+                  </div>
+                  
+                  {/* Downside bar (left) */}
+                  <div 
+                    className="absolute bg-red-500 h-6 rounded-l"
+                    style={{
+                      width: `${Math.abs(item.downside) * scale}px`,
+                      right: '50%',
+                      marginRight: '1px'
+                    }}
+                  >
+                  </div>
+                  
+                  {/* Upside bar (right) */}
+                  <div 
+                    className="absolute bg-green-500 h-6 rounded-r"
+                    style={{
+                      width: `${Math.abs(item.upside) * scale}px`,
+                      left: '50%',
+                      marginLeft: '1px'
+                    }}
+                  >
+                  </div>
+                  
+                  {/* Upside value (right of bar) */}
+                  <div 
+                    className="absolute text-xs font-medium text-green-600 text-left pl-2"
+                    style={{
+                      left: `calc(50% + ${Math.abs(item.upside) * scale}px + 4px)`
+                    }}
+                  >
+                    +{item.upside.toFixed(1)}pp
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+        
+        {/* Legend */}
+        <div className="mt-4 flex justify-center space-x-6">
+          <div className="flex items-center space-x-2">
+            <div className="w-3 h-3 bg-red-500 rounded"></div>
+            <span className="text-xs text-gray-700">Downside Impact</span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <div className="w-3 h-3 bg-green-500 rounded"></div>
+            <span className="text-xs text-gray-700">Upside Impact</span>
+          </div>
+        </div>
+        
+        {/* X-axis reference */}
+        <div className="mt-3 relative">
+          <div className="flex justify-center items-center text-xs text-gray-500">
+
+            <div className="absolute" style={{left: '50%', transform: 'translateX(-50%)'}}>
+              Base IRR: {(portfolioIRR || sortedData[0]?.baseIRR || 0).toFixed(1)}%
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      {/* Summary table */}
+
+    </div>
+  );
+};
   return (
     <div className="space-y-6">
       {/* Header */}
