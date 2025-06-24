@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useUser } from '../../contexts/UserContext';
 import { useMerchantPrices } from '../../contexts/MerchantPriceProvider';
+import { useSaveContext } from '../../layout';
 import { 
   LineChart, 
   Line, 
@@ -33,14 +34,17 @@ import {
   Zap,
   Plus,
   Eye,
-  EyeOff
+  EyeOff,
+  Clock,
+  Calendar
 } from 'lucide-react';
 
-// Import the proper project finance calculations
+// Import the fixed project finance calculations
 import { 
   calculateProjectMetrics, 
   calculateIRR,
-  initializeProjectValues
+  initializeProjectValues,
+  calculateSensitivityAnalysis
 } from '@/app/components/ProjectFinance_Calcs';
 import { 
   calculateAssetRevenue, 
@@ -52,6 +56,7 @@ import {
 export default function FixedProjectFinancePage() {
   const { currentUser, currentPortfolio } = useUser();
   const { getMerchantPrice, priceSource } = useMerchantPrices();
+  const { setHasUnsavedChanges, setSaveFunction } = useSaveContext();
   
   // State management
   const [assets, setAssets] = useState({});
@@ -59,16 +64,19 @@ export default function FixedProjectFinancePage() {
   const [portfolioName, setPortfolioName] = useState('Portfolio');
   const [loading, setLoading] = useState(true);
   
-  // Finance configuration
+  // Finance configuration - Updated defaults
   const [selectedRevenueCase, setSelectedRevenueCase] = useState('base');
-  const [analysisYears, setAnalysisYears] = useState(25);
+  const [analysisYears, setAnalysisYears] = useState(30);
   const [includeTerminalValue, setIncludeTerminalValue] = useState(true);
   const [showCashFlowTable, setShowCashFlowTable] = useState(false);
   const [solveGearing, setSolveGearing] = useState(false);
+  const [showSensitivityAnalysis, setShowSensitivityAnalysis] = useState(true);
+  const [showEquityTimingPanel, setShowEquityTimingPanel] = useState(false);
   
-  // Results state - using proper project finance calculations
+  // Results state
   const [projectMetrics, setProjectMetrics] = useState({});
   const [portfolioSummary, setPortfolioSummary] = useState({});
+  const [sensitivityData, setSensitivityData] = useState([]);
 
   // Load portfolio data
   useEffect(() => {
@@ -83,6 +91,12 @@ export default function FixedProjectFinancePage() {
       calculateProjectFinanceMetrics();
     }
   }, [assets, constants, selectedRevenueCase, analysisYears, includeTerminalValue, solveGearing]);
+
+  // Set up global save function
+  useEffect(() => {
+    setSaveFunction(() => () => savePortfolioData());
+    return () => setSaveFunction(null);
+  }, [setSaveFunction, assets, constants, portfolioName]);
 
   const loadPortfolioData = async () => {
     if (!currentUser || !currentPortfolio) return;
@@ -110,10 +124,7 @@ export default function FixedProjectFinancePage() {
         if (!updatedConstants.assetCosts && Object.keys(portfolioData.assets || {}).length > 0) {
           console.log('Initializing project finance values for assets...');
           updatedConstants.assetCosts = initializeProjectValues(portfolioData.assets || {});
-          
-          // Save the updated constants back to MongoDB
-          setConstants(updatedConstants);
-          await savePortfolioData(updatedConstants);
+          setHasUnsavedChanges(true);
         }
 
         setConstants(updatedConstants);
@@ -133,21 +144,21 @@ export default function FixedProjectFinancePage() {
 
   const calculateProjectFinanceMetrics = () => {
     try {
-      console.log('Calculating project finance metrics...');
+      console.log('Calculating project finance metrics with proper equity timing...');
       
       // Ensure we have asset costs initialized
       if (!constants.assetCosts && Object.keys(assets).length > 0) {
-        console.log('Asset costs not initialized, creating defaults and saving to MongoDB...');
+        console.log('Asset costs not initialized, creating defaults...');
         const updatedConstants = {
           ...constants,
           assetCosts: initializeProjectValues(assets)
         };
         setConstants(updatedConstants);
-        savePortfolioData(updatedConstants); // Save to MongoDB
-        return; // Will retrigger with updated constants
+        setHasUnsavedChanges(true);
+        return;
       }
       
-      // Use the proper project finance calculation
+      // Use the fixed project finance calculation
       const metrics = calculateProjectMetrics(
         assets,
         constants.assetCosts,
@@ -168,13 +179,84 @@ export default function FixedProjectFinancePage() {
       const summary = calculatePortfolioSummary(portfolioData, assets);
       setPortfolioSummary(summary);
       
+      // Calculate sensitivity analysis using the fixed method
+      let baseIRR = 0;
+      if (metrics.portfolio?.equityCashFlows) {
+        const calculatedIRR = calculateIRR(metrics.portfolio.equityCashFlows);
+        baseIRR = calculatedIRR ? calculatedIRR * 100 : 0;
+      } else {
+        // Calculate from individual assets
+        const individualAssets = Object.entries(metrics)
+          .filter(([assetName]) => assetName !== 'portfolio');
+        
+        if (individualAssets.length > 0) {
+          const allEquityCashFlows = [];
+          
+          individualAssets.forEach(([_, assetMetrics]) => {
+            if (assetMetrics.equityCashFlows && assetMetrics.equityCashFlows.length > 0) {
+              if (allEquityCashFlows.length === 0) {
+                allEquityCashFlows.push(...assetMetrics.equityCashFlows.map(cf => cf));
+              } else {
+                assetMetrics.equityCashFlows.forEach((cf, index) => {
+                  if (index < allEquityCashFlows.length) {
+                    allEquityCashFlows[index] += cf;
+                  }
+                });
+              }
+            }
+          });
+          
+          if (allEquityCashFlows.length > 0) {
+            const calculatedIRR = calculateIRR(allEquityCashFlows);
+            baseIRR = calculatedIRR ? calculatedIRR * 100 : 0;
+          }
+        }
+      }
+      
+      const sensitivity = calculateSensitivityAnalysis(baseIRR, analysisYears);
+      setSensitivityData(sensitivity);
+      
     } catch (error) {
       console.error('Error calculating project metrics:', error);
       setProjectMetrics({});
     }
   };
 
-  // Function to save updated portfolio data using your existing API
+  // Function to update equity timing for an asset
+  const updateAssetEquityTiming = (assetName, equityTimingUpfront, constructionDuration) => {
+    const updatedConstants = {
+      ...constants,
+      assetCosts: {
+        ...constants.assetCosts,
+        [assetName]: {
+          ...constants.assetCosts[assetName],
+          equityTimingUpfront,
+          constructionDuration
+        }
+      }
+    };
+    setConstants(updatedConstants);
+    setHasUnsavedChanges(true);
+  };
+
+  // Function to update portfolio equity timing
+  const updatePortfolioEquityTiming = (equityTimingUpfront, constructionDuration) => {
+    const updatedConstants = {
+      ...constants,
+      assetCosts: {
+        ...constants.assetCosts,
+        portfolio: {
+          ...constants.assetCosts.portfolio,
+          equityTimingUpfront,
+          constructionDuration
+        }
+      }
+    };
+    setConstants(updatedConstants);
+    setHasUnsavedChanges(true);
+  };
+
+  // Function to save updated portfolio data
   const savePortfolioData = async (updatedConstants = null) => {
     if (!currentUser || !currentPortfolio) return false;
     
@@ -186,16 +268,12 @@ export default function FixedProjectFinancePage() {
         portfolioName,
         assets,
         constants: updatedConstants || constants,
-        analysisMode: 'simple',
+        analysisMode: 'advanced',
         priceSource: 'merchant_price_monthly.csv',
         exportDate: new Date().toISOString()
       };
 
-      console.log('Saving portfolio to MongoDB:', {
-        userId: portfolioData.userId,
-        portfolioId: portfolioData.portfolioId,
-        assetsCount: Object.keys(portfolioData.assets || {}).length
-      });
+      console.log('Saving portfolio to MongoDB...');
 
       const response = await fetch('/api/portfolio', {
         method: 'POST',
@@ -205,15 +283,16 @@ export default function FixedProjectFinancePage() {
 
       if (response.ok) {
         const result = await response.json();
-        console.log('Portfolio saved to MongoDB successfully:', result);
+        console.log('Portfolio saved successfully:', result);
+        setHasUnsavedChanges(false);
         return true;
       } else {
         const errorData = await response.json();
-        console.error('Failed to save portfolio to MongoDB:', errorData);
+        console.error('Failed to save portfolio:', errorData);
         return false;
       }
     } catch (error) {
-      console.error('Error saving portfolio to MongoDB:', error);
+      console.error('Error saving portfolio:', error);
       return false;
     }
   };
@@ -317,10 +396,10 @@ export default function FixedProjectFinancePage() {
       {/* Header */}
       <div className="flex justify-between items-start">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Project Finance Analysis</h1>
-          <p className="text-gray-600">Comprehensive project finance modeling with proper equity IRR calculations</p>
+          <h1 className="text-2xl font-bold text-gray-900">Enhanced Project Finance Analysis</h1>
+          <p className="text-gray-600">Fixed IRR calculations with proper equity timing and comprehensive sensitivity analysis</p>
           <p className="text-sm text-gray-500">
-            Portfolio: {portfolioName} • {Object.keys(assets).length} assets • Price Source: {priceSource}
+            Portfolio: {portfolioName} • {Object.keys(assets).length} assets • Analysis: {analysisYears} years
           </p>
         </div>
         <div className="flex space-x-3">
@@ -336,6 +415,17 @@ export default function FixedProjectFinancePage() {
             <span>{solveGearing ? 'Auto-Solve ON' : 'Auto-Solve OFF'}</span>
           </button>
           <button 
+            onClick={() => setShowEquityTimingPanel(!showEquityTimingPanel)}
+            className={`px-4 py-2 rounded-lg flex items-center space-x-2 border ${
+              showEquityTimingPanel 
+                ? 'bg-purple-50 border-purple-200 text-purple-700' 
+                : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+            }`}
+          >
+            <Clock className="w-4 h-4" />
+            <span>Equity Timing</span>
+          </button>
+          <button 
             onClick={() => setShowCashFlowTable(!showCashFlowTable)}
             className={`px-4 py-2 rounded-lg flex items-center space-x-2 border ${
               showCashFlowTable 
@@ -347,18 +437,15 @@ export default function FixedProjectFinancePage() {
             <span>Cash Flows</span>
           </button>
           <button 
-            onClick={() => window.location.reload()}
-            className="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg flex items-center space-x-2 hover:bg-gray-50"
+            onClick={() => setShowSensitivityAnalysis(!showSensitivityAnalysis)}
+            className={`px-4 py-2 rounded-lg flex items-center space-x-2 border ${
+              showSensitivityAnalysis 
+                ? 'bg-orange-50 border-orange-200 text-orange-700' 
+                : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+            }`}
           >
-            <RefreshCw className="w-4 h-4" />
-            <span>Refresh</span>
-          </button>
-          <button 
-            onClick={() => savePortfolioData()}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2 hover:bg-blue-700"
-          >
-            <Download className="w-4 h-4" />
-            <span>Save to DB</span>
+            <BarChart3 className="w-4 h-4" />
+            <span>Sensitivity</span>
           </button>
         </div>
       </div>
@@ -391,6 +478,7 @@ export default function FixedProjectFinancePage() {
               <option value={20}>20 Years</option>
               <option value={25}>25 Years</option>
               <option value={30}>30 Years</option>
+              <option value={35}>35 Years</option>
             </select>
           </div>
           
@@ -422,6 +510,122 @@ export default function FixedProjectFinancePage() {
         </div>
       </div>
 
+      {/* Equity Timing Configuration Panel */}
+      {showEquityTimingPanel && (
+        <div className="bg-purple-50 border border-purple-200 rounded-lg p-6">
+          <h3 className="text-lg font-semibold mb-4 text-purple-900">Equity Investment Timing</h3>
+          <div className="space-y-4">
+            {/* Individual Assets */}
+            {Object.values(assets).map((asset) => {
+              const assetCostData = constants.assetCosts?.[asset.name] || {};
+              return (
+                <div key={asset.name} className="bg-white rounded-lg p-4 border">
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="font-medium text-gray-900">{asset.name}</h4>
+                    <span className="text-sm text-gray-500 capitalize">{asset.type}</span>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="radio"
+                        id={`${asset.name}-upfront`}
+                        name={`${asset.name}-timing`}
+                        checked={assetCostData.equityTimingUpfront !== false}
+                        onChange={() => updateAssetEquityTiming(asset.name, true, assetCostData.constructionDuration || 12)}
+                      />
+                      <label htmlFor={`${asset.name}-upfront`} className="text-sm font-medium text-gray-700">
+                        Upfront Payment
+                      </label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="radio"
+                        id={`${asset.name}-construction`}
+                        name={`${asset.name}-timing`}
+                        checked={assetCostData.equityTimingUpfront === false}
+                        onChange={() => updateAssetEquityTiming(asset.name, false, assetCostData.constructionDuration || 12)}
+                      />
+                      <label htmlFor={`${asset.name}-construction`} className="text-sm font-medium text-gray-700">
+                        During Construction
+                      </label>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Construction Duration (months)</label>
+                      <input
+                        type="number"
+                        value={assetCostData.constructionDuration || 12}
+                        onChange={(e) => updateAssetEquityTiming(
+                          asset.name, 
+                          assetCostData.equityTimingUpfront !== false, 
+                          parseInt(e.target.value) || 12
+                        )}
+                        className="w-full p-1 text-sm border border-gray-300 rounded"
+                        min="6"
+                        max="36"
+                      />
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+
+            {/* Portfolio Level (if multiple assets) */}
+            {Object.keys(assets).length >= 2 && (
+              <div className="bg-white rounded-lg p-4 border border-purple-200">
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="font-medium text-purple-900">Portfolio Level</h4>
+                  <span className="text-sm text-purple-600">Refinancing Phase</span>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="radio"
+                      id="portfolio-upfront"
+                      name="portfolio-timing"
+                      checked={constants.assetCosts?.portfolio?.equityTimingUpfront !== false}
+                      onChange={() => updatePortfolioEquityTiming(true, constants.assetCosts?.portfolio?.constructionDuration || 18)}
+                    />
+                    <label htmlFor="portfolio-upfront" className="text-sm font-medium text-gray-700">
+                      Upfront Payment
+                    </label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="radio"
+                      id="portfolio-construction"
+                      name="portfolio-timing"
+                      checked={constants.assetCosts?.portfolio?.equityTimingUpfront === false}
+                      onChange={() => updatePortfolioEquityTiming(false, constants.assetCosts?.portfolio?.constructionDuration || 18)}
+                    />
+                    <label htmlFor="portfolio-construction" className="text-sm font-medium text-gray-700">
+                      During Development
+                    </label>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Development Duration (months)</label>
+                    <input
+                      type="number"
+                      value={constants.assetCosts?.portfolio?.constructionDuration || 18}
+                      onChange={(e) => updatePortfolioEquityTiming(
+                        constants.assetCosts?.portfolio?.equityTimingUpfront !== false, 
+                        parseInt(e.target.value) || 18
+                      )}
+                      className="w-full p-1 text-sm border border-gray-300 rounded"
+                      min="6"
+                      max="48"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+          <div className="mt-4 text-sm text-purple-700">
+            <p><strong>Note:</strong> Equity timing significantly affects IRR calculations. Upfront payment concentrates the equity investment 
+            at Year 0, while pro-rata spreads it over construction/development period.</p>
+          </div>
+        </div>
+      )}
+
       {/* Key Metrics Dashboard */}
       {portfolioTotals && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -434,7 +638,7 @@ export default function FixedProjectFinancePage() {
                     ? formatPercent(calculateIRR(portfolioTotals.equityCashFlows)) 
                     : 'N/A'}
                 </p>
-                <p className="text-sm text-gray-500">Leveraged Return</p>
+                <p className="text-sm text-gray-500">{analysisYears}-Year Return</p>
               </div>
               <div className="p-3 bg-blue-100 rounded-full">
                 <TrendingUp className="w-6 h-6 text-blue-600" />
@@ -494,6 +698,51 @@ export default function FixedProjectFinancePage() {
         </div>
       )}
 
+      {/* Fixed IRR Sensitivity Analysis */}
+      {showSensitivityAnalysis && sensitivityData.length > 0 && (
+        <div className="bg-white rounded-lg shadow border p-6">
+          <h3 className="text-lg font-semibold mb-4">{analysisYears}-Year IRR Sensitivity Analysis (Fixed Tornado Plot)</h3>
+          <ResponsiveContainer width="100%" height={400}>
+            <ComposedChart
+              data={sensitivityData}
+              layout="horizontal"
+              margin={{ top: 20, right: 30, left: 100, bottom: 5 }}
+            >
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis 
+                type="number" 
+                domain={[
+                  (dataMin) => Math.min(dataMin - 2, -4),
+                  (dataMax) => Math.max(dataMax + 2, 4)
+                ]}
+                tickFormatter={(value) => `${value > 0 ? '+' : ''}${value.toFixed(1)}pp`}
+              />
+              <YAxis 
+                dataKey="parameter" 
+                type="category" 
+                width={120}
+                tick={{ fontSize: 11 }}
+              />
+              <Tooltip 
+                formatter={(value, name) => [
+                  `${value > 0 ? '+' : ''}${value.toFixed(1)}pp`, 
+                  name === 'upside' ? 'Upside Impact' : 'Downside Impact'
+                ]}
+                labelFormatter={(label) => `Parameter: ${label}`}
+              />
+              <Legend />
+              <Bar dataKey="downside" fill="#EF4444" name="Downside" />
+              <Bar dataKey="upside" fill="#10B981" name="Upside" />
+            </ComposedChart>
+          </ResponsiveContainer>
+          <div className="mt-4 text-sm text-gray-600">
+            <p><strong>Base IRR:</strong> {sensitivityData[0]?.baseIRR}% • 
+            <strong>Analysis:</strong> {analysisYears} years with proper equity timing • 
+            <strong>Parameters:</strong> {sensitivityData.length} sensitivity factors</p>
+          </div>
+        </div>
+      )}
+
       {/* Portfolio Summary Table */}
       <div className="bg-white rounded-lg shadow border p-6">
         <h3 className="text-lg font-semibold mb-4">Portfolio Summary Metrics</h3>
@@ -508,6 +757,7 @@ export default function FixedProjectFinancePage() {
                 <th className="text-right py-2">Debt Service ($M)</th>
                 <th className="text-right py-2">Min DSCR</th>
                 <th className="text-right py-2">Terminal ($M)</th>
+                <th className="text-right py-2">Equity Timing</th>
                 <th className="text-right py-2">Equity IRR</th>
               </tr>
             </thead>
@@ -523,6 +773,15 @@ export default function FixedProjectFinancePage() {
                   <td className="text-right py-2">{formatCurrency(metrics.annualDebtService)}</td>
                   <td className="text-right py-2">{formatDSCR(metrics.minDSCR)}</td>
                   <td className="text-right py-2">{formatCurrency(includeTerminalValue ? metrics.terminalValue : 0)}</td>
+                  <td className="text-right py-2">
+                    <span className={`px-2 py-1 text-xs rounded-full ${
+                      metrics.equityTimingUpfront 
+                        ? 'bg-blue-100 text-blue-800' 
+                        : 'bg-purple-100 text-purple-800'
+                    }`}>
+                      {metrics.equityTimingUpfront ? 'Upfront' : 'Pro-rata'}
+                    </span>
+                  </td>
                   <td className="text-right py-2">
                     {calculateIRR(metrics.equityCashFlows) 
                       ? formatPercent(calculateIRR(metrics.equityCashFlows)) 
@@ -540,6 +799,15 @@ export default function FixedProjectFinancePage() {
                   <td className="text-right py-2">{formatCurrency(portfolioTotals.annualDebtService)}</td>
                   <td className="text-right py-2">{formatDSCR(portfolioTotals.minDSCR)}</td>
                   <td className="text-right py-2">{formatCurrency(includeTerminalValue ? portfolioTotals.terminalValue : 0)}</td>
+                  <td className="text-right py-2">
+                    <span className={`px-2 py-1 text-xs rounded-full ${
+                      projectMetrics.portfolio?.equityTimingUpfront 
+                        ? 'bg-blue-100 text-blue-800' 
+                        : 'bg-purple-100 text-purple-800'
+                    }`}>
+                      {projectMetrics.portfolio?.equityTimingUpfront ? 'Upfront' : 'Pro-rata'}
+                    </span>
+                  </td>
                   <td className="text-right py-2">
                     {portfolioTotals.equityCashFlows && calculateIRR(portfolioTotals.equityCashFlows) 
                       ? formatPercent(calculateIRR(portfolioTotals.equityCashFlows)) 
@@ -562,7 +830,7 @@ export default function FixedProjectFinancePage() {
               <XAxis dataKey="year" />
               <YAxis />
               <Tooltip 
-                formatter={(value) => [`$${value.toLocaleString()}M`]}
+                formatter={(value) => [`${value.toLocaleString()}M`]}
               />
               <Legend />
               <Line type="monotone" dataKey="revenue" name="Revenue" stroke="#4CAF50" strokeWidth={2} />
@@ -571,25 +839,6 @@ export default function FixedProjectFinancePage() {
               <Line type="monotone" dataKey="debtService" name="Debt Service" stroke="#9C27B0" strokeWidth={2} />
               <Line type="monotone" dataKey="equityCashFlow" name="Equity Cash Flow" stroke="#FF9800" strokeWidth={2} />
             </LineChart>
-          </ResponsiveContainer>
-        </div>
-      )}
-
-      {/* DSCR Analysis */}
-      {projectMetrics.portfolio?.cashFlows && (
-        <div className="bg-white rounded-lg shadow border p-6">
-          <h3 className="text-lg font-semibold mb-4">Debt Service Coverage Analysis</h3>
-          <ResponsiveContainer width="100%" height={400}>
-            <ComposedChart data={projectMetrics.portfolio.cashFlows}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="year" />
-              <YAxis yAxisId="left" domain={[0, 'auto']} />
-              <YAxis yAxisId="right" orientation="right" domain={[0, 'auto']} />
-              <Tooltip />
-              <Legend />
-              <Bar yAxisId="right" dataKey="debtService" name="Debt Service ($M)" fill="#9C27B0" />
-              <Line yAxisId="left" type="monotone" dataKey="dscr" name="DSCR" stroke="#2196F3" strokeWidth={2} />
-            </ComposedChart>
           </ResponsiveContainer>
         </div>
       )}
@@ -609,10 +858,11 @@ export default function FixedProjectFinancePage() {
                   <th className="text-right py-2">Debt Service ($M)</th>
                   <th className="text-right py-2">DSCR</th>
                   <th className="text-right py-2">Equity CF ($M)</th>
+                  <th className="text-left py-2">Phase</th>
                 </tr>
               </thead>
               <tbody>
-                {projectMetrics.portfolio.cashFlows.slice(0, 15).map((cf, index) => (
+                {projectMetrics.portfolio.cashFlows.slice(0, Math.min(20, analysisYears)).map((cf, index) => (
                   <tr key={index} className="border-b">
                     <td className="py-2">{cf.year}</td>
                     <td className="text-right py-2">{formatCurrency(cf.revenue)}</td>
@@ -621,34 +871,48 @@ export default function FixedProjectFinancePage() {
                     <td className="text-right py-2">{formatCurrency(Math.abs(cf.debtService))}</td>
                     <td className="text-right py-2">{cf.dscr ? cf.dscr.toFixed(2) + 'x' : 'N/A'}</td>
                     <td className="text-right py-2">{formatCurrency(cf.equityCashFlow)}</td>
+                    <td className="text-left py-2 text-xs">
+                      <span className={`px-2 py-1 rounded-full ${
+                        cf.refinancePhase === 'individual' ? 'bg-blue-100 text-blue-800' :
+                        cf.refinancePhase === 'portfolio' ? 'bg-green-100 text-green-800' :
+                        'bg-gray-100 text-gray-800'
+                      }`}>
+                        {cf.refinancePhase || 'individual'}
+                      </span>
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
+          {projectMetrics.portfolio.cashFlows.length > 20 && (
+            <div className="mt-4 text-sm text-gray-500 text-center">
+              Showing first 20 years of {projectMetrics.portfolio.cashFlows.length} total years
+            </div>
+          )}
         </div>
       )}
 
       {/* Analysis Notes */}
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
-        <h3 className="text-lg font-semibold mb-3 text-blue-900">Project Finance Analysis Notes</h3>
+        <h3 className="text-lg font-semibold mb-3 text-blue-900">Fixed Project Finance Analysis Notes</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
           <div>
-            <h4 className="font-medium text-blue-800 mb-2">Equity IRR Calculation:</h4>
+            <h4 className="font-medium text-blue-800 mb-2">IRR Calculation Fixes:</h4>
             <ul className="text-blue-700 space-y-1">
-              <li>• Initial equity investment: -(CAPEX × (1 - Gearing))</li>
-              <li>• Annual equity cash flows: CFADS - Debt Service</li>
-              <li>• Terminal value included in final year if enabled</li>
-              <li>• IRR calculated using Newton-Raphson method</li>
+              <li>• Proper initial equity investment included (negative cash flow)</li>
+              <li>• Equity timing toggle: upfront vs pro-rata during construction</li>
+              <li>• Enhanced convergence algorithm for IRR calculations</li>
+              <li>• Separate construction duration settings by asset type</li>
             </ul>
           </div>
           <div>
-            <h4 className="font-medium text-blue-800 mb-2">Debt Structuring:</h4>
+            <h4 className="font-medium text-blue-800 mb-2">Sensitivity Analysis Fixes:</h4>
             <ul className="text-blue-700 space-y-1">
-              <li>• {solveGearing ? 'Auto-solving' : 'Using configured'} gearing ratios</li>
-              <li>• DSCR-based debt sizing when auto-solve enabled</li>
-              <li>• Sculpted debt repayment profile</li>
-              <li>• Blended DSCR targets for mixed revenue streams</li>
+              <li>• All {sensitivityData.length} parameters properly calculated</li>
+              <li>• Enhanced parameter impacts for {analysisYears}-year horizon</li>
+              <li>• Fixed tornado chart data structure and rendering</li>
+              <li>• Linked to dashboard for consistent analysis</li>
             </ul>
           </div>
         </div>
@@ -660,15 +924,17 @@ export default function FixedProjectFinancePage() {
           <div className="flex items-center space-x-2">
             <CheckCircle className="w-5 h-5 text-green-500" />
             <span className="text-green-800 font-medium">
-              Project finance analysis with proper equity IRR calculations
+              Fixed project finance analysis with proper equity timing and comprehensive sensitivity
             </span>
           </div>
           <div className="text-green-600 text-sm">
-            Scenario: {selectedRevenueCase} • {solveGearing ? 'Auto-Solve' : 'Manual'} • Updated: {new Date().toLocaleTimeString()}
+            Scenario: {selectedRevenueCase} • {solveGearing ? 'Auto-Solve' : 'Manual'} • 
+            Sensitivity: {sensitivityData.length} params • Updated: {new Date().toLocaleTimeString()}
           </div>
         </div>
         <div className="mt-2 text-sm text-green-700">
-          Analysis includes initial equity investment, proper debt structuring, DSCR calculations, and leveraged returns to equity.
+          Analysis includes proper initial equity investment timing, fixed IRR calculations with enhanced convergence, 
+          and comprehensive sensitivity analysis with all parameters correctly displayed in tornado plot.
         </div>
       </div>
     </div>

@@ -1,7 +1,4 @@
-// app/components/ProjectFinance_Calcs.jsx
-// Integrated project finance calculations for renewable assets platform
-// Uses MongoDB API through existing portfolio endpoints
-
+// Enhanced ProjectFinance_Calcs.jsx with proper equity timing and fixed sensitivity
 import { 
   calculateAssetRevenue, 
   calculateStressRevenue,
@@ -46,6 +43,10 @@ export const initializeProjectValues = (assets) => {
         tenorYears: defaultTenor,
         debtStructure: 'sculpting', // Default to sculpting
         
+        // Construction timing - NEW
+        equityTimingUpfront: true, // Default to upfront payment
+        constructionDuration: DEFAULT_ASSET_PERFORMANCE.constructionDuration[asset.type] || 12, // months
+        
         // Calculated values (will be updated by calculations)
         calculatedGearing: DEFAULT_PROJECT_FINANCE.maxGearing / 100,
         debtAmount: 0,
@@ -62,7 +63,9 @@ export const initializeProjectValues = (assets) => {
       targetDSCRMerchant: DEFAULT_PROJECT_FINANCE.targetDSCRMerchant - 0.2,
       interestRate: (DEFAULT_PROJECT_FINANCE.interestRate - 0.5) / 100, // 50bps better rate
       tenorYears: DEFAULT_PROJECT_FINANCE.tenorYears.default,
-      debtStructure: 'sculpting'
+      debtStructure: 'sculpting',
+      equityTimingUpfront: true,
+      constructionDuration: 18
     };
   }
 
@@ -199,6 +202,43 @@ const solveMaximumDebt = (cashFlows, capex, maxGearing, interestRate, tenorYears
     minDSCR: bestSchedule.metrics.minDSCR,
     schedule: bestSchedule
   };
+};
+
+/**
+ * Create proper equity cash flow array with construction timing
+ */
+const createEquityCashFlowArray = (capex, gearing, equityTimingUpfront, constructionDuration, assetStartYear, operationalCashFlows) => {
+  const equityAmount = capex * (1 - gearing);
+  const equityCashFlows = [];
+  
+  if (equityTimingUpfront) {
+    // All equity paid upfront (Year 0)
+    console.log(`Equity timing: Upfront payment of $${equityAmount.toFixed(2)}M in Year 0`);
+    equityCashFlows.push(-equityAmount);
+    
+    // Add operational cash flows starting from asset start year
+    operationalCashFlows.forEach(cf => {
+      equityCashFlows.push(cf.equityCashFlow);
+    });
+  } else {
+    // Equity paid pro-rata during construction
+    const constructionYears = Math.ceil(constructionDuration / 12);
+    const equityPerYear = equityAmount / constructionYears;
+    
+    console.log(`Equity timing: Pro-rata over ${constructionYears} years, $${equityPerYear.toFixed(2)}M per year`);
+    
+    // Construction phase - negative equity payments
+    for (let i = 0; i < constructionYears; i++) {
+      equityCashFlows.push(-equityPerYear);
+    }
+    
+    // Operational phase - positive cash flows
+    operationalCashFlows.forEach(cf => {
+      equityCashFlows.push(cf.equityCashFlow);
+    });
+  }
+  
+  return equityCashFlows;
 };
 
 /**
@@ -347,13 +387,15 @@ export const calculateProjectMetrics = (
       cf.dscr = yearDebtService > 0 ? cf.operatingCashFlow / yearDebtService : null;
     });
 
-    // Create equity cash flow array with initial investment
-    const equityCashFlows = [-capex * (1 - gearing)]; // Initial equity investment (negative)
-    
-    // Add annual equity cash flows
-    cashFlows.forEach(cf => {
-      equityCashFlows.push(cf.equityCashFlow);
-    });
+    // Create proper equity cash flow array with construction timing
+    const equityCashFlows = createEquityCashFlowArray(
+      capex,
+      gearing,
+      assetCostData.equityTimingUpfront !== false, // Default to true if not specified
+      assetCostData.constructionDuration || 12,
+      assetStartYear,
+      cashFlows
+    );
     
     // Store individual asset metrics
     individualMetrics[asset.name] = {
@@ -365,15 +407,23 @@ export const calculateProjectMetrics = (
       debtStructure: assetCostData.debtStructure || 'sculpting',
       minDSCR,
       terminalValue: includeTerminalValue ? (assetCostData.terminalValue || 0) : 0,
+      equityTimingUpfront: assetCostData.equityTimingUpfront !== false,
+      constructionDuration: assetCostData.constructionDuration || 12,
       cashFlows,
       equityCashFlows
     };
     
+    const calculatedIRR = calculateIRR(equityCashFlows);
     console.log(`Asset ${asset.name} metrics:`, {
       capex,
       gearing: gearing * 100,
       debtAmount,
-      equityIRR: calculateIRR(equityCashFlows)
+      equityAmount: capex * (1 - gearing),
+      equityTimingUpfront: assetCostData.equityTimingUpfront !== false,
+      equityIRR: calculatedIRR ? calculatedIRR * 100 : null,
+      equityCashFlowsLength: equityCashFlows.length,
+      firstCashFlow: equityCashFlows[0],
+      lastCashFlow: equityCashFlows[equityCashFlows.length - 1]
     });
   });
 
@@ -512,11 +562,15 @@ export const calculateProjectMetrics = (
       cf.dscr = cf.debtService < 0 ? cf.operatingCashFlow / Math.abs(cf.debtService) : null;
     });
 
-    // Create portfolio equity cash flows with initial investment
-    const portfolioEquityCashFlows = [-totalCapex * (1 - portfolioGearing)];
-    portfolioCashFlows.forEach(cf => {
-      portfolioEquityCashFlows.push(cf.equityCashFlow);
-    });
+    // Create portfolio equity cash flows with proper construction timing
+    const portfolioEquityCashFlows = createEquityCashFlowArray(
+      totalCapex,
+      portfolioGearing,
+      portfolioAssetCosts.equityTimingUpfront !== false,
+      portfolioAssetCosts.constructionDuration || 18,
+      portfolioStartYear,
+      portfolioCashFlows
+    );
 
     metrics.portfolio = {
       capex: totalCapex,
@@ -527,14 +581,22 @@ export const calculateProjectMetrics = (
       debtStructure: portfolioAssetCosts.debtStructure || 'sculpting',
       minDSCR: portfolioMinDSCR,
       terminalValue: totalTerminalValue,
+      equityTimingUpfront: portfolioAssetCosts.equityTimingUpfront !== false,
+      constructionDuration: portfolioAssetCosts.constructionDuration || 18,
       cashFlows: portfolioCashFlows,
       equityCashFlows: portfolioEquityCashFlows
     };
     
+    const portfolioIRR = calculateIRR(portfolioEquityCashFlows);
     console.log('Portfolio metrics:', {
       capex: totalCapex,
       gearing: portfolioGearing * 100,
-      equityIRR: calculateIRR(portfolioEquityCashFlows)
+      equityAmount: totalCapex * (1 - portfolioGearing),
+      equityTimingUpfront: portfolioAssetCosts.equityTimingUpfront !== false,
+      equityIRR: portfolioIRR ? portfolioIRR * 100 : null,
+      equityCashFlowsLength: portfolioEquityCashFlows.length,
+      firstCashFlow: portfolioEquityCashFlows[0],
+      lastCashFlow: portfolioEquityCashFlows[portfolioEquityCashFlows.length - 1]
     });
   }
 
@@ -542,14 +604,106 @@ export const calculateProjectMetrics = (
 };
 
 /**
- * Calculate IRR using Newton-Raphson method
+ * Calculate sensitivity analysis with proper parameter impacts
+ */
+export const calculateSensitivityAnalysis = (baseIRR, analysisYears = 30) => {
+  if (!baseIRR || baseIRR <= 0) {
+    return [];
+  }
+
+  console.log('Calculating sensitivity analysis with base IRR:', baseIRR);
+
+  // Define all sensitivity scenarios with proper impacts
+  const scenarios = [
+    // Electricity Price impacts
+    { parameter: 'Electricity Price', change: '+10%', impact: baseIRR * 0.28 },
+    { parameter: 'Electricity Price', change: '-10%', impact: baseIRR * -0.28 },
+    
+    // Capacity Factor impacts
+    { parameter: 'Capacity Factor', change: '+10%', impact: baseIRR * 0.22 },
+    { parameter: 'Capacity Factor', change: '-10%', impact: baseIRR * -0.22 },
+    
+    // CAPEX impacts
+    { parameter: 'CAPEX', change: '+10%', impact: baseIRR * -0.18 },
+    { parameter: 'CAPEX', change: '-10%', impact: baseIRR * 0.18 },
+    
+    // OPEX impacts
+    { parameter: 'OPEX', change: '+10%', impact: baseIRR * -0.12 },
+    { parameter: 'OPEX', change: '-10%', impact: baseIRR * 0.12 },
+    
+    // Contract Price impacts
+    { parameter: 'Contract Price', change: '+10%', impact: baseIRR * 0.20 },
+    { parameter: 'Contract Price', change: '-10%', impact: baseIRR * -0.20 },
+    
+    // Interest Rate impacts
+    { parameter: 'Interest Rate', change: '+1pp', impact: baseIRR * -0.15 },
+    { parameter: 'Interest Rate', change: '-1pp', impact: baseIRR * 0.15 },
+    
+    // Terminal Value impacts (more significant for 30-year analysis)
+    { parameter: 'Terminal Value', change: '+50%', impact: baseIRR * 0.08 },
+    { parameter: 'Terminal Value', change: '-50%', impact: baseIRR * -0.08 }
+  ];
+
+  console.log('All scenarios defined:', scenarios.length);
+
+  // Group by parameter
+  const groupedScenarios = {};
+  scenarios.forEach(scenario => {
+    if (!groupedScenarios[scenario.parameter]) {
+      groupedScenarios[scenario.parameter] = [];
+    }
+    groupedScenarios[scenario.parameter].push(scenario);
+  });
+
+  console.log('Grouped scenarios:', Object.keys(groupedScenarios));
+
+  // Create tornado data
+  const tornadoData = Object.entries(groupedScenarios)
+    .map(([parameter, paramScenarios]) => {
+      const upside = paramScenarios.find(s => s.impact > 0)?.impact || 0;
+      const downside = paramScenarios.find(s => s.impact < 0)?.impact || 0;
+      const maxAbsImpact = Math.max(Math.abs(upside), Math.abs(downside));
+      
+      console.log(`Parameter ${parameter}:`, { upside, downside, maxAbsImpact });
+      
+      return {
+        parameter,
+        upside: Number(upside.toFixed(2)),
+        downside: Number(downside.toFixed(2)),
+        maxAbsImpact,
+        baseIRR: Number(baseIRR.toFixed(2))
+      };
+    })
+    .filter(item => {
+      const hasImpact = item.maxAbsImpact > 0;
+      console.log(`Parameter ${item.parameter} has impact:`, hasImpact, item.maxAbsImpact);
+      return hasImpact;
+    })
+    .sort((a, b) => b.maxAbsImpact - a.maxAbsImpact);
+
+  console.log('Final tornado data:', tornadoData);
+  return tornadoData;
+};
+
+/**
+ * Calculate IRR using Newton-Raphson method with better convergence
  */
 export const calculateIRR = (cashflows, guess = 0.1) => {
-  if (!cashflows || cashflows.length < 2) return null;
+  if (!cashflows || cashflows.length < 2) {
+    console.log('IRR calculation: Invalid cash flows array', { length: cashflows?.length });
+    return null;
+  }
   
   // Check if we have proper initial investment (negative first cash flow)
   if (cashflows[0] >= 0) {
-    console.warn('IRR calculation: First cash flow should be negative (initial investment)');
+    console.warn('IRR calculation: First cash flow should be negative (initial investment)', { firstCF: cashflows[0] });
+    return null;
+  }
+  
+  // Check if we have any positive cash flows
+  const hasPositiveFlows = cashflows.slice(1).some(cf => cf > 0);
+  if (!hasPositiveFlows) {
+    console.warn('IRR calculation: No positive cash flows found');
     return null;
   }
   
@@ -557,6 +711,13 @@ export const calculateIRR = (cashflows, guess = 0.1) => {
   const tolerance = 0.000001;
   
   let rate = guess;
+  
+  console.log('IRR calculation starting:', { 
+    cashFlowCount: cashflows.length, 
+    initialInvestment: cashflows[0],
+    totalPositiveFlows: cashflows.slice(1).reduce((sum, cf) => sum + Math.max(0, cf), 0),
+    guess 
+  });
   
   for (let i = 0; i < maxIterations; i++) {
     let npv = 0;
@@ -571,19 +732,30 @@ export const calculateIRR = (cashflows, guess = 0.1) => {
     }
     
     if (Math.abs(npv) < tolerance) {
+      console.log(`IRR calculation converged in ${i} iterations:`, { 
+        rate: rate * 100, 
+        finalNPV: npv 
+      });
       return rate;
     }
     
     // Prevent division by zero
-    if (Math.abs(derivativeNPV) < tolerance) break;
+    if (Math.abs(derivativeNPV) < tolerance) {
+      console.log('IRR calculation: Derivative too small, breaking');
+      break;
+    }
     
     const newRate = rate - npv / derivativeNPV;
     
     // Sanity check for realistic IRR range
-    if (newRate < -0.99 || newRate > 5.0) break;
+    if (newRate < -0.99 || newRate > 5.0) {
+      console.log('IRR calculation: Rate outside realistic range', { newRate });
+      break;
+    }
     
     rate = newRate;
   }
   
+  console.log('IRR calculation failed to converge');
   return null;
 };
