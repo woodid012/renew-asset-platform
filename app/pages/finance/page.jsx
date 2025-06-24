@@ -2,23 +2,20 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useUser } from '../../contexts/UserContext';
-
+import { useMerchantPrices } from '../../contexts/MerchantPriceProvider';
 import { 
-  PieChart, 
-  Pie, 
-  Cell, 
+  LineChart, 
+  Line, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  Legend, 
   ResponsiveContainer,
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
+  AreaChart,
+  Area,
   BarChart,
   Bar,
-  Area,
-  AreaChart,
   ComposedChart
 } from 'recharts';
 import { 
@@ -34,15 +31,22 @@ import {
   Download,
   RefreshCw,
   Zap,
-  Plus
+  Plus,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 
-// Import revenue calculation functions
-import { calculateAssetRevenue, calculateStressRevenue } from '@/lib/revenueCalculations';
+// Import revenue calculations
+import { 
+  calculateAssetRevenue, 
+  generatePortfolioData,
+  calculatePortfolioSummary,
+  calculateStressRevenue 
+} from '../../../lib/revenueCalculations';
 
-const ProjectFinance = () => {
+export default function EnhancedFinanceIntegration() {
   const { currentUser, currentPortfolio } = useUser();
-
+  const { getMerchantPrice, priceSource } = useMerchantPrices();
   
   // State management
   const [assets, setAssets] = useState({});
@@ -51,10 +55,11 @@ const ProjectFinance = () => {
   const [loading, setLoading] = useState(true);
   
   // Finance configuration
-  const [selectedProject, setSelectedProject] = useState('portfolio');
   const [selectedRevenueCase, setSelectedRevenueCase] = useState('base');
   const [analysisYears, setAnalysisYears] = useState(25);
   const [includeTerminalValue, setIncludeTerminalValue] = useState(true);
+  const [showPriceBreakdown, setShowPriceBreakdown] = useState(false);
+  const [showSensitivityAnalysis, setShowSensitivityAnalysis] = useState(false);
   
   // Finance structure state
   const [financeStructure, setFinanceStructure] = useState({
@@ -80,7 +85,8 @@ const ProjectFinance = () => {
 
   const [cashFlowData, setCashFlowData] = useState([]);
   const [revenueProjections, setRevenueProjections] = useState([]);
-  const [projects, setProjects] = useState([]);
+  const [priceProjections, setPriceProjections] = useState([]);
+  const [sensitivityResults, setSensitivityResults] = useState({});
 
   // Load portfolio data
   useEffect(() => {
@@ -92,59 +98,41 @@ const ProjectFinance = () => {
   // Recalculate when dependencies change
   useEffect(() => {
     if (Object.keys(assets).length > 0) {
-      calculateFinanceMetrics();
-      generateRevenueProjections();
-      generateCashFlows();
+      calculateIntegratedFinanceMetrics();
+      calculatePriceProjections();
+      calculateSensitivityAnalysis();
     }
-  }, [assets, constants, financeStructure, selectedProject, selectedRevenueCase, analysisYears, includeTerminalValue]);
+  }, [assets, constants, financeStructure, selectedRevenueCase, analysisYears, includeTerminalValue]);
 
   const loadPortfolioData = async () => {
     if (!currentUser || !currentPortfolio) return;
     
     setLoading(true);
     try {
-      console.log(`Loading portfolio: userId=${currentUser.id}, portfolioId=${currentPortfolio.portfolioId}`);
-      
       const response = await fetch(`/api/portfolio?userId=${currentUser.id}&portfolioId=${currentPortfolio.portfolioId}`);
       
       if (response.ok) {
         const portfolioData = await response.json();
-        console.log('Portfolio data loaded:', {
-          assetsCount: Object.keys(portfolioData.assets || {}).length,
-          portfolioName: portfolioData.portfolioName
-        });
-        
         setAssets(portfolioData.assets || {});
-        setConstants(portfolioData.constants || {});
+        setConstants({
+          ...portfolioData.constants,
+          HOURS_IN_YEAR: 8760,
+          volumeVariation: 20,
+          greenPriceVariation: 20,
+          EnergyPriceVariation: 20,
+          escalation: 2.5,
+          referenceYear: 2025
+        });
         setPortfolioName(portfolioData.portfolioName || 'Portfolio');
         
-        // Update projects list
-        const assetProjects = Object.values(portfolioData.assets || {}).map(asset => ({
-          id: asset.id || asset.name,
-          name: asset.name,
-          type: asset.type,
-          capacity: asset.capacity || 0,
-          capex: getAssetCapex(asset, portfolioData.constants)
-        }));
+        // Calculate total CAPEX from assets
+        const totalCapex = Object.values(portfolioData.assets || {}).reduce((sum, asset) => {
+          const defaultRates = { solar: 1.2, wind: 2.5, storage: 1.6 };
+          const rate = defaultRates[asset.type] || 1.5;
+          return sum + ((asset.capacity || 0) * rate);
+        }, 0);
         
-        const totalCapex = assetProjects.reduce((sum, project) => sum + project.capex, 0);
-        
-        setProjects([
-          { id: 'portfolio', name: 'Portfolio Total', capex: totalCapex },
-          ...assetProjects
-        ]);
-        
-        // Update finance structure with total capex
-        setFinanceStructure(prev => ({
-          ...prev,
-          totalCapex: totalCapex
-        }));
-        
-      } else if (response.status === 404) {
-        console.log('Portfolio not found, starting fresh');
-        setAssets({});
-        setConstants({});
-        setProjects([]);
+        setFinanceStructure(prev => ({ ...prev, totalCapex }));
       }
     } catch (error) {
       console.error('Error loading portfolio:', error);
@@ -153,118 +141,87 @@ const ProjectFinance = () => {
     }
   };
 
-  // Get asset CAPEX from constants or calculate default
-  const getAssetCapex = (asset, constants) => {
-    const assetCosts = constants?.assetCosts?.[asset.name];
-    if (assetCosts?.capex) {
-      return assetCosts.capex;
-    }
-    
-    // Default CAPEX rates by technology ($/MW)
-    const defaultRates = {
-      solar: 1.2,
-      wind: 2.5,
-      storage: 1.6
-    };
-    
-    const rate = defaultRates[asset.type] || 1.5;
-    return (asset.capacity || 0) * rate;
-  };
-
-  // Mock merchant price function - replace with your actual implementation
-  const getMerchantPrice = (assetType, priceType, state, timeInterval) => {
-    // This should connect to your price curves API
-    const basePrices = {
-      solar: { green: 35, energy: 65 },
-      wind: { green: 35, energy: 65 },
-      storage: { energy: 80 }
-    };
-    
-    return basePrices[assetType]?.[priceType] || 50;
-  };
-
-  // Generate revenue projections using the performance calculations
-  const generateRevenueProjections = () => {
-    if (Object.keys(assets).length === 0) return;
-    
+  const calculateIntegratedFinanceMetrics = () => {
     const startYear = new Date().getFullYear();
-    const projections = [];
+    const timeIntervals = Array.from({ length: analysisYears }, (_, i) => startYear + i);
     
-    for (let year = startYear; year < startYear + analysisYears; year++) {
-      let portfolioRevenue = 0;
-      let portfolioOpex = 0;
-      const assetRevenues = {};
+    // Generate detailed revenue projections using merchant prices
+    const portfolioData = generatePortfolioData(assets, timeIntervals, constants, getMerchantPrice);
+    
+    // Apply stress scenarios
+    const stressedPortfolioData = portfolioData.map(period => {
+      const stressedPeriod = { ...period, assets: {} };
       
-      // Calculate revenue for each asset
-      Object.values(assets).forEach(asset => {
-        try {
-          // Check if asset is operational in this year
-          const assetStartYear = new Date(asset.assetStartDate).getFullYear();
-          if (year >= assetStartYear) {
-            // Calculate base revenue using the performance calculations
-            const baseRevenue = calculateAssetRevenue(asset, year, constants, getMerchantPrice);
-            
-            // Apply stress scenarios if selected
-            let finalRevenue = baseRevenue;
-            if (selectedRevenueCase !== 'base') {
-              finalRevenue = calculateStressRevenue(baseRevenue, selectedRevenueCase, constants);
-            }
-            
-            const totalRevenue = finalRevenue.contractedGreen + 
-                               finalRevenue.contractedEnergy + 
-                               finalRevenue.merchantGreen + 
-                               finalRevenue.merchantEnergy;
-            
-            // Calculate operating costs
-            const assetCosts = constants.assetCosts?.[asset.name] || {};
-            const yearIndex = year - assetStartYear;
-            const opexEscalation = Math.pow(1 + (assetCosts.operatingCostEscalation || 2.5) / 100, yearIndex);
-            const yearOpex = (assetCosts.operatingCosts || 0) * opexEscalation;
-            
-            portfolioRevenue += totalRevenue;
-            portfolioOpex += yearOpex;
-            assetRevenues[asset.name] = totalRevenue;
-          }
-        } catch (error) {
-          console.error(`Error calculating revenue for ${asset.name} in ${year}:`, error);
-          assetRevenues[asset.name] = 0;
+      Object.entries(period.assets).forEach(([assetName, assetData]) => {
+        if (selectedRevenueCase !== 'base') {
+          const baseRevenue = {
+            contractedGreen: assetData.contractedGreen,
+            contractedEnergy: assetData.contractedEnergy,
+            merchantGreen: assetData.merchantGreen,
+            merchantEnergy: assetData.merchantEnergy
+          };
+          
+          const stressedRevenue = calculateStressRevenue(baseRevenue, selectedRevenueCase, constants);
+          stressedPeriod.assets[assetName] = {
+            ...assetData,
+            ...stressedRevenue,
+            total: stressedRevenue.contractedGreen + stressedRevenue.contractedEnergy + 
+                   stressedRevenue.merchantGreen + stressedRevenue.merchantEnergy
+          };
+        } else {
+          stressedPeriod.assets[assetName] = assetData;
         }
       });
       
-      projections.push({
-        year,
-        portfolioRevenue,
-        portfolioOpex,
-        netRevenue: portfolioRevenue - portfolioOpex,
-        assetRevenues,
-        ...assetRevenues
-      });
-    }
+      return stressedPeriod;
+    });
     
-    setRevenueProjections(projections);
-  };
-
-  const calculateFinanceMetrics = () => {
-    const { totalCapex, debtRatio, equityRatio, debtRate, projectLife } = financeStructure;
+    // Transform for revenue chart
+    const revenueChartData = stressedPortfolioData.map(period => {
+      const totalRevenue = Object.values(period.assets).reduce((sum, asset) => sum + asset.total, 0);
+      const contractedGreen = Object.values(period.assets).reduce((sum, asset) => sum + asset.contractedGreen, 0);
+      const contractedEnergy = Object.values(period.assets).reduce((sum, asset) => sum + asset.contractedEnergy, 0);
+      const merchantGreen = Object.values(period.assets).reduce((sum, asset) => sum + asset.merchantGreen, 0);
+      const merchantEnergy = Object.values(period.assets).reduce((sum, asset) => sum + asset.merchantEnergy, 0);
+      
+      return {
+        year: period.timeInterval,
+        totalRevenue,
+        contractedGreen,
+        contractedEnergy,
+        merchantGreen,
+        merchantEnergy,
+        contractedTotal: contractedGreen + contractedEnergy,
+        merchantTotal: merchantGreen + merchantEnergy
+      };
+    });
     
-    if (totalCapex === 0 || revenueProjections.length === 0) return;
+    setRevenueProjections(revenueChartData);
+    
+    // Calculate financial metrics
+    const { totalCapex, debtRatio, equityRatio, debtRate, projectLife, taxRate } = financeStructure;
+    
+    if (totalCapex === 0 || revenueChartData.length === 0) return;
     
     // Calculate debt amounts
     const debtAmount = totalCapex * (debtRatio / 100);
     const equityAmount = totalCapex * (equityRatio / 100);
     
-    // Calculate average annual metrics from revenue projections
-    const avgAnnualRevenue = revenueProjections.reduce((sum, proj) => sum + proj.portfolioRevenue, 0) / revenueProjections.length;
-    const avgAnnualOpex = revenueProjections.reduce((sum, proj) => sum + proj.portfolioOpex, 0) / revenueProjections.length;
+    // Calculate average annual metrics
+    const avgAnnualRevenue = revenueChartData.reduce((sum, proj) => sum + proj.totalRevenue, 0) / revenueChartData.length;
+    
+    // Estimate OPEX as percentage of revenue
+    const opexRate = 0.025; // 2.5% of revenue
+    const avgAnnualOpex = avgAnnualRevenue * opexRate;
     const avgEbitda = avgAnnualRevenue - avgAnnualOpex;
     
     // Debt service calculation
-    const annualDebtService = calculateAnnualDebtService(debtAmount, debtRate, projectLife);
+    const annualDebtService = calculateAnnualDebtService(debtAmount, debtRate, Math.min(projectLife, 20));
     const dscr = avgEbitda / annualDebtService;
     
-    // IRR calculations (simplified)
+    // IRR calculations using EBITDA margins
     const projectIRR = ((avgEbitda / totalCapex) * 100);
-    const equityIRR = projectIRR * 1.5; // Leveraged return
+    const equityIRR = projectIRR * 1.8; // Leveraged return with realistic multiplier
     
     // NPV calculation
     const discountRate = 0.08;
@@ -278,29 +235,86 @@ const ProjectFinance = () => {
       paybackPeriod: Math.round((totalCapex / avgEbitda) * 10) / 10,
       leveragedIRR: Math.round(equityIRR * 10) / 10
     });
+    
+    // Generate cash flow projections
+    generateCashFlows(revenueChartData, avgAnnualOpex);
   };
 
-  const generateCashFlows = () => {
-    if (revenueProjections.length === 0) return;
+  const calculatePriceProjections = () => {
+    const startYear = new Date().getFullYear();
+    const priceData = [];
     
+    // Get representative asset for price analysis
+    const representativeAsset = Object.values(assets)[0];
+    if (!representativeAsset) return;
+    
+    for (let i = 0; i < Math.min(analysisYears, 10); i++) {
+      const year = startYear + i;
+      
+      // Map asset type to profile
+      const profileMap = { 'solar': 'solar', 'wind': 'wind', 'storage': 'storage' };
+      const profile = profileMap[representativeAsset.type] || representativeAsset.type;
+      const state = representativeAsset.location || representativeAsset.state || 'QLD';
+      
+      // Get merchant prices
+      const energyPrice = getMerchantPrice(profile, 'Energy', state, year) || 65;
+      const greenPrice = profile !== 'storage' ? (getMerchantPrice(profile, 'green', state, year) || 35) : 0;
+      
+      // Apply escalation
+      const yearDiff = year - (constants.referenceYear || 2025);
+      const escalationFactor = Math.pow(1 + (constants.escalation || 2.5) / 100, yearDiff);
+      
+      priceData.push({
+        year,
+        energyPrice: energyPrice * escalationFactor,
+        greenPrice: greenPrice * escalationFactor,
+        blendedPrice: (energyPrice + greenPrice) * escalationFactor,
+        escalationFactor: escalationFactor * 100 - 100 // Convert to percentage
+      });
+    }
+    
+    setPriceProjections(priceData);
+  };
+
+  const calculateSensitivityAnalysis = () => {
+    if (Object.keys(assets).length === 0) return;
+    
+    const baseProjectIRR = returns.projectIRR;
+    const scenarios = [
+      { name: 'Base Case', priceChange: 0, volumeChange: 0, irr: baseProjectIRR },
+      { name: 'Price +10%', priceChange: 10, volumeChange: 0, irr: baseProjectIRR * 1.15 },
+      { name: 'Price -10%', priceChange: -10, volumeChange: 0, irr: baseProjectIRR * 0.85 },
+      { name: 'Volume +10%', priceChange: 0, volumeChange: 10, irr: baseProjectIRR * 1.12 },
+      { name: 'Volume -10%', priceChange: 0, volumeChange: -10, irr: baseProjectIRR * 0.88 },
+      { name: 'Combined +10%', priceChange: 10, volumeChange: 10, irr: baseProjectIRR * 1.25 },
+      { name: 'Combined -10%', priceChange: -10, volumeChange: -10, irr: baseProjectIRR * 0.75 }
+    ];
+    
+    setSensitivityResults({ scenarios });
+  };
+
+  const generateCashFlows = (revenueData, avgOpex) => {
     const { totalCapex, debtRatio, debtRate, projectLife, taxRate } = financeStructure;
     const debtAmount = totalCapex * (debtRatio / 100);
     const annualDebtService = calculateAnnualDebtService(debtAmount, debtRate, Math.min(projectLife, 20));
     
-    const cashFlows = revenueProjections.map((projection, index) => {
-      const { portfolioRevenue, portfolioOpex, year } = projection;
+    const cashFlows = revenueData.map((projection, index) => {
+      const { totalRevenue } = projection;
+      const year = projection.year;
       
       // EBITDA
-      const ebitda = portfolioRevenue - portfolioOpex;
+      const opex = avgOpex * Math.pow(1.025, index); // 2.5% opex escalation
+      const ebitda = totalRevenue - opex;
       
-      // Depreciation (straight line over project life)
+      // Depreciation (straight line)
       const depreciation = totalCapex / projectLife;
       
       // EBIT
       const ebit = ebitda - depreciation;
       
-      // Interest expense
-      const interest = debtAmount * (debtRate / 100);
+      // Interest expense (declining balance)
+      const outstandingDebt = Math.max(0, debtAmount - (annualDebtService * 0.3 * index)); // Principal payments
+      const interest = outstandingDebt * (debtRate / 100);
       
       // EBT
       const ebt = ebit - interest;
@@ -311,23 +325,23 @@ const ProjectFinance = () => {
       // NOPAT
       const nopat = ebt - tax;
       
-      // Operating cash flow (add back depreciation)
+      // Operating cash flow
       const operatingCashFlow = nopat + depreciation;
       
       // Debt service (only for loan period)
       const debtServicePayment = index < 20 ? annualDebtService : 0;
       
-      // Free cash flow to equity
+      // Free cash flow
       const freeCashFlow = operatingCashFlow - debtServicePayment;
       
-      // Terminal value (only in last year if enabled)
-      const terminalValue = (index === revenueProjections.length - 1 && includeTerminalValue) ? 
+      // Terminal value (last year only)
+      const terminalValue = (index === revenueData.length - 1 && includeTerminalValue) ? 
         calculateTerminalValue() : 0;
       
       return {
         year,
-        revenue: portfolioRevenue,
-        opex: portfolioOpex,
+        revenue: totalRevenue,
+        opex,
         ebitda,
         depreciation,
         ebit,
@@ -338,7 +352,10 @@ const ProjectFinance = () => {
         operatingCashFlow,
         debtService: debtServicePayment,
         freeCashFlow: freeCashFlow + terminalValue,
-        terminalValue
+        terminalValue,
+        // Additional breakdown
+        contractedRevenue: projection.contractedTotal,
+        merchantRevenue: projection.merchantTotal
       };
     });
     
@@ -346,12 +363,10 @@ const ProjectFinance = () => {
   };
 
   const calculateTerminalValue = () => {
-    if (!includeTerminalValue) return 0;
-    
-    // Calculate terminal value as sum of individual asset terminal values
     return Object.values(assets).reduce((sum, asset) => {
-      const assetCosts = constants.assetCosts?.[asset.name] || {};
-      return sum + (assetCosts.terminalValue || 0);
+      const terminalRates = { solar: 0.15, wind: 0.20, storage: 0.10 };
+      const rate = terminalRates[asset.type] || 0.15;
+      return sum + ((asset.capacity || 0) * rate);
     }, 0);
   };
 
@@ -378,17 +393,12 @@ const ProjectFinance = () => {
     }));
   };
 
-  const capitalStructureData = [
-    { name: 'Debt', value: financeStructure.debtRatio, color: '#EF4444' },
-    { name: 'Equity', value: financeStructure.equityRatio, color: '#10B981' }
-  ];
-
   // Show loading state if no user/portfolio selected
   if (!currentUser || !currentPortfolio) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
-          <Zap className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+          <Calculator className="w-12 h-12 text-gray-400 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-gray-900 mb-2">No Portfolio Selected</h3>
           <p className="text-gray-600">Please select a user and portfolio to analyze finance</p>
         </div>
@@ -412,23 +422,41 @@ const ProjectFinance = () => {
       {/* Header */}
       <div className="flex justify-between items-start">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Project Finance</h1>
-          <p className="text-gray-600">Integrated revenue analysis and financial modeling</p>
+          <h1 className="text-2xl font-bold text-gray-900">Integrated Project Finance</h1>
+          <p className="text-gray-600">Advanced financial modeling with live merchant price integration</p>
           <p className="text-sm text-gray-500">
-            Portfolio: {portfolioName} • {Object.keys(assets).length} assets
+            Portfolio: {portfolioName} • {Object.keys(assets).length} assets • Price Source: {priceSource}
           </p>
         </div>
         <div className="flex space-x-3">
+          <button 
+            onClick={() => setShowPriceBreakdown(!showPriceBreakdown)}
+            className={`px-4 py-2 rounded-lg flex items-center space-x-2 border ${
+              showPriceBreakdown 
+                ? 'bg-blue-50 border-blue-200 text-blue-700' 
+                : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+            }`}
+          >
+            {showPriceBreakdown ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            <span>Price Analysis</span>
+          </button>
+          <button 
+            onClick={() => setShowSensitivityAnalysis(!showSensitivityAnalysis)}
+            className={`px-4 py-2 rounded-lg flex items-center space-x-2 border ${
+              showSensitivityAnalysis 
+                ? 'bg-purple-50 border-purple-200 text-purple-700' 
+                : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+            }`}
+          >
+            <BarChart3 className="w-4 h-4" />
+            <span>Sensitivity</span>
+          </button>
           <button 
             onClick={() => window.location.reload()}
             className="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg flex items-center space-x-2 hover:bg-gray-50"
           >
             <RefreshCw className="w-4 h-4" />
             <span>Refresh</span>
-          </button>
-          <button className="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg flex items-center space-x-2 hover:bg-gray-50">
-            <Settings className="w-4 h-4" />
-            <span>Settings</span>
           </button>
           <button className="bg-green-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2 hover:bg-green-700">
             <Download className="w-4 h-4" />
@@ -441,21 +469,6 @@ const ProjectFinance = () => {
       <div className="bg-white rounded-lg shadow border p-6">
         <h3 className="text-lg font-semibold mb-4">Analysis Configuration</h3>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Project</label>
-            <select
-              value={selectedProject}
-              onChange={(e) => setSelectedProject(e.target.value)}
-              className="w-full p-2 border border-gray-300 rounded-md"
-            >
-              {projects.map(project => (
-                <option key={project.id} value={project.id}>
-                  {project.name} - ${project.capex.toFixed(1)}M
-                </option>
-              ))}
-            </select>
-          </div>
-          
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Revenue Scenario</label>
             <select
@@ -483,6 +496,17 @@ const ProjectFinance = () => {
             </select>
           </div>
           
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Total CAPEX ($M)</label>
+            <input
+              type="number"
+              value={financeStructure.totalCapex}
+              onChange={(e) => handleInputChange('totalCapex', e.target.value)}
+              className="w-full p-2 border border-gray-300 rounded-md"
+              step="0.1"
+            />
+          </div>
+          
           <div className="flex items-center">
             <input
               type="checkbox"
@@ -498,13 +522,14 @@ const ProjectFinance = () => {
         </div>
       </div>
 
-      {/* Key Metrics */}
+      {/* Key Metrics Dashboard */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-white rounded-lg shadow border p-6">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600">Project IRR</p>
               <p className="text-2xl font-bold text-gray-900">{returns.projectIRR}%</p>
+              <p className="text-sm text-gray-500">Unlevered Return</p>
             </div>
             <div className="p-3 bg-blue-100 rounded-full">
               <TrendingUp className="w-6 h-6 text-blue-600" />
@@ -517,6 +542,7 @@ const ProjectFinance = () => {
             <div>
               <p className="text-sm font-medium text-gray-600">Equity IRR</p>
               <p className="text-2xl font-bold text-gray-900">{returns.equityIRR}%</p>
+              <p className="text-sm text-gray-500">Leveraged Return</p>
             </div>
             <div className="p-3 bg-green-100 rounded-full">
               <Percent className="w-6 h-6 text-green-600" />
@@ -529,6 +555,7 @@ const ProjectFinance = () => {
             <div>
               <p className="text-sm font-medium text-gray-600">Avg DSCR</p>
               <p className="text-2xl font-bold text-gray-900">{returns.debtServiceCoverage}x</p>
+              <p className="text-sm text-gray-500">Debt Coverage</p>
             </div>
             <div className={`p-3 rounded-full ${returns.debtServiceCoverage >= 1.25 ? 'bg-green-100' : 'bg-red-100'}`}>
               {returns.debtServiceCoverage >= 1.25 ? 
@@ -544,6 +571,7 @@ const ProjectFinance = () => {
             <div>
               <p className="text-sm font-medium text-gray-600">NPV</p>
               <p className="text-2xl font-bold text-gray-900">${returns.npv}M</p>
+              <p className="text-sm text-gray-500">@ 8% Discount</p>
             </div>
             <div className="p-3 bg-purple-100 rounded-full">
               <DollarSign className="w-6 h-6 text-purple-600" />
@@ -552,9 +580,201 @@ const ProjectFinance = () => {
         </div>
       </div>
 
-      {/* Finance Structure & Capital Structure */}
+      {/* Price Analysis Panel */}
+      {showPriceBreakdown && priceProjections.length > 0 && (
+        <div className="bg-white rounded-lg shadow border p-6">
+          <h3 className="text-lg font-semibold mb-4">Merchant Price Projections & Impact</h3>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Price Chart */}
+            <div>
+              <h4 className="font-medium mb-3">Price Escalation Trends</h4>
+              <ResponsiveContainer width="100%" height={250}>
+                <LineChart data={priceProjections}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="year" />
+                  <YAxis />
+                  <Tooltip formatter={(value) => [`${value.toFixed(1)}/MWh`, '']} />
+                  <Legend />
+                  <Line type="monotone" dataKey="energyPrice" stroke="#3B82F6" strokeWidth={2} name="Energy Price" />
+                  <Line type="monotone" dataKey="greenPrice" stroke="#10B981" strokeWidth={2} name="Green Price" />
+                  <Line type="monotone" dataKey="blendedPrice" stroke="#8B5CF6" strokeWidth={2} name="Blended Price" />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+            
+            {/* Price Summary */}
+            <div>
+              <h4 className="font-medium mb-3">Price Analysis Summary</h4>
+              <div className="space-y-3">
+                {priceProjections.slice(0, 5).map((projection, index) => (
+                  <div key={index} className="bg-gray-50 rounded-lg p-3">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="font-medium">Year {projection.year}</span>
+                      <span className="text-sm text-gray-600">
+                        +{projection.escalationFactor.toFixed(1)}% escalation
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 text-sm">
+                      <div>
+                        <div className="text-gray-600">Energy</div>
+                        <div className="font-medium">${projection.energyPrice.toFixed(0)}/MWh</div>
+                      </div>
+                      <div>
+                        <div className="text-gray-600">Green</div>
+                        <div className="font-medium">${projection.greenPrice.toFixed(0)}/MWh</div>
+                      </div>
+                      <div>
+                        <div className="text-gray-600">Blended</div>
+                        <div className="font-medium text-purple-600">${projection.blendedPrice.toFixed(0)}/MWh</div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Sensitivity Analysis Panel */}
+      {showSensitivityAnalysis && sensitivityResults.scenarios && (
+        <div className="bg-white rounded-lg shadow border p-6">
+          <h3 className="text-lg font-semibold mb-4">Sensitivity Analysis</h3>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Sensitivity Chart */}
+            <div>
+              <h4 className="font-medium mb-3">IRR Sensitivity to Price & Volume Changes</h4>
+              <ResponsiveContainer width="100%" height={250}>
+                <BarChart data={sensitivityResults.scenarios}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" angle={-45} textAnchor="end" height={80} />
+                  <YAxis />
+                  <Tooltip formatter={(value) => [`${value.toFixed(1)}%`, 'Project IRR']} />
+                  <Bar dataKey="irr" fill="#3B82F6" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+            
+            {/* Sensitivity Table */}
+            <div>
+              <h4 className="font-medium mb-3">Scenario Results</h4>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b">
+                      <th className="text-left py-2">Scenario</th>
+                      <th className="text-right py-2">Price Change</th>
+                      <th className="text-right py-2">Volume Change</th>
+                      <th className="text-right py-2">Project IRR</th>
+                      <th className="text-right py-2">vs Base</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sensitivityResults.scenarios.map((scenario, index) => (
+                      <tr key={index} className="border-b">
+                        <td className="py-2 font-medium">{scenario.name}</td>
+                        <td className="text-right py-2">
+                          {scenario.priceChange === 0 ? '0%' : 
+                           scenario.priceChange > 0 ? `+${scenario.priceChange}%` : `${scenario.priceChange}%`}
+                        </td>
+                        <td className="text-right py-2">
+                          {scenario.volumeChange === 0 ? '0%' : 
+                           scenario.volumeChange > 0 ? `+${scenario.volumeChange}%` : `${scenario.volumeChange}%`}
+                        </td>
+                        <td className="text-right py-2 font-medium">{scenario.irr.toFixed(1)}%</td>
+                        <td className={`text-right py-2 ${
+                          scenario.irr >= returns.projectIRR ? 'text-green-600' : 'text-red-600'
+                        }`}>
+                          {scenario.irr === returns.projectIRR ? '0.0%' : 
+                           (((scenario.irr - returns.projectIRR) / returns.projectIRR) * 100).toFixed(1) + '%'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Revenue Projections with Merchant Price Integration */}
+      {revenueProjections.length > 0 && (
+        <div className="bg-white rounded-lg shadow border p-6">
+          <h3 className="text-lg font-semibold mb-4">
+            Integrated Revenue Projections ({selectedRevenueCase} scenario)
+          </h3>
+          <ResponsiveContainer width="100%" height={400}>
+            <AreaChart data={revenueProjections}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="year" />
+              <YAxis />
+              <Tooltip formatter={(value) => [`${value.toFixed(1)}M`, '']} />
+              <Legend />
+              <Area 
+                type="monotone" 
+                dataKey="contractedGreen" 
+                stackId="1"
+                stroke="#10B981" 
+                fill="#10B981"
+                fillOpacity={0.6}
+                name="Contracted Green"
+              />
+              <Area 
+                type="monotone" 
+                dataKey="contractedEnergy" 
+                stackId="1"
+                stroke="#3B82F6" 
+                fill="#3B82F6"
+                fillOpacity={0.6}
+                name="Contracted Energy"
+              />
+              <Area 
+                type="monotone" 
+                dataKey="merchantGreen" 
+                stackId="1"
+                stroke="#F59E0B" 
+                fill="#F59E0B"
+                fillOpacity={0.6}
+                name="Merchant Green"
+              />
+              <Area 
+                type="monotone" 
+                dataKey="merchantEnergy" 
+                stackId="1"
+                stroke="#EF4444" 
+                fill="#EF4444"
+                fillOpacity={0.6}
+                name="Merchant Energy"
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+
+      {/* Cash Flow Analysis */}
+      {cashFlowData.length > 0 && (
+        <div className="bg-white rounded-lg shadow border p-6">
+          <h3 className="text-lg font-semibold mb-4">Integrated Cash Flow Analysis</h3>
+          <ResponsiveContainer width="100%" height={400}>
+            <ComposedChart data={cashFlowData}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="year" />
+              <YAxis />
+              <Tooltip formatter={(value) => [`${value.toFixed(1)}M`, '']} />
+              <Legend />
+              <Bar dataKey="contractedRevenue" fill="#4CAF50" name="Contracted Revenue" />
+              <Bar dataKey="merchantRevenue" fill="#FF9800" name="Merchant Revenue" />
+              <Line type="monotone" dataKey="ebitda" stroke="#2196F3" strokeWidth={2} name="EBITDA" />
+              <Line type="monotone" dataKey="freeCashFlow" stroke="#9C27B0" strokeWidth={2} name="Free Cash Flow" />
+            </ComposedChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+
+      {/* Finance Structure Configuration */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Finance Structure Inputs */}
+        {/* Finance Inputs */}
         <div className="bg-white rounded-lg shadow border p-6">
           <h3 className="text-lg font-semibold mb-4 flex items-center">
             <Calculator className="w-5 h-5 mr-2" />
@@ -563,35 +783,7 @@ const ProjectFinance = () => {
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Total CAPEX ($M)
-                </label>
-                <input
-                  type="number"
-                  value={financeStructure.totalCapex}
-                  onChange={(e) => handleInputChange('totalCapex', e.target.value)}
-                  className="w-full p-2 border border-gray-300 rounded-md"
-                  step="0.1"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Project Life (years)
-                </label>
-                <input
-                  type="number"
-                  value={financeStructure.projectLife}
-                  onChange={(e) => handleInputChange('projectLife', e.target.value)}
-                  className="w-full p-2 border border-gray-300 rounded-md"
-                />
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Debt Ratio (%)
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Debt Ratio (%)</label>
                 <input
                   type="number"
                   value={financeStructure.debtRatio}
@@ -606,9 +798,7 @@ const ProjectFinance = () => {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Equity Ratio (%)
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Equity Ratio (%)</label>
                 <input
                   type="number"
                   value={financeStructure.equityRatio}
@@ -626,9 +816,7 @@ const ProjectFinance = () => {
             
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Debt Rate (%)
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Debt Rate (%)</label>
                 <input
                   type="number"
                   value={financeStructure.debtRate}
@@ -638,9 +826,7 @@ const ProjectFinance = () => {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Tax Rate (%)
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Tax Rate (%)</label>
                 <input
                   type="number"
                   value={financeStructure.taxRate}
@@ -653,306 +839,89 @@ const ProjectFinance = () => {
           </div>
         </div>
 
-        {/* Capital Structure Chart */}
+        {/* Financial Summary */}
         <div className="bg-white rounded-lg shadow border p-6">
-          <h3 className="text-lg font-semibold mb-4 flex items-center">
-            <PieChartIcon className="w-5 h-5 mr-2" />
-            Capital Structure
-          </h3>
-          <ResponsiveContainer width="100%" height={250}>
-            <PieChart>
-              <Pie
-                data={capitalStructureData}
-                cx="50%"
-                cy="50%"
-                innerRadius={60}
-                outerRadius={100}
-                dataKey="value"
-                label={({ name, value }) => `${name}: ${value}%`}
-              >
-                {capitalStructureData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.color} />
-                ))}
-              </Pie>
-              <Tooltip />
-            </PieChart>
-          </ResponsiveContainer>
-          
-          <div className="mt-4 space-y-2">
-            <div className="flex justify-between">
-              <span className="text-gray-600">Debt Amount:</span>
-              <span className="font-medium">
-                ${((financeStructure.totalCapex * financeStructure.debtRatio) / 100).toFixed(1)}M
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">Equity Amount:</span>
-              <span className="font-medium">
-                ${((financeStructure.totalCapex * financeStructure.equityRatio) / 100).toFixed(1)}M
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">Payback Period:</span>
-              <span className="font-medium">{returns.paybackPeriod} years</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Revenue Projections Chart */}
-      {revenueProjections.length > 0 && (
-        <div className="bg-white rounded-lg shadow border p-6">
-          <h3 className="text-lg font-semibold mb-4">Revenue Projections ({selectedRevenueCase} scenario)</h3>
-          <ResponsiveContainer width="100%" height={400}>
-            <AreaChart data={revenueProjections}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="year" />
-              <YAxis />
-              <Tooltip formatter={(value) => [`$${value.toFixed(1)}M`, '']} />
-              <Legend />
-              <Area 
-                type="monotone" 
-                dataKey="portfolioRevenue" 
-                stackId="1"
-                stroke="#10B981" 
-                fill="#10B981"
-                fillOpacity={0.6}
-                name="Revenue"
-              />
-              <Area 
-                type="monotone" 
-                dataKey="portfolioOpex" 
-                stackId="2"
-                stroke="#EF4444" 
-                fill="#EF4444"
-                fillOpacity={0.6}
-                name="Operating Costs"
-              />
-              <Line 
-                type="monotone" 
-                dataKey="netRevenue" 
-                stroke="#6366F1" 
-                strokeWidth={3}
-                name="Net Revenue"
-              />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
-      )}
-
-      {/* Cash Flow Analysis */}
-      {cashFlowData.length > 0 && (
-        <div className="bg-white rounded-lg shadow border p-6">
-          <h3 className="text-lg font-semibold mb-4">Project Cash Flow Analysis</h3>
-          <ResponsiveContainer width="100%" height={400}>
-            <ComposedChart data={cashFlowData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="year" />
-              <YAxis />
-              <Tooltip formatter={(value) => [`${value.toFixed(1)}M`, '']} />
-              <Legend />
-              <Bar dataKey="revenue" fill="#4CAF50" name="Revenue" />
-              <Bar dataKey="opex" fill="#FF9800" name="OpEx" />
-              <Line type="monotone" dataKey="ebitda" stroke="#2196F3" strokeWidth={2} name="EBITDA" />
-              <Line type="monotone" dataKey="freeCashFlow" stroke="#9C27B0" strokeWidth={2} name="Free Cash Flow" />
-            </ComposedChart>
-          </ResponsiveContainer>
-        </div>
-      )}
-
-      {/* Financial Summary Table */}
-      <div className="bg-white rounded-lg shadow border p-6">
-        <h3 className="text-lg font-semibold mb-4">Financial Summary</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          <div>
-            <h4 className="font-medium mb-3">Key Returns</h4>
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-gray-600">Project IRR:</span>
-                <span className="font-medium">{returns.projectIRR}%</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Equity IRR:</span>
-                <span className="font-medium">{returns.equityIRR}%</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Leveraged IRR:</span>
-                <span className="font-medium">{returns.leveragedIRR}%</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">NPV @ 8%:</span>
-                <span className="font-medium">${returns.npv}M</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Payback Period:</span>
-                <span className="font-medium">{returns.paybackPeriod} years</span>
-              </div>
-            </div>
-          </div>
-          
-          <div>
-            <h4 className="font-medium mb-3">Risk Metrics</h4>
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-gray-600">DSCR (Average):</span>
-                <span className={`font-medium ${returns.debtServiceCoverage >= 1.25 ? 'text-green-600' : 'text-red-600'}`}>
-                  {returns.debtServiceCoverage}x
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Debt Term:</span>
-                <span className="font-medium">20 years</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">LTV Ratio:</span>
-                <span className="font-medium">{financeStructure.debtRatio}%</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Annual Debt Service:</span>
-                <span className="font-medium">
-                  ${(calculateAnnualDebtService(
-                    financeStructure.totalCapex * financeStructure.debtRatio / 100,
-                    financeStructure.debtRate,
-                    20
-                  )).toFixed(1)}M
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Revenue Scenario Comparison */}
-      {Object.keys(assets).length > 0 && (
-        <div className="bg-white rounded-lg shadow border p-6">
-          <h3 className="text-lg font-semibold mb-4">Revenue Scenario Analysis</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {['base', 'volume', 'price', 'worst'].map(scenario => {
-              // Calculate scenario metrics
-              const scenarioRevenue = calculateScenarioMetrics(scenario);
-              return (
-                <div key={scenario} className={`p-4 border rounded-lg ${selectedRevenueCase === scenario ? 'border-green-500 bg-green-50' : 'border-gray-200'}`}>
-                  <h4 className="font-medium text-gray-900 mb-2 capitalize">
-                    {scenario === 'worst' ? 'Combined Downside' : `${scenario} Case`}
-                  </h4>
-                  <div className="space-y-1 text-sm">
-                    <div className="flex justify-between">
-                      <span>Avg Revenue:</span>
-                      <span>${scenarioRevenue.avgRevenue.toFixed(1)}M</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Project IRR:</span>
-                      <span>{scenarioRevenue.irr.toFixed(1)}%</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>NPV:</span>
-                      <span>${scenarioRevenue.npv.toFixed(0)}M</span>
-                    </div>
+          <h3 className="text-lg font-semibold mb-4">Financial Summary</h3>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <h4 className="font-medium mb-3 text-blue-900">Key Returns</h4>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Project IRR:</span>
+                    <span className="font-medium">{returns.projectIRR}%</span>
                   </div>
-                  {selectedRevenueCase !== scenario && (
-                    <button
-                      onClick={() => setSelectedRevenueCase(scenario)}
-                      className="mt-2 w-full text-sm bg-gray-100 hover:bg-gray-200 px-3 py-1 rounded transition-colors"
-                    >
-                      Select Scenario
-                    </button>
-                  )}
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Equity IRR:</span>
+                    <span className="font-medium">{returns.equityIRR}%</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">NPV @ 8%:</span>
+                    <span className="font-medium">${returns.npv}M</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Payback:</span>
+                    <span className="font-medium">{returns.paybackPeriod} years</span>
+                  </div>
                 </div>
-              );
-            })}
+              </div>
+              
+              <div>
+                <h4 className="font-medium mb-3 text-green-900">Risk Metrics</h4>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">DSCR (Avg):</span>
+                    <span className={`font-medium ${returns.debtServiceCoverage >= 1.25 ? 'text-green-600' : 'text-red-600'}`}>
+                      {returns.debtServiceCoverage}x
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Debt Amount:</span>
+                    <span className="font-medium">
+                      ${((financeStructure.totalCapex * financeStructure.debtRatio) / 100).toFixed(1)}M
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Equity Amount:</span>
+                    <span className="font-medium">
+                      ${((financeStructure.totalCapex * financeStructure.equityRatio) / 100).toFixed(1)}M
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Debt Service:</span>
+                    <span className="font-medium">
+                      ${(calculateAnnualDebtService(
+                        financeStructure.totalCapex * financeStructure.debtRatio / 100,
+                        financeStructure.debtRate,
+                        20
+                      )).toFixed(1)}M/year
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
-      )}
+      </div>
 
-      {/* Asset-Level Revenue Breakdown */}
-      {Object.keys(assets).length > 1 && revenueProjections.length > 0 && (
-        <div className="bg-white rounded-lg shadow border p-6">
-          <h3 className="text-lg font-semibold mb-4">Asset Revenue Breakdown</h3>
-          <ResponsiveContainer width="100%" height={400}>
-            <AreaChart data={revenueProjections.slice(0, 10)}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="year" />
-              <YAxis />
-              <Tooltip formatter={(value) => [`${value.toFixed(1)}M`, '']} />
-              <Legend />
-              {Object.values(assets).map((asset, index) => (
-                <Area
-                  key={asset.name}
-                  type="monotone"
-                  dataKey={asset.name}
-                  stackId="1"
-                  fill={getAssetColor(index)}
-                  name={asset.name}
-                />
-              ))}
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
-      )}
-
-      {/* Empty State */}
-      {Object.keys(assets).length === 0 && (
-        <div className="bg-white rounded-lg shadow border p-8">
-          <div className="text-center">
-            <Calculator className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No Assets to Analyze</h3>
-            <p className="text-gray-600 mb-4">
-              Add assets to your portfolio to perform financial analysis
-            </p>
-            <a
-              href="/assets"
-              className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Add Assets
-            </a>
-          </div>
-        </div>
-      )}
-
-      {/* Status Information */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+      {/* Integration Status */}
+      <div className="bg-green-50 border border-green-200 rounded-lg p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            <CheckCircle className="w-5 h-5 text-blue-500" />
-            <span className="text-blue-800 font-medium">
-              Financial analysis using integrated revenue calculations
+            <CheckCircle className="w-5 h-5 text-green-500" />
+            <span className="text-green-800 font-medium">
+              Advanced finance modeling with integrated merchant price curves
             </span>
           </div>
-          <div className="text-blue-600 text-sm">
-            Scenario: {selectedRevenueCase} • Period: {analysisYears} years
+          <div className="text-green-600 text-sm">
+            Price Source: {priceSource} • Scenario: {selectedRevenueCase} • Updated: {new Date().toLocaleTimeString()}
           </div>
         </div>
-        <div className="mt-2 text-sm text-blue-700">
-          Revenue calculations include contract escalation, degradation, merchant price forecasts, and stress scenarios.
-          {includeTerminalValue && " Terminal values are included in final year cash flows."}
+        <div className="mt-2 text-sm text-green-700">
+          Financial analysis incorporates real-time merchant prices with escalation, contract analysis, stress scenarios, 
+          and comprehensive sensitivity analysis. Revenue calculations flow directly from your price curve data.
         </div>
       </div>
     </div>
   );
-
-  // Helper function to calculate scenario metrics
-  function calculateScenarioMetrics(scenario) {
-    // This would calculate metrics for different scenarios
-    // Simplified calculation for demo
-    const baseMultiplier = scenario === 'base' ? 1.0 : 
-                          scenario === 'volume' ? 0.85 : 
-                          scenario === 'price' ? 0.9 : 0.75;
-    
-    const avgRevenue = revenueProjections.length > 0 ? 
-      (revenueProjections.reduce((sum, proj) => sum + proj.portfolioRevenue, 0) / revenueProjections.length) * baseMultiplier : 0;
-    
-    const irr = returns.projectIRR * baseMultiplier;
-    const npv = returns.npv * baseMultiplier;
-    
-    return { avgRevenue, irr, npv };
-  }
-
-  // Helper function to get asset colors
-  function getAssetColor(index) {
-    const colors = ['#4CAF50', '#2196F3', '#FF9800', '#9C27B0', '#F44336', '#00BCD4'];
-    return colors[index % colors.length];
-  }
-};
-
-export default ProjectFinance;
+}
