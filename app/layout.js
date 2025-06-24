@@ -14,7 +14,8 @@ import {
   Calculator,
   Settings,
   Menu,
-  X
+  X,
+  BarChart3
 } from 'lucide-react'
 
 // Navigation items
@@ -28,6 +29,11 @@ const navigationItems = [
     name: 'Asset Definition',
     href: '/assets',
     icon: Building2
+  },
+  {
+    name: 'Price Curves',
+    href: '/price-curves',
+    icon: BarChart3
   },
   {
     name: 'Revenue Analysis',

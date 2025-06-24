@@ -7,7 +7,8 @@ import { DEFAULT_DATA_SOURCES } from '@/lib/default_constants';
 const getQuarterFromDate = (dateStr) => {
   if (!dateStr) return null;
   try {
-    const [, month] = dateStr.split('/');
+    // Handle DD/MM/YYYY format
+    const [day, month, year] = dateStr.split('/');
     return Math.ceil(parseInt(month) / 3);
   } catch (error) {
     console.warn('Error extracting quarter from date:', dateStr, error);
@@ -66,7 +67,8 @@ export function MerchantPriceProvider({ children }) {
       Object.entries(profileData).forEach(([type, typeData]) => {
         Object.entries(typeData).forEach(([state, stateData]) => {
           Object.entries(stateData).forEach(([time, data]) => {
-            const [, , year] = time.split('/');
+            // Handle DD/MM/YYYY format
+            const [day, month, year] = time.split('/');
             const quarter = getQuarterFromDate(time);
             const yearKey = year.toString();
             const quarterKey = `${yearKey}-Q${quarter}`;
@@ -190,6 +192,7 @@ export function MerchantPriceProvider({ children }) {
             });
             
             setSpreadData(spreads);
+            console.log('Loaded spread data:', spreads);
           }
         });
       } catch (error) {
@@ -229,22 +232,78 @@ export function MerchantPriceProvider({ children }) {
 
   const getMerchantPrice = useCallback((profile, type, region, timeStr) => {
     try {
+      console.log(`getMerchantPrice called: profile=${profile}, type=${type}, region=${region}, time=${timeStr}`);
+      
       if (profile === 'storage') {
-        if (typeof timeStr === 'number') timeStr = timeStr.toString();
-        const spread = spreadData[region]?.[type]?.[timeStr] ?? 160;
+        // For storage, extract year from timeStr and use type as duration
+        let year;
+        if (typeof timeStr === 'number') {
+          year = timeStr.toString();
+        } else if (typeof timeStr === 'string') {
+          if (timeStr.includes('/')) {
+            // DD/MM/YYYY format
+            const [day, month, yearPart] = timeStr.split('/');
+            year = yearPart;
+          } else if (timeStr.includes('-Q')) {
+            // Quarterly format like "2025-Q1"
+            year = timeStr.split('-')[0];
+          } else {
+            // Assume it's just a year
+            year = timeStr;
+          }
+        }
+        
+        // Try to get spread from data, but extend to all years if not available
+        let spread = spreadData[region]?.[type]?.[year];
+        
+        if (!spread) {
+          // If no data for this year, try to find the closest available year
+          const availableYears = Object.keys(spreadData[region]?.[type] || {}).map(y => parseInt(y)).sort();
+          
+          if (availableYears.length > 0) {
+            const targetYear = parseInt(year);
+            
+            if (targetYear <= Math.min(...availableYears)) {
+              // Use earliest year if target is before data range
+              spread = spreadData[region]?.[type]?.[availableYears[0]];
+            } else if (targetYear >= Math.max(...availableYears)) {
+              // Use latest year if target is after data range
+              spread = spreadData[region]?.[type]?.[availableYears[availableYears.length - 1]];
+            } else {
+              // Use closest year for years in between
+              const closest = availableYears.reduce((prev, curr) => 
+                Math.abs(curr - targetYear) < Math.abs(prev - targetYear) ? curr : prev
+              );
+              spread = spreadData[region]?.[type]?.[closest];
+            }
+          }
+        }
+        
+        // Fallback to default if still no spread found
+        spread = spread ?? 160;
+        
+        console.log(`Storage price lookup: region=${region}, duration=${type}, year=${year}, spread=${spread}`);
         return spread;
       }
       
+      // For non-storage profiles
       if (typeof timeStr === 'number' || (!timeStr.includes('/') && !timeStr.includes('-'))) {
         const yearKey = timeStr.toString();
-        return priceData.yearly[profile]?.[type]?.[region]?.[yearKey] || 0;
+        const price = priceData.yearly[profile]?.[type]?.[region]?.[yearKey] || 0;
+        console.log(`Yearly price lookup: ${price}`);
+        return price;
       }
       
       if (timeStr.includes('-Q')) {
-        return priceData.quarterly[profile]?.[type]?.[region]?.[timeStr] || 0;
+        const price = priceData.quarterly[profile]?.[type]?.[region]?.[timeStr] || 0;
+        console.log(`Quarterly price lookup: ${price}`);
+        return price;
       }
       
-      return priceData.monthly[profile]?.[type]?.[region]?.[timeStr]?.price || 0;
+      // Monthly lookup with DD/MM/YYYY format
+      const price = priceData.monthly[profile]?.[type]?.[region]?.[timeStr]?.price || 0;
+      console.log(`Monthly price lookup: ${price}`);
+      return price;
     } catch (error) {
       console.warn(`Error getting merchant price for profile=${profile}, type=${type}, region=${region}, time=${timeStr}`, error);
       return profile === 'storage' ? 160 : 0;
