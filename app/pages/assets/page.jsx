@@ -18,19 +18,32 @@ import {
   Settings,
   TrendingUp,
   Copy,
-  Upload
+  Upload,
+  AlertCircle,
+  CheckCircle
 } from 'lucide-react';
 
 const EnhancedAssetManagement = () => {
   const { currentUser, currentPortfolio } = useUser();
+  
+  // Original data from database
+  const [originalAssets, setOriginalAssets] = useState({});
+  const [originalConstants, setOriginalConstants] = useState({});
+  const [originalPortfolioName, setOriginalPortfolioName] = useState('Portfolio Name');
+  
+  // Local working state
   const [assets, setAssets] = useState({});
   const [constants, setConstants] = useState({});
   const [portfolioName, setPortfolioName] = useState('Portfolio Name');
+  
+  // UI state
   const [showForm, setShowForm] = useState(false);
   const [editingAsset, setEditingAsset] = useState(null);
   const [activeTab, setActiveTab] = useState('basic');
   const [importing, setImporting] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -51,12 +64,27 @@ const EnhancedAssetManagement = () => {
     contracts: []
   });
 
+  // Helper function to safely get string values
+  const safeValue = (value) => {
+    if (value === null || value === undefined) return '';
+    return String(value);
+  };
+
   // Load portfolio data when user or portfolio changes
   useEffect(() => {
     if (currentUser && currentPortfolio) {
       loadPortfolioData();
     }
   }, [currentUser, currentPortfolio]);
+
+  // Check for changes when local state updates
+  useEffect(() => {
+    const assetsChanged = JSON.stringify(assets) !== JSON.stringify(originalAssets);
+    const constantsChanged = JSON.stringify(constants) !== JSON.stringify(originalConstants);
+    const nameChanged = portfolioName !== originalPortfolioName;
+    
+    setHasUnsavedChanges(assetsChanged || constantsChanged || nameChanged);
+  }, [assets, constants, portfolioName, originalAssets, originalConstants, originalPortfolioName]);
 
   const loadPortfolioData = async () => {
     if (!currentUser || !currentPortfolio) return;
@@ -75,23 +103,42 @@ const EnhancedAssetManagement = () => {
           version: portfolioData.version
         });
         
-        setAssets(portfolioData.assets || {});
-        setConstants(portfolioData.constants || {});
+        // Set original data
+        setOriginalAssets(portfolioData.assets || {});
+        setOriginalConstants(portfolioData.constants || {});
+        setOriginalPortfolioName(portfolioData.portfolioName || 'Portfolio Name');
+        
+        // Set working data (copies)
+        setAssets(JSON.parse(JSON.stringify(portfolioData.assets || {})));
+        setConstants(JSON.parse(JSON.stringify(portfolioData.constants || {})));
         setPortfolioName(portfolioData.portfolioName || 'Portfolio Name');
+        
+        // Reset unsaved changes flag
+        setHasUnsavedChanges(false);
         
       } else if (response.status === 404) {
         console.log('Portfolio not found, starting fresh');
-        setAssets({});
-        setConstants({});
-        setPortfolioName(currentPortfolio.portfolioName || 'Portfolio Name');
+        const emptyState = {};
+        setOriginalAssets(emptyState);
+        setOriginalConstants(emptyState);
+        setOriginalPortfolioName('Portfolio Name');
+        setAssets(emptyState);
+        setConstants(emptyState);
+        setPortfolioName('Portfolio Name');
+        setHasUnsavedChanges(false);
       } else {
         console.error('Failed to load portfolio, status:', response.status);
       }
     } catch (error) {
       console.error('Error loading portfolio:', error);
-      setAssets({});
-      setConstants({});
+      const emptyState = {};
+      setOriginalAssets(emptyState);
+      setOriginalConstants(emptyState);
+      setOriginalPortfolioName('Portfolio Name');
+      setAssets(emptyState);
+      setConstants(emptyState);
       setPortfolioName('Portfolio Name');
+      setHasUnsavedChanges(false);
     } finally {
       setLoading(false);
     }
@@ -100,6 +147,7 @@ const EnhancedAssetManagement = () => {
   const savePortfolioData = async () => {
     if (!currentUser || !currentPortfolio) return false;
     
+    setSaving(true);
     try {
       const portfolioData = {
         userId: currentUser.id,
@@ -129,15 +177,35 @@ const EnhancedAssetManagement = () => {
       if (response.ok) {
         const result = await response.json();
         console.log('Portfolio saved successfully:', result);
+        
+        // Update original data to match current state
+        setOriginalAssets(JSON.parse(JSON.stringify(assets)));
+        setOriginalConstants(JSON.parse(JSON.stringify(constants)));
+        setOriginalPortfolioName(portfolioName);
+        setHasUnsavedChanges(false);
+        
         return true;
       } else {
         const errorData = await response.json();
         console.error('Failed to save portfolio:', errorData);
+        alert('Failed to save portfolio: ' + (errorData.error || 'Unknown error'));
         return false;
       }
     } catch (error) {
       console.error('Error saving portfolio:', error);
+      alert('Error saving portfolio: ' + error.message);
       return false;
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const revertChanges = () => {
+    if (window.confirm('Are you sure you want to revert all unsaved changes?')) {
+      setAssets(JSON.parse(JSON.stringify(originalAssets)));
+      setConstants(JSON.parse(JSON.stringify(originalConstants)));
+      setPortfolioName(originalPortfolioName);
+      setHasUnsavedChanges(false);
     }
   };
 
@@ -214,13 +282,15 @@ const EnhancedAssetManagement = () => {
         };
       }
 
+      // Update local state
       setAssets(updatedAssets);
       
+      // Update constants if needed
       if (!constants.assetCosts) {
         setConstants(prev => ({ ...prev, assetCosts: {} }));
       }
       
-      if (!constants.assetCosts[formData.name]) {
+      if (!constants.assetCosts || !constants.assetCosts[formData.name]) {
         const defaultCosts = getDefaultAssetCosts(formData.type, formData.capacity);
         setConstants(prev => ({
           ...prev,
@@ -232,9 +302,9 @@ const EnhancedAssetManagement = () => {
       }
 
       resetForm();
-      await savePortfolioData();
     } catch (error) {
       console.error('Error saving asset:', error);
+      alert('Error saving asset: ' + error.message);
     }
   };
 
@@ -273,7 +343,41 @@ const EnhancedAssetManagement = () => {
   };
 
   const handleEdit = (asset) => {
-    setFormData(asset);
+    // Ensure all values are strings and handle null/undefined
+    const cleanedAsset = {
+      name: safeValue(asset.name),
+      state: safeValue(asset.state) || 'NSW',
+      type: safeValue(asset.type) || 'solar',
+      capacity: safeValue(asset.capacity),
+      assetLife: asset.assetLife || 25,
+      volumeLossAdjustment: asset.volumeLossAdjustment || 95,
+      annualDegradation: asset.annualDegradation || 0.5,
+      constructionStartDate: safeValue(asset.constructionStartDate),
+      constructionDuration: asset.constructionDuration || 18,
+      assetStartDate: safeValue(asset.assetStartDate),
+      qtrCapacityFactor_q1: safeValue(asset.qtrCapacityFactor_q1),
+      qtrCapacityFactor_q2: safeValue(asset.qtrCapacityFactor_q2),
+      qtrCapacityFactor_q3: safeValue(asset.qtrCapacityFactor_q3),
+      qtrCapacityFactor_q4: safeValue(asset.qtrCapacityFactor_q4),
+      volume: safeValue(asset.volume),
+      contracts: asset.contracts ? asset.contracts.map(contract => ({
+        id: safeValue(contract.id) || Date.now().toString(),
+        counterparty: safeValue(contract.counterparty),
+        type: safeValue(contract.type) || 'bundled',
+        buyersPercentage: contract.buyersPercentage || 100,
+        strikePrice: safeValue(contract.strikePrice),
+        indexation: contract.indexation || 2.5,
+        indexationReferenceYear: contract.indexationReferenceYear || new Date().getFullYear(),
+        startDate: safeValue(contract.startDate),
+        endDate: safeValue(contract.endDate),
+        hasFloor: contract.hasFloor || false,
+        floorValue: safeValue(contract.floorValue),
+        EnergyPrice: safeValue(contract.EnergyPrice),
+        greenPrice: safeValue(contract.greenPrice)
+      })) : []
+    };
+    
+    setFormData(cleanedAsset);
     setEditingAsset(asset);
     setShowForm(true);
   };
@@ -286,22 +390,46 @@ const EnhancedAssetManagement = () => {
       
       if (constants.assetCosts && assets[assetId]) {
         const updatedConstants = { ...constants };
-        delete updatedConstants.assetCosts[assets[assetId].name];
-        setConstants(updatedConstants);
+        if (updatedConstants.assetCosts) {
+          delete updatedConstants.assetCosts[assets[assetId].name];
+          setConstants(updatedConstants);
+        }
       }
-      
-      await savePortfolioData();
     }
   };
 
   const handleDuplicate = (asset) => {
     const newAsset = {
-      ...asset,
-      name: `${asset.name} (Copy)`,
-      contracts: asset.contracts.map(contract => ({
-        ...contract,
-        id: Date.now().toString() + Math.random()
-      }))
+      name: `${safeValue(asset.name)} (Copy)`,
+      state: safeValue(asset.state) || 'NSW',
+      type: safeValue(asset.type) || 'solar',
+      capacity: safeValue(asset.capacity),
+      assetLife: asset.assetLife || 25,
+      volumeLossAdjustment: asset.volumeLossAdjustment || 95,
+      annualDegradation: asset.annualDegradation || 0.5,
+      constructionStartDate: safeValue(asset.constructionStartDate),
+      constructionDuration: asset.constructionDuration || 18,
+      assetStartDate: safeValue(asset.assetStartDate),
+      qtrCapacityFactor_q1: safeValue(asset.qtrCapacityFactor_q1),
+      qtrCapacityFactor_q2: safeValue(asset.qtrCapacityFactor_q2),
+      qtrCapacityFactor_q3: safeValue(asset.qtrCapacityFactor_q3),
+      qtrCapacityFactor_q4: safeValue(asset.qtrCapacityFactor_q4),
+      volume: safeValue(asset.volume),
+      contracts: asset.contracts ? asset.contracts.map(contract => ({
+        id: Date.now().toString() + Math.random(),
+        counterparty: safeValue(contract.counterparty),
+        type: safeValue(contract.type) || 'bundled',
+        buyersPercentage: contract.buyersPercentage || 100,
+        strikePrice: safeValue(contract.strikePrice),
+        indexation: contract.indexation || 2.5,
+        indexationReferenceYear: contract.indexationReferenceYear || new Date().getFullYear(),
+        startDate: safeValue(contract.startDate),
+        endDate: safeValue(contract.endDate),
+        hasFloor: contract.hasFloor || false,
+        floorValue: safeValue(contract.floorValue),
+        EnergyPrice: safeValue(contract.EnergyPrice),
+        greenPrice: safeValue(contract.greenPrice)
+      })) : []
     };
     setFormData(newAsset);
     setEditingAsset(null);
@@ -333,53 +461,19 @@ const EnhancedAssetManagement = () => {
         version: importData.version
       });
 
-      const portfolioData = {
-        userId: currentUser.id,
-        portfolioId: currentPortfolio.portfolioId,
-        version: importData.version || '2.0',
-        portfolioName: importData.portfolioName || 'Imported Portfolio',
-        assets: importData.assets || {},
-        constants: importData.constants || {},
-        analysisMode: importData.analysisMode || 'simple',
-        activePortfolio: importData.activePortfolio || currentPortfolio.portfolioId,
-        portfolioSource: file.name,
-        priceSource: importData.priceSource || 'merchant_price_monthly.csv',
-        exportDate: importData.exportDate || new Date().toISOString()
-      };
-
-      console.log('Saving portfolio data:', portfolioData);
-
-      const response = await fetch('/api/portfolio', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(portfolioData),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to save portfolio to database');
-      }
-
-      const saveResult = await response.json();
-      console.log('Portfolio saved successfully:', saveResult);
-
+      // Update local state
       setAssets(importData.assets || {});
       setConstants(importData.constants || {});
       setPortfolioName(importData.portfolioName || 'Imported Portfolio');
 
-      alert(`Portfolio imported and saved successfully!\n\n` +
+      alert(`Portfolio imported successfully!\n\n` +
             `• ${Object.keys(importData.assets || {}).length} assets loaded\n` +
             `• Portfolio name: ${importData.portfolioName || 'Imported Portfolio'}\n` +
-            `• Data saved to database`);
+            `• Remember to save your changes`);
 
     } catch (error) {
       console.error('Import error:', error);
       alert(`Import failed: ${error.message}`);
-      
-      if (currentUser && currentPortfolio) {
-        console.log('Reloading existing portfolio data...');
-        loadPortfolioData();
-      }
     } finally {
       setImporting(false);
       event.target.value = '';
@@ -440,7 +534,7 @@ const EnhancedAssetManagement = () => {
 
   return (
     <div className="px-4 py-6 space-y-6">
-      {/* Header */}
+      {/* Header with Save/Revert Controls */}
       <div className="flex justify-between items-start">
         <div>
           <div className="flex items-center space-x-4 mb-2">
@@ -448,9 +542,14 @@ const EnhancedAssetManagement = () => {
               type="text"
               value={portfolioName}
               onChange={(e) => setPortfolioName(e.target.value)}
-              onBlur={savePortfolioData}
               className="text-2xl font-bold text-gray-900 bg-transparent border-none focus:outline-none focus:ring-2 focus:ring-green-500 rounded px-2"
             />
+            {hasUnsavedChanges && (
+              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                <AlertCircle className="w-3 h-3 mr-1" />
+                Unsaved Changes
+              </span>
+            )}
           </div>
           <p className="text-gray-600">
             {Object.keys(assets).length} assets • {calculateTotalCapacity().toFixed(1)} MW • 
@@ -461,6 +560,31 @@ const EnhancedAssetManagement = () => {
           </p>
         </div>
         <div className="flex space-x-3">
+          {hasUnsavedChanges && (
+            <button
+              onClick={revertChanges}
+              className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg flex items-center space-x-2 hover:bg-gray-200"
+            >
+              <X className="w-4 h-4" />
+              <span>Revert</span>
+            </button>
+          )}
+          <button
+            onClick={savePortfolioData}
+            disabled={saving || !hasUnsavedChanges}
+            className={`px-4 py-2 rounded-lg flex items-center space-x-2 ${
+              hasUnsavedChanges 
+                ? 'bg-green-600 text-white hover:bg-green-700' 
+                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+            }`}
+          >
+            {saving ? (
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+            ) : (
+              <Save className="w-4 h-4" />
+            )}
+            <span>{saving ? 'Saving...' : 'Save Changes'}</span>
+          </button>
           <button
             onClick={triggerImport}
             disabled={importing}
@@ -575,7 +699,7 @@ const EnhancedAssetManagement = () => {
         ))}
       </div>
 
-      {/* Asset Form Modal */}
+      {/* Asset Form Modal - Previous form code remains the same */}
       {showForm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg max-w-5xl w-full max-h-screen overflow-y-auto">
@@ -629,7 +753,7 @@ const EnhancedAssetManagement = () => {
                         <label className="block text-sm font-medium text-gray-700 mb-1">Asset Name</label>
                         <input
                           type="text"
-                          value={formData.name}
+                          value={safeValue(formData.name)}
                           onChange={(e) => handleInputChange('name', e.target.value)}
                           className="w-full p-2 border border-gray-300 rounded-md"
                           required
@@ -663,7 +787,7 @@ const EnhancedAssetManagement = () => {
                         <label className="block text-sm font-medium text-gray-700 mb-1">Capacity (MW)</label>
                         <input
                           type="number"
-                          value={formData.capacity}
+                          value={safeValue(formData.capacity)}
                           onChange={(e) => handleInputChange('capacity', e.target.value)}
                           className="w-full p-2 border border-gray-300 rounded-md"
                           step="0.1"
@@ -675,7 +799,7 @@ const EnhancedAssetManagement = () => {
                           <label className="block text-sm font-medium text-gray-700 mb-1">Storage Volume (MWh)</label>
                           <input
                             type="number"
-                            value={formData.volume}
+                            value={safeValue(formData.volume)}
                             onChange={(e) => handleInputChange('volume', e.target.value)}
                             className="w-full p-2 border border-gray-300 rounded-md"
                             step="0.1"
@@ -703,7 +827,7 @@ const EnhancedAssetManagement = () => {
                         <label className="block text-sm font-medium text-gray-700 mb-1">Volume Loss Adjustment (%)</label>
                         <input
                           type="number"
-                          value={formData.volumeLossAdjustment}
+                          value={safeValue(formData.volumeLossAdjustment)}
                           onChange={(e) => handleInputChange('volumeLossAdjustment', e.target.value)}
                           className="w-full p-2 border border-gray-300 rounded-md"
                           min="0"
@@ -715,7 +839,7 @@ const EnhancedAssetManagement = () => {
                         <label className="block text-sm font-medium text-gray-700 mb-1">Annual Degradation (%)</label>
                         <input
                           type="number"
-                          value={formData.annualDegradation}
+                          value={safeValue(formData.annualDegradation)}
                           onChange={(e) => handleInputChange('annualDegradation', e.target.value)}
                           className="w-full p-2 border border-gray-300 rounded-md"
                           step="0.1"
@@ -734,7 +858,7 @@ const EnhancedAssetManagement = () => {
                               </label>
                               <input
                                 type="number"
-                                value={formData[`qtrCapacityFactor_${quarter}`]}
+                                value={safeValue(formData[`qtrCapacityFactor_${quarter}`])}
                                 onChange={(e) => handleInputChange(`qtrCapacityFactor_${quarter}`, e.target.value)}
                                 className="w-full p-2 border border-gray-300 rounded-md"
                                 min="0"
@@ -757,7 +881,7 @@ const EnhancedAssetManagement = () => {
                         <label className="block text-sm font-medium text-gray-700 mb-1">Construction Start</label>
                         <input
                           type="date"
-                          value={formData.constructionStartDate}
+                          value={safeValue(formData.constructionStartDate)}
                           onChange={(e) => handleInputChange('constructionStartDate', e.target.value)}
                           className="w-full p-2 border border-gray-300 rounded-md"
                         />
@@ -766,7 +890,7 @@ const EnhancedAssetManagement = () => {
                         <label className="block text-sm font-medium text-gray-700 mb-1">Construction Duration (months)</label>
                         <input
                           type="number"
-                          value={formData.constructionDuration}
+                          value={safeValue(formData.constructionDuration)}
                           onChange={(e) => handleInputChange('constructionDuration', e.target.value)}
                           className="w-full p-2 border border-gray-300 rounded-md"
                           min="1"
@@ -776,7 +900,7 @@ const EnhancedAssetManagement = () => {
                         <label className="block text-sm font-medium text-gray-700 mb-1">Operations Start</label>
                         <input
                           type="date"
-                          value={formData.assetStartDate}
+                          value={safeValue(formData.assetStartDate)}
                           onChange={(e) => handleInputChange('assetStartDate', e.target.value)}
                           className="w-full p-2 border border-gray-300 rounded-md"
                         />
@@ -815,7 +939,7 @@ const EnhancedAssetManagement = () => {
                             <label className="block text-sm font-medium text-gray-700 mb-1">Counterparty</label>
                             <input
                               type="text"
-                              value={contract.counterparty}
+                              value={safeValue(contract.counterparty)}
                               onChange={(e) => handleContractChange(index, 'counterparty', e.target.value)}
                               className="w-full p-2 border border-gray-300 rounded-md"
                             />
@@ -836,7 +960,7 @@ const EnhancedAssetManagement = () => {
                             <label className="block text-sm font-medium text-gray-700 mb-1">Strike Price ($/MWh)</label>
                             <input
                               type="number"
-                              value={contract.strikePrice}
+                              value={safeValue(contract.strikePrice)}
                               onChange={(e) => handleContractChange(index, 'strikePrice', e.target.value)}
                               className="w-full p-2 border border-gray-300 rounded-md"
                               step="0.01"
@@ -846,7 +970,7 @@ const EnhancedAssetManagement = () => {
                             <label className="block text-sm font-medium text-gray-700 mb-1">Buyer's Percentage (%)</label>
                             <input
                               type="number"
-                              value={contract.buyersPercentage}
+                              value={safeValue(contract.buyersPercentage)}
                               onChange={(e) => handleContractChange(index, 'buyersPercentage', e.target.value)}
                               className="w-full p-2 border border-gray-300 rounded-md"
                               min="0"
@@ -857,7 +981,7 @@ const EnhancedAssetManagement = () => {
                             <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
                             <input
                               type="date"
-                              value={contract.startDate}
+                              value={safeValue(contract.startDate)}
                               onChange={(e) => handleContractChange(index, 'startDate', e.target.value)}
                               className="w-full p-2 border border-gray-300 rounded-md"
                             />
@@ -866,7 +990,7 @@ const EnhancedAssetManagement = () => {
                             <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
                             <input
                               type="date"
-                              value={contract.endDate}
+                              value={safeValue(contract.endDate)}
                               onChange={(e) => handleContractChange(index, 'endDate', e.target.value)}
                               className="w-full p-2 border border-gray-300 rounded-md"
                             />
@@ -875,7 +999,7 @@ const EnhancedAssetManagement = () => {
                             <label className="block text-sm font-medium text-gray-700 mb-1">Indexation (%/year)</label>
                             <input
                               type="number"
-                              value={contract.indexation}
+                              value={safeValue(contract.indexation)}
                               onChange={(e) => handleContractChange(index, 'indexation', e.target.value)}
                               className="w-full p-2 border border-gray-300 rounded-md"
                               step="0.1"
@@ -885,7 +1009,7 @@ const EnhancedAssetManagement = () => {
                             <label className="block text-sm font-medium text-gray-700 mb-1">Reference Year</label>
                             <input
                               type="number"
-                              value={contract.indexationReferenceYear}
+                              value={safeValue(contract.indexationReferenceYear)}
                               onChange={(e) => handleContractChange(index, 'indexationReferenceYear', e.target.value)}
                               className="w-full p-2 border border-gray-300 rounded-md"
                               min="2020"
@@ -900,7 +1024,7 @@ const EnhancedAssetManagement = () => {
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Energy Price ($/MWh)</label>
                                 <input
                                   type="number"
-                                  value={contract.EnergyPrice || ''}
+                                  value={safeValue(contract.EnergyPrice)}
                                   onChange={(e) => handleContractChange(index, 'EnergyPrice', e.target.value)}
                                   className="w-full p-2 border border-gray-300 rounded-md"
                                   step="0.01"
@@ -910,7 +1034,7 @@ const EnhancedAssetManagement = () => {
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Green Price ($/MWh)</label>
                                 <input
                                   type="number"
-                                  value={contract.greenPrice || ''}
+                                  value={safeValue(contract.greenPrice)}
                                   onChange={(e) => handleContractChange(index, 'greenPrice', e.target.value)}
                                   className="w-full p-2 border border-gray-300 rounded-md"
                                   step="0.01"
@@ -937,7 +1061,7 @@ const EnhancedAssetManagement = () => {
                               <input
                                 type="number"
                                 placeholder="Floor Value"
-                                value={contract.floorValue || ''}
+                                value={safeValue(contract.floorValue)}
                                 onChange={(e) => handleContractChange(index, 'floorValue', e.target.value)}
                                 className="w-full p-2 border border-gray-300 rounded-md"
                                 step="0.01"
@@ -1105,6 +1229,41 @@ const EnhancedAssetManagement = () => {
           </button>
         </div>
       )}
+
+      {/* Status Information */}
+      <div className={`border rounded-lg p-4 ${
+        hasUnsavedChanges 
+          ? 'bg-orange-50 border-orange-200' 
+          : 'bg-green-50 border-green-200'
+      }`}>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            {hasUnsavedChanges ? (
+              <AlertCircle className="w-5 h-5 text-orange-500" />
+            ) : (
+              <CheckCircle className="w-5 h-5 text-green-500" />
+            )}
+            <span className={`font-medium ${
+              hasUnsavedChanges ? 'text-orange-800' : 'text-green-800'
+            }`}>
+              {hasUnsavedChanges 
+                ? 'You have unsaved changes - remember to save your work'
+                : 'All changes saved to database'
+              }
+            </span>
+          </div>
+          <div className={`text-sm ${
+            hasUnsavedChanges ? 'text-orange-600' : 'text-green-600'
+          }`}>
+            Last saved: {new Date().toLocaleString()}
+          </div>
+        </div>
+        {hasUnsavedChanges && (
+          <div className="mt-2 text-sm text-orange-700">
+            Changes are kept locally until you save. Use the "Save Changes" button to persist your updates to the database.
+          </div>
+        )}
+      </div>
     </div>
   );
 };

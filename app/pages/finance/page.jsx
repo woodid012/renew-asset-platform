@@ -36,15 +36,20 @@ import {
   EyeOff
 } from 'lucide-react';
 
-// Import revenue calculations
+// Import the proper project finance calculations
+import { 
+  calculateProjectMetrics, 
+  calculateIRR,
+  initializeProjectValues
+} from '@/app/components/ProjectFinance_Calcs';
 import { 
   calculateAssetRevenue, 
   generatePortfolioData,
   calculatePortfolioSummary,
   calculateStressRevenue 
-} from '../../../lib/revenueCalculations';
+} from '@/lib/revenueCalculations';
 
-export default function EnhancedFinanceIntegration() {
+export default function FixedProjectFinancePage() {
   const { currentUser, currentPortfolio } = useUser();
   const { getMerchantPrice, priceSource } = useMerchantPrices();
   
@@ -58,35 +63,12 @@ export default function EnhancedFinanceIntegration() {
   const [selectedRevenueCase, setSelectedRevenueCase] = useState('base');
   const [analysisYears, setAnalysisYears] = useState(25);
   const [includeTerminalValue, setIncludeTerminalValue] = useState(true);
-  const [showPriceBreakdown, setShowPriceBreakdown] = useState(false);
-  const [showSensitivityAnalysis, setShowSensitivityAnalysis] = useState(false);
+  const [showCashFlowTable, setShowCashFlowTable] = useState(false);
+  const [solveGearing, setSolveGearing] = useState(false);
   
-  // Finance structure state
-  const [financeStructure, setFinanceStructure] = useState({
-    totalCapex: 420,
-    debtRatio: 70,
-    equityRatio: 30,
-    debtRate: 4.5,
-    equityReturn: 12.0,
-    projectLife: 25,
-    constructionPeriod: 2,
-    taxRate: 30
-  });
-
-  // Results state
-  const [returns, setReturns] = useState({
-    projectIRR: 0,
-    equityIRR: 0,
-    debtServiceCoverage: 0,
-    npv: 0,
-    paybackPeriod: 0,
-    leveragedIRR: 0
-  });
-
-  const [cashFlowData, setCashFlowData] = useState([]);
-  const [revenueProjections, setRevenueProjections] = useState([]);
-  const [priceProjections, setPriceProjections] = useState([]);
-  const [sensitivityResults, setSensitivityResults] = useState({});
+  // Results state - using proper project finance calculations
+  const [projectMetrics, setProjectMetrics] = useState({});
+  const [portfolioSummary, setPortfolioSummary] = useState({});
 
   // Load portfolio data
   useEffect(() => {
@@ -97,12 +79,10 @@ export default function EnhancedFinanceIntegration() {
 
   // Recalculate when dependencies change
   useEffect(() => {
-    if (Object.keys(assets).length > 0) {
-      calculateIntegratedFinanceMetrics();
-      calculatePriceProjections();
-      calculateSensitivityAnalysis();
+    if (Object.keys(assets).length > 0 && constants.assetCosts) {
+      calculateProjectFinanceMetrics();
     }
-  }, [assets, constants, financeStructure, selectedRevenueCase, analysisYears, includeTerminalValue]);
+  }, [assets, constants, selectedRevenueCase, analysisYears, includeTerminalValue, solveGearing]);
 
   const loadPortfolioData = async () => {
     if (!currentUser || !currentPortfolio) return;
@@ -114,25 +94,35 @@ export default function EnhancedFinanceIntegration() {
       if (response.ok) {
         const portfolioData = await response.json();
         setAssets(portfolioData.assets || {});
-        setConstants({
+        
+        // Initialize constants with proper structure
+        const updatedConstants = {
           ...portfolioData.constants,
           HOURS_IN_YEAR: 8760,
-          volumeVariation: 20,
-          greenPriceVariation: 20,
-          EnergyPriceVariation: 20,
+          volumeVariation: portfolioData.constants?.volumeVariation || 20,
+          greenPriceVariation: portfolioData.constants?.greenPriceVariation || 20,
+          EnergyPriceVariation: portfolioData.constants?.EnergyPriceVariation || 20,
           escalation: 2.5,
           referenceYear: 2025
-        });
+        };
+
+        // Initialize project values if not present
+        if (!updatedConstants.assetCosts && Object.keys(portfolioData.assets || {}).length > 0) {
+          console.log('Initializing project finance values for assets...');
+          updatedConstants.assetCosts = initializeProjectValues(portfolioData.assets || {});
+          
+          // Save the updated constants back to MongoDB
+          setConstants(updatedConstants);
+          await savePortfolioData(updatedConstants);
+        }
+
+        setConstants(updatedConstants);
         setPortfolioName(portfolioData.portfolioName || 'Portfolio');
         
-        // Calculate total CAPEX from assets
-        const totalCapex = Object.values(portfolioData.assets || {}).reduce((sum, asset) => {
-          const defaultRates = { solar: 1.2, wind: 2.5, storage: 1.6 };
-          const rate = defaultRates[asset.type] || 1.5;
-          return sum + ((asset.capacity || 0) * rate);
-        }, 0);
-        
-        setFinanceStructure(prev => ({ ...prev, totalCapex }));
+      } else if (response.status === 404) {
+        console.log('Portfolio not found, starting fresh');
+        setAssets({});
+        setConstants({});
       }
     } catch (error) {
       console.error('Error loading portfolio:', error);
@@ -141,257 +131,162 @@ export default function EnhancedFinanceIntegration() {
     }
   };
 
-  const calculateIntegratedFinanceMetrics = () => {
-    const startYear = new Date().getFullYear();
-    const timeIntervals = Array.from({ length: analysisYears }, (_, i) => startYear + i);
-    
-    // Generate detailed revenue projections using merchant prices
-    const portfolioData = generatePortfolioData(assets, timeIntervals, constants, getMerchantPrice);
-    
-    // Apply stress scenarios
-    const stressedPortfolioData = portfolioData.map(period => {
-      const stressedPeriod = { ...period, assets: {} };
+  const calculateProjectFinanceMetrics = () => {
+    try {
+      console.log('Calculating project finance metrics...');
       
-      Object.entries(period.assets).forEach(([assetName, assetData]) => {
-        if (selectedRevenueCase !== 'base') {
-          const baseRevenue = {
-            contractedGreen: assetData.contractedGreen,
-            contractedEnergy: assetData.contractedEnergy,
-            merchantGreen: assetData.merchantGreen,
-            merchantEnergy: assetData.merchantEnergy
-          };
-          
-          const stressedRevenue = calculateStressRevenue(baseRevenue, selectedRevenueCase, constants);
-          stressedPeriod.assets[assetName] = {
-            ...assetData,
-            ...stressedRevenue,
-            total: stressedRevenue.contractedGreen + stressedRevenue.contractedEnergy + 
-                   stressedRevenue.merchantGreen + stressedRevenue.merchantEnergy
-          };
+      // Ensure we have asset costs initialized
+      if (!constants.assetCosts && Object.keys(assets).length > 0) {
+        console.log('Asset costs not initialized, creating defaults and saving to MongoDB...');
+        const updatedConstants = {
+          ...constants,
+          assetCosts: initializeProjectValues(assets)
+        };
+        setConstants(updatedConstants);
+        savePortfolioData(updatedConstants); // Save to MongoDB
+        return; // Will retrigger with updated constants
+      }
+      
+      // Use the proper project finance calculation
+      const metrics = calculateProjectMetrics(
+        assets,
+        constants.assetCosts,
+        constants,
+        getMerchantPrice,
+        selectedRevenueCase,
+        solveGearing,
+        includeTerminalValue
+      );
+      
+      console.log('Calculated project metrics:', metrics);
+      setProjectMetrics(metrics);
+      
+      // Calculate portfolio summary using revenue calculations
+      const startYear = new Date().getFullYear();
+      const timeIntervals = Array.from({ length: analysisYears }, (_, i) => startYear + i);
+      const portfolioData = generatePortfolioData(assets, timeIntervals, constants, getMerchantPrice);
+      const summary = calculatePortfolioSummary(portfolioData, assets);
+      setPortfolioSummary(summary);
+      
+    } catch (error) {
+      console.error('Error calculating project metrics:', error);
+      setProjectMetrics({});
+    }
+  };
+
+  // Function to save updated portfolio data using your existing API
+  const savePortfolioData = async (updatedConstants = null) => {
+    if (!currentUser || !currentPortfolio) return false;
+    
+    try {
+      const portfolioData = {
+        userId: currentUser.id,
+        portfolioId: currentPortfolio.portfolioId,
+        version: '2.0',
+        portfolioName,
+        assets,
+        constants: updatedConstants || constants,
+        analysisMode: 'simple',
+        priceSource: 'merchant_price_monthly.csv',
+        exportDate: new Date().toISOString()
+      };
+
+      console.log('Saving portfolio to MongoDB:', {
+        userId: portfolioData.userId,
+        portfolioId: portfolioData.portfolioId,
+        assetsCount: Object.keys(portfolioData.assets || {}).length
+      });
+
+      const response = await fetch('/api/portfolio', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(portfolioData),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log('Portfolio saved to MongoDB successfully:', result);
+        return true;
+      } else {
+        const errorData = await response.json();
+        console.error('Failed to save portfolio to MongoDB:', errorData);
+        return false;
+      }
+    } catch (error) {
+      console.error('Error saving portfolio to MongoDB:', error);
+      return false;
+    }
+  };
+
+  // Helper functions for formatting
+  const formatPercent = (value) => {
+    if (value === undefined || value === null) return 'N/A';
+    return `${(value * 100).toFixed(1)}%`;
+  };
+
+  const formatNumber = (value, digits = 1) => {
+    if (value === undefined || value === null) return 'N/A';
+    return value.toLocaleString(undefined, { maximumFractionDigits: digits });
+  };
+
+  const formatDSCR = (value) => {
+    if (value === undefined || value === null) return 'N/A';
+    return value.toFixed(2) + 'x';
+  };
+
+  const formatCurrency = (value) => {
+    if (value === undefined || value === null) return '$0.0M';
+    return `$${formatNumber(value)}M`;
+  };
+
+  // Calculate portfolio totals from individual metrics
+  const getPortfolioTotals = () => {
+    const individualAssets = Object.entries(projectMetrics)
+      .filter(([assetName]) => assetName !== 'portfolio');
+    
+    if (individualAssets.length === 0) return null;
+    
+    const totals = {
+      capex: 0,
+      debtAmount: 0,
+      annualDebtService: 0,
+      terminalValue: 0,
+    };
+    
+    const allEquityCashFlows = [];
+    const allDSCRs = [];
+    
+    individualAssets.forEach(([_, metrics]) => {
+      totals.capex += metrics.capex || 0;
+      totals.debtAmount += metrics.debtAmount || 0;
+      totals.annualDebtService += metrics.annualDebtService || 0;
+      totals.terminalValue += metrics.terminalValue || 0;
+      
+      if (metrics.minDSCR) {
+        allDSCRs.push(metrics.minDSCR);
+      }
+      
+      if (metrics.equityCashFlows && metrics.equityCashFlows.length > 0) {
+        if (allEquityCashFlows.length === 0) {
+          allEquityCashFlows.push(...metrics.equityCashFlows.map(cf => cf));
         } else {
-          stressedPeriod.assets[assetName] = assetData;
+          metrics.equityCashFlows.forEach((cf, index) => {
+            if (index < allEquityCashFlows.length) {
+              allEquityCashFlows[index] += cf;
+            }
+          });
         }
-      });
-      
-      return stressedPeriod;
+      }
     });
     
-    // Transform for revenue chart
-    const revenueChartData = stressedPortfolioData.map(period => {
-      const totalRevenue = Object.values(period.assets).reduce((sum, asset) => sum + asset.total, 0);
-      const contractedGreen = Object.values(period.assets).reduce((sum, asset) => sum + asset.contractedGreen, 0);
-      const contractedEnergy = Object.values(period.assets).reduce((sum, asset) => sum + asset.contractedEnergy, 0);
-      const merchantGreen = Object.values(period.assets).reduce((sum, asset) => sum + asset.merchantGreen, 0);
-      const merchantEnergy = Object.values(period.assets).reduce((sum, asset) => sum + asset.merchantEnergy, 0);
-      
-      return {
-        year: period.timeInterval,
-        totalRevenue,
-        contractedGreen,
-        contractedEnergy,
-        merchantGreen,
-        merchantEnergy,
-        contractedTotal: contractedGreen + contractedEnergy,
-        merchantTotal: merchantGreen + merchantEnergy
-      };
-    });
+    totals.calculatedGearing = totals.capex > 0 ? totals.debtAmount / totals.capex : 0;
+    totals.minDSCR = allDSCRs.length > 0 ? Math.min(...allDSCRs) : null;
+    totals.equityCashFlows = allEquityCashFlows;
     
-    setRevenueProjections(revenueChartData);
-    
-    // Calculate financial metrics
-    const { totalCapex, debtRatio, equityRatio, debtRate, projectLife, taxRate } = financeStructure;
-    
-    if (totalCapex === 0 || revenueChartData.length === 0) return;
-    
-    // Calculate debt amounts
-    const debtAmount = totalCapex * (debtRatio / 100);
-    const equityAmount = totalCapex * (equityRatio / 100);
-    
-    // Calculate average annual metrics
-    const avgAnnualRevenue = revenueChartData.reduce((sum, proj) => sum + proj.totalRevenue, 0) / revenueChartData.length;
-    
-    // Estimate OPEX as percentage of revenue
-    const opexRate = 0.025; // 2.5% of revenue
-    const avgAnnualOpex = avgAnnualRevenue * opexRate;
-    const avgEbitda = avgAnnualRevenue - avgAnnualOpex;
-    
-    // Debt service calculation
-    const annualDebtService = calculateAnnualDebtService(debtAmount, debtRate, Math.min(projectLife, 20));
-    const dscr = avgEbitda / annualDebtService;
-    
-    // IRR calculations using EBITDA margins
-    const projectIRR = ((avgEbitda / totalCapex) * 100);
-    const equityIRR = projectIRR * 1.8; // Leveraged return with realistic multiplier
-    
-    // NPV calculation
-    const discountRate = 0.08;
-    const npv = calculateNPV(avgEbitda, totalCapex, discountRate, projectLife);
-    
-    setReturns({
-      projectIRR: Math.round(projectIRR * 10) / 10,
-      equityIRR: Math.round(equityIRR * 10) / 10,
-      debtServiceCoverage: Math.round(dscr * 100) / 100,
-      npv: Math.round(npv),
-      paybackPeriod: Math.round((totalCapex / avgEbitda) * 10) / 10,
-      leveragedIRR: Math.round(equityIRR * 10) / 10
-    });
-    
-    // Generate cash flow projections
-    generateCashFlows(revenueChartData, avgAnnualOpex);
+    return totals;
   };
 
-  const calculatePriceProjections = () => {
-    const startYear = new Date().getFullYear();
-    const priceData = [];
-    
-    // Get representative asset for price analysis
-    const representativeAsset = Object.values(assets)[0];
-    if (!representativeAsset) return;
-    
-    for (let i = 0; i < Math.min(analysisYears, 10); i++) {
-      const year = startYear + i;
-      
-      // Map asset type to profile
-      const profileMap = { 'solar': 'solar', 'wind': 'wind', 'storage': 'storage' };
-      const profile = profileMap[representativeAsset.type] || representativeAsset.type;
-      const state = representativeAsset.location || representativeAsset.state || 'QLD';
-      
-      // Get merchant prices
-      const energyPrice = getMerchantPrice(profile, 'Energy', state, year) || 65;
-      const greenPrice = profile !== 'storage' ? (getMerchantPrice(profile, 'green', state, year) || 35) : 0;
-      
-      // Apply escalation
-      const yearDiff = year - (constants.referenceYear || 2025);
-      const escalationFactor = Math.pow(1 + (constants.escalation || 2.5) / 100, yearDiff);
-      
-      priceData.push({
-        year,
-        energyPrice: energyPrice * escalationFactor,
-        greenPrice: greenPrice * escalationFactor,
-        blendedPrice: (energyPrice + greenPrice) * escalationFactor,
-        escalationFactor: escalationFactor * 100 - 100 // Convert to percentage
-      });
-    }
-    
-    setPriceProjections(priceData);
-  };
-
-  const calculateSensitivityAnalysis = () => {
-    if (Object.keys(assets).length === 0) return;
-    
-    const baseProjectIRR = returns.projectIRR;
-    const scenarios = [
-      { name: 'Base Case', priceChange: 0, volumeChange: 0, irr: baseProjectIRR },
-      { name: 'Price +10%', priceChange: 10, volumeChange: 0, irr: baseProjectIRR * 1.15 },
-      { name: 'Price -10%', priceChange: -10, volumeChange: 0, irr: baseProjectIRR * 0.85 },
-      { name: 'Volume +10%', priceChange: 0, volumeChange: 10, irr: baseProjectIRR * 1.12 },
-      { name: 'Volume -10%', priceChange: 0, volumeChange: -10, irr: baseProjectIRR * 0.88 },
-      { name: 'Combined +10%', priceChange: 10, volumeChange: 10, irr: baseProjectIRR * 1.25 },
-      { name: 'Combined -10%', priceChange: -10, volumeChange: -10, irr: baseProjectIRR * 0.75 }
-    ];
-    
-    setSensitivityResults({ scenarios });
-  };
-
-  const generateCashFlows = (revenueData, avgOpex) => {
-    const { totalCapex, debtRatio, debtRate, projectLife, taxRate } = financeStructure;
-    const debtAmount = totalCapex * (debtRatio / 100);
-    const annualDebtService = calculateAnnualDebtService(debtAmount, debtRate, Math.min(projectLife, 20));
-    
-    const cashFlows = revenueData.map((projection, index) => {
-      const { totalRevenue } = projection;
-      const year = projection.year;
-      
-      // EBITDA
-      const opex = avgOpex * Math.pow(1.025, index); // 2.5% opex escalation
-      const ebitda = totalRevenue - opex;
-      
-      // Depreciation (straight line)
-      const depreciation = totalCapex / projectLife;
-      
-      // EBIT
-      const ebit = ebitda - depreciation;
-      
-      // Interest expense (declining balance)
-      const outstandingDebt = Math.max(0, debtAmount - (annualDebtService * 0.3 * index)); // Principal payments
-      const interest = outstandingDebt * (debtRate / 100);
-      
-      // EBT
-      const ebt = ebit - interest;
-      
-      // Tax
-      const tax = ebt > 0 ? ebt * (taxRate / 100) : 0;
-      
-      // NOPAT
-      const nopat = ebt - tax;
-      
-      // Operating cash flow
-      const operatingCashFlow = nopat + depreciation;
-      
-      // Debt service (only for loan period)
-      const debtServicePayment = index < 20 ? annualDebtService : 0;
-      
-      // Free cash flow
-      const freeCashFlow = operatingCashFlow - debtServicePayment;
-      
-      // Terminal value (last year only)
-      const terminalValue = (index === revenueData.length - 1 && includeTerminalValue) ? 
-        calculateTerminalValue() : 0;
-      
-      return {
-        year,
-        revenue: totalRevenue,
-        opex,
-        ebitda,
-        depreciation,
-        ebit,
-        interest,
-        ebt,
-        tax,
-        nopat,
-        operatingCashFlow,
-        debtService: debtServicePayment,
-        freeCashFlow: freeCashFlow + terminalValue,
-        terminalValue,
-        // Additional breakdown
-        contractedRevenue: projection.contractedTotal,
-        merchantRevenue: projection.merchantTotal
-      };
-    });
-    
-    setCashFlowData(cashFlows);
-  };
-
-  const calculateTerminalValue = () => {
-    return Object.values(assets).reduce((sum, asset) => {
-      const terminalRates = { solar: 0.15, wind: 0.20, storage: 0.10 };
-      const rate = terminalRates[asset.type] || 0.15;
-      return sum + ((asset.capacity || 0) * rate);
-    }, 0);
-  };
-
-  const calculateAnnualDebtService = (principal, rate, term) => {
-    const monthlyRate = rate / 100 / 12;
-    const numPayments = term * 12;
-    const monthlyPayment = principal * (monthlyRate * Math.pow(1 + monthlyRate, numPayments)) / 
-                          (Math.pow(1 + monthlyRate, numPayments) - 1);
-    return monthlyPayment * 12;
-  };
-
-  const calculateNPV = (annualCashFlow, initialInvestment, discountRate, years) => {
-    let npv = -initialInvestment;
-    for (let year = 1; year <= years; year++) {
-      npv += annualCashFlow / Math.pow(1 + discountRate, year);
-    }
-    return npv;
-  };
-
-  const handleInputChange = (field, value) => {
-    setFinanceStructure(prev => ({
-      ...prev,
-      [field]: parseFloat(value) || 0
-    }));
-  };
+  const portfolioTotals = getPortfolioTotals();
 
   // Show loading state if no user/portfolio selected
   if (!currentUser || !currentPortfolio) {
@@ -422,34 +317,34 @@ export default function EnhancedFinanceIntegration() {
       {/* Header */}
       <div className="flex justify-between items-start">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Integrated Project Finance</h1>
-          <p className="text-gray-600">Advanced financial modeling with live merchant price integration</p>
+          <h1 className="text-2xl font-bold text-gray-900">Project Finance Analysis</h1>
+          <p className="text-gray-600">Comprehensive project finance modeling with proper equity IRR calculations</p>
           <p className="text-sm text-gray-500">
             Portfolio: {portfolioName} • {Object.keys(assets).length} assets • Price Source: {priceSource}
           </p>
         </div>
         <div className="flex space-x-3">
           <button 
-            onClick={() => setShowPriceBreakdown(!showPriceBreakdown)}
+            onClick={() => setSolveGearing(!solveGearing)}
             className={`px-4 py-2 rounded-lg flex items-center space-x-2 border ${
-              showPriceBreakdown 
+              solveGearing 
                 ? 'bg-blue-50 border-blue-200 text-blue-700' 
                 : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
             }`}
           >
-            {showPriceBreakdown ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-            <span>Price Analysis</span>
+            <Calculator className="w-4 h-4" />
+            <span>{solveGearing ? 'Auto-Solve ON' : 'Auto-Solve OFF'}</span>
           </button>
           <button 
-            onClick={() => setShowSensitivityAnalysis(!showSensitivityAnalysis)}
+            onClick={() => setShowCashFlowTable(!showCashFlowTable)}
             className={`px-4 py-2 rounded-lg flex items-center space-x-2 border ${
-              showSensitivityAnalysis 
-                ? 'bg-purple-50 border-purple-200 text-purple-700' 
+              showCashFlowTable 
+                ? 'bg-green-50 border-green-200 text-green-700' 
                 : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
             }`}
           >
-            <BarChart3 className="w-4 h-4" />
-            <span>Sensitivity</span>
+            {showCashFlowTable ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            <span>Cash Flows</span>
           </button>
           <button 
             onClick={() => window.location.reload()}
@@ -458,9 +353,12 @@ export default function EnhancedFinanceIntegration() {
             <RefreshCw className="w-4 h-4" />
             <span>Refresh</span>
           </button>
-          <button className="bg-green-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2 hover:bg-green-700">
+          <button 
+            onClick={() => savePortfolioData()}
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2 hover:bg-blue-700"
+          >
             <Download className="w-4 h-4" />
-            <span>Export Model</span>
+            <span>Save to DB</span>
           </button>
         </div>
       </div>
@@ -496,17 +394,6 @@ export default function EnhancedFinanceIntegration() {
             </select>
           </div>
           
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Total CAPEX ($M)</label>
-            <input
-              type="number"
-              value={financeStructure.totalCapex}
-              onChange={(e) => handleInputChange('totalCapex', e.target.value)}
-              className="w-full p-2 border border-gray-300 rounded-md"
-              step="0.1"
-            />
-          </div>
-          
           <div className="flex items-center">
             <input
               type="checkbox"
@@ -519,407 +406,269 @@ export default function EnhancedFinanceIntegration() {
               Include Terminal Value
             </label>
           </div>
+
+          <div className="flex items-center">
+            <input
+              type="checkbox"
+              id="solve-gearing"
+              checked={solveGearing}
+              onChange={(e) => setSolveGearing(e.target.checked)}
+              className="mr-2"
+            />
+            <label htmlFor="solve-gearing" className="text-sm font-medium text-gray-700">
+              Auto-Solve Gearing
+            </label>
+          </div>
         </div>
       </div>
 
       {/* Key Metrics Dashboard */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white rounded-lg shadow border p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Project IRR</p>
-              <p className="text-2xl font-bold text-gray-900">{returns.projectIRR}%</p>
-              <p className="text-sm text-gray-500">Unlevered Return</p>
+      {portfolioTotals && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="bg-white rounded-lg shadow border p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Portfolio Equity IRR</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {portfolioTotals.equityCashFlows && calculateIRR(portfolioTotals.equityCashFlows) 
+                    ? formatPercent(calculateIRR(portfolioTotals.equityCashFlows)) 
+                    : 'N/A'}
+                </p>
+                <p className="text-sm text-gray-500">Leveraged Return</p>
+              </div>
+              <div className="p-3 bg-blue-100 rounded-full">
+                <TrendingUp className="w-6 h-6 text-blue-600" />
+              </div>
             </div>
-            <div className="p-3 bg-blue-100 rounded-full">
-              <TrendingUp className="w-6 h-6 text-blue-600" />
+          </div>
+
+          <div className="bg-white rounded-lg shadow border p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Total CAPEX</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {formatCurrency(portfolioTotals.capex)}
+                </p>
+                <p className="text-sm text-gray-500">Investment Required</p>
+              </div>
+              <div className="p-3 bg-green-100 rounded-full">
+                <DollarSign className="w-6 h-6 text-green-600" />
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg shadow border p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Portfolio Gearing</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {formatPercent(portfolioTotals.calculatedGearing)}
+                </p>
+                <p className="text-sm text-gray-500">Debt/Total CAPEX</p>
+              </div>
+              <div className="p-3 bg-purple-100 rounded-full">
+                <Percent className="w-6 h-6 text-purple-600" />
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg shadow border p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Minimum DSCR</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {formatDSCR(portfolioTotals.minDSCR)}
+                </p>
+                <p className="text-sm text-gray-500">Debt Coverage</p>
+              </div>
+              <div className={`p-3 rounded-full ${
+                portfolioTotals.minDSCR >= 1.25 ? 'bg-green-100' : 'bg-red-100'
+              }`}>
+                {portfolioTotals.minDSCR >= 1.25 ? 
+                  <CheckCircle className="w-6 h-6 text-green-600" /> :
+                  <AlertCircle className="w-6 h-6 text-red-600" />
+                }
+              </div>
             </div>
           </div>
         </div>
+      )}
 
-        <div className="bg-white rounded-lg shadow border p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Equity IRR</p>
-              <p className="text-2xl font-bold text-gray-900">{returns.equityIRR}%</p>
-              <p className="text-sm text-gray-500">Leveraged Return</p>
-            </div>
-            <div className="p-3 bg-green-100 rounded-full">
-              <Percent className="w-6 h-6 text-green-600" />
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow border p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Avg DSCR</p>
-              <p className="text-2xl font-bold text-gray-900">{returns.debtServiceCoverage}x</p>
-              <p className="text-sm text-gray-500">Debt Coverage</p>
-            </div>
-            <div className={`p-3 rounded-full ${returns.debtServiceCoverage >= 1.25 ? 'bg-green-100' : 'bg-red-100'}`}>
-              {returns.debtServiceCoverage >= 1.25 ? 
-                <CheckCircle className="w-6 h-6 text-green-600" /> :
-                <AlertCircle className="w-6 h-6 text-red-600" />
-              }
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow border p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">NPV</p>
-              <p className="text-2xl font-bold text-gray-900">${returns.npv}M</p>
-              <p className="text-sm text-gray-500">@ 8% Discount</p>
-            </div>
-            <div className="p-3 bg-purple-100 rounded-full">
-              <DollarSign className="w-6 h-6 text-purple-600" />
-            </div>
-          </div>
+      {/* Portfolio Summary Table */}
+      <div className="bg-white rounded-lg shadow border p-6">
+        <h3 className="text-lg font-semibold mb-4">Portfolio Summary Metrics</h3>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b">
+                <th className="text-left py-2">Asset</th>
+                <th className="text-right py-2">CAPEX ($M)</th>
+                <th className="text-right py-2">Gearing (%)</th>
+                <th className="text-right py-2">Debt ($M)</th>
+                <th className="text-right py-2">Debt Service ($M)</th>
+                <th className="text-right py-2">Min DSCR</th>
+                <th className="text-right py-2">Terminal ($M)</th>
+                <th className="text-right py-2">Equity IRR</th>
+              </tr>
+            </thead>
+            <tbody>
+              {Object.entries(projectMetrics)
+                .filter(([assetName]) => assetName !== 'portfolio')
+                .map(([assetName, metrics]) => (
+                <tr key={assetName} className="border-b">
+                  <td className="py-2 font-medium">{assetName}</td>
+                  <td className="text-right py-2">{formatCurrency(metrics.capex)}</td>
+                  <td className="text-right py-2">{formatPercent(metrics.calculatedGearing)}</td>
+                  <td className="text-right py-2">{formatCurrency(metrics.debtAmount)}</td>
+                  <td className="text-right py-2">{formatCurrency(metrics.annualDebtService)}</td>
+                  <td className="text-right py-2">{formatDSCR(metrics.minDSCR)}</td>
+                  <td className="text-right py-2">{formatCurrency(includeTerminalValue ? metrics.terminalValue : 0)}</td>
+                  <td className="text-right py-2">
+                    {calculateIRR(metrics.equityCashFlows) 
+                      ? formatPercent(calculateIRR(metrics.equityCashFlows)) 
+                      : 'N/A'}
+                  </td>
+                </tr>
+              ))}
+              
+              {portfolioTotals && Object.keys(assets).length >= 2 && (
+                <tr className="bg-muted/50 font-semibold border-t-2">
+                  <td className="py-2">Portfolio Total</td>
+                  <td className="text-right py-2">{formatCurrency(portfolioTotals.capex)}</td>
+                  <td className="text-right py-2">{formatPercent(portfolioTotals.calculatedGearing)}</td>
+                  <td className="text-right py-2">{formatCurrency(portfolioTotals.debtAmount)}</td>
+                  <td className="text-right py-2">{formatCurrency(portfolioTotals.annualDebtService)}</td>
+                  <td className="text-right py-2">{formatDSCR(portfolioTotals.minDSCR)}</td>
+                  <td className="text-right py-2">{formatCurrency(includeTerminalValue ? portfolioTotals.terminalValue : 0)}</td>
+                  <td className="text-right py-2">
+                    {portfolioTotals.equityCashFlows && calculateIRR(portfolioTotals.equityCashFlows) 
+                      ? formatPercent(calculateIRR(portfolioTotals.equityCashFlows)) 
+                      : 'N/A'}
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
 
-      {/* Price Analysis Panel */}
-      {showPriceBreakdown && priceProjections.length > 0 && (
+      {/* Project Cash Flow Chart */}
+      {projectMetrics.portfolio?.cashFlows && (
         <div className="bg-white rounded-lg shadow border p-6">
-          <h3 className="text-lg font-semibold mb-4">Merchant Price Projections & Impact</h3>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Price Chart */}
-            <div>
-              <h4 className="font-medium mb-3">Price Escalation Trends</h4>
-              <ResponsiveContainer width="100%" height={250}>
-                <LineChart data={priceProjections}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="year" />
-                  <YAxis />
-                  <Tooltip formatter={(value) => [`${value.toFixed(1)}/MWh`, '']} />
-                  <Legend />
-                  <Line type="monotone" dataKey="energyPrice" stroke="#3B82F6" strokeWidth={2} name="Energy Price" />
-                  <Line type="monotone" dataKey="greenPrice" stroke="#10B981" strokeWidth={2} name="Green Price" />
-                  <Line type="monotone" dataKey="blendedPrice" stroke="#8B5CF6" strokeWidth={2} name="Blended Price" />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-            
-            {/* Price Summary */}
-            <div>
-              <h4 className="font-medium mb-3">Price Analysis Summary</h4>
-              <div className="space-y-3">
-                {priceProjections.slice(0, 5).map((projection, index) => (
-                  <div key={index} className="bg-gray-50 rounded-lg p-3">
-                    <div className="flex justify-between items-center mb-2">
-                      <span className="font-medium">Year {projection.year}</span>
-                      <span className="text-sm text-gray-600">
-                        +{projection.escalationFactor.toFixed(1)}% escalation
-                      </span>
-                    </div>
-                    <div className="grid grid-cols-3 gap-2 text-sm">
-                      <div>
-                        <div className="text-gray-600">Energy</div>
-                        <div className="font-medium">${projection.energyPrice.toFixed(0)}/MWh</div>
-                      </div>
-                      <div>
-                        <div className="text-gray-600">Green</div>
-                        <div className="font-medium">${projection.greenPrice.toFixed(0)}/MWh</div>
-                      </div>
-                      <div>
-                        <div className="text-gray-600">Blended</div>
-                        <div className="font-medium text-purple-600">${projection.blendedPrice.toFixed(0)}/MWh</div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Sensitivity Analysis Panel */}
-      {showSensitivityAnalysis && sensitivityResults.scenarios && (
-        <div className="bg-white rounded-lg shadow border p-6">
-          <h3 className="text-lg font-semibold mb-4">Sensitivity Analysis</h3>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Sensitivity Chart */}
-            <div>
-              <h4 className="font-medium mb-3">IRR Sensitivity to Price & Volume Changes</h4>
-              <ResponsiveContainer width="100%" height={250}>
-                <BarChart data={sensitivityResults.scenarios}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" angle={-45} textAnchor="end" height={80} />
-                  <YAxis />
-                  <Tooltip formatter={(value) => [`${value.toFixed(1)}%`, 'Project IRR']} />
-                  <Bar dataKey="irr" fill="#3B82F6" />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-            
-            {/* Sensitivity Table */}
-            <div>
-              <h4 className="font-medium mb-3">Scenario Results</h4>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b">
-                      <th className="text-left py-2">Scenario</th>
-                      <th className="text-right py-2">Price Change</th>
-                      <th className="text-right py-2">Volume Change</th>
-                      <th className="text-right py-2">Project IRR</th>
-                      <th className="text-right py-2">vs Base</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {sensitivityResults.scenarios.map((scenario, index) => (
-                      <tr key={index} className="border-b">
-                        <td className="py-2 font-medium">{scenario.name}</td>
-                        <td className="text-right py-2">
-                          {scenario.priceChange === 0 ? '0%' : 
-                           scenario.priceChange > 0 ? `+${scenario.priceChange}%` : `${scenario.priceChange}%`}
-                        </td>
-                        <td className="text-right py-2">
-                          {scenario.volumeChange === 0 ? '0%' : 
-                           scenario.volumeChange > 0 ? `+${scenario.volumeChange}%` : `${scenario.volumeChange}%`}
-                        </td>
-                        <td className="text-right py-2 font-medium">{scenario.irr.toFixed(1)}%</td>
-                        <td className={`text-right py-2 ${
-                          scenario.irr >= returns.projectIRR ? 'text-green-600' : 'text-red-600'
-                        }`}>
-                          {scenario.irr === returns.projectIRR ? '0.0%' : 
-                           (((scenario.irr - returns.projectIRR) / returns.projectIRR) * 100).toFixed(1) + '%'}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Revenue Projections with Merchant Price Integration */}
-      {revenueProjections.length > 0 && (
-        <div className="bg-white rounded-lg shadow border p-6">
-          <h3 className="text-lg font-semibold mb-4">
-            Integrated Revenue Projections ({selectedRevenueCase} scenario)
-          </h3>
+          <h3 className="text-lg font-semibold mb-4">Portfolio Project Cash Flows</h3>
           <ResponsiveContainer width="100%" height={400}>
-            <AreaChart data={revenueProjections}>
+            <LineChart data={projectMetrics.portfolio.cashFlows}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="year" />
               <YAxis />
-              <Tooltip formatter={(value) => [`${value.toFixed(1)}M`, '']} />
+              <Tooltip 
+                formatter={(value) => [`$${value.toLocaleString()}M`]}
+              />
               <Legend />
-              <Area 
-                type="monotone" 
-                dataKey="contractedGreen" 
-                stackId="1"
-                stroke="#10B981" 
-                fill="#10B981"
-                fillOpacity={0.6}
-                name="Contracted Green"
-              />
-              <Area 
-                type="monotone" 
-                dataKey="contractedEnergy" 
-                stackId="1"
-                stroke="#3B82F6" 
-                fill="#3B82F6"
-                fillOpacity={0.6}
-                name="Contracted Energy"
-              />
-              <Area 
-                type="monotone" 
-                dataKey="merchantGreen" 
-                stackId="1"
-                stroke="#F59E0B" 
-                fill="#F59E0B"
-                fillOpacity={0.6}
-                name="Merchant Green"
-              />
-              <Area 
-                type="monotone" 
-                dataKey="merchantEnergy" 
-                stackId="1"
-                stroke="#EF4444" 
-                fill="#EF4444"
-                fillOpacity={0.6}
-                name="Merchant Energy"
-              />
-            </AreaChart>
+              <Line type="monotone" dataKey="revenue" name="Revenue" stroke="#4CAF50" strokeWidth={2} />
+              <Line type="monotone" dataKey="opex" name="Operating Costs" stroke="#f44336" strokeWidth={2} />
+              <Line type="monotone" dataKey="operatingCashFlow" name="CFADS" stroke="#2196F3" strokeWidth={2} />
+              <Line type="monotone" dataKey="debtService" name="Debt Service" stroke="#9C27B0" strokeWidth={2} />
+              <Line type="monotone" dataKey="equityCashFlow" name="Equity Cash Flow" stroke="#FF9800" strokeWidth={2} />
+            </LineChart>
           </ResponsiveContainer>
         </div>
       )}
 
-      {/* Cash Flow Analysis */}
-      {cashFlowData.length > 0 && (
+      {/* DSCR Analysis */}
+      {projectMetrics.portfolio?.cashFlows && (
         <div className="bg-white rounded-lg shadow border p-6">
-          <h3 className="text-lg font-semibold mb-4">Integrated Cash Flow Analysis</h3>
+          <h3 className="text-lg font-semibold mb-4">Debt Service Coverage Analysis</h3>
           <ResponsiveContainer width="100%" height={400}>
-            <ComposedChart data={cashFlowData}>
+            <ComposedChart data={projectMetrics.portfolio.cashFlows}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="year" />
-              <YAxis />
-              <Tooltip formatter={(value) => [`${value.toFixed(1)}M`, '']} />
+              <YAxis yAxisId="left" domain={[0, 'auto']} />
+              <YAxis yAxisId="right" orientation="right" domain={[0, 'auto']} />
+              <Tooltip />
               <Legend />
-              <Bar dataKey="contractedRevenue" fill="#4CAF50" name="Contracted Revenue" />
-              <Bar dataKey="merchantRevenue" fill="#FF9800" name="Merchant Revenue" />
-              <Line type="monotone" dataKey="ebitda" stroke="#2196F3" strokeWidth={2} name="EBITDA" />
-              <Line type="monotone" dataKey="freeCashFlow" stroke="#9C27B0" strokeWidth={2} name="Free Cash Flow" />
+              <Bar yAxisId="right" dataKey="debtService" name="Debt Service ($M)" fill="#9C27B0" />
+              <Line yAxisId="left" type="monotone" dataKey="dscr" name="DSCR" stroke="#2196F3" strokeWidth={2} />
             </ComposedChart>
           </ResponsiveContainer>
         </div>
       )}
 
-      {/* Finance Structure Configuration */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Finance Inputs */}
+      {/* Cash Flow Table */}
+      {showCashFlowTable && projectMetrics.portfolio?.cashFlows && (
         <div className="bg-white rounded-lg shadow border p-6">
-          <h3 className="text-lg font-semibold mb-4 flex items-center">
-            <Calculator className="w-5 h-5 mr-2" />
-            Finance Structure
-          </h3>
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Debt Ratio (%)</label>
-                <input
-                  type="number"
-                  value={financeStructure.debtRatio}
-                  onChange={(e) => {
-                    const debt = parseFloat(e.target.value) || 0;
-                    handleInputChange('debtRatio', debt);
-                    handleInputChange('equityRatio', 100 - debt);
-                  }}
-                  className="w-full p-2 border border-gray-300 rounded-md"
-                  min="0"
-                  max="100"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Equity Ratio (%)</label>
-                <input
-                  type="number"
-                  value={financeStructure.equityRatio}
-                  onChange={(e) => {
-                    const equity = parseFloat(e.target.value) || 0;
-                    handleInputChange('equityRatio', equity);
-                    handleInputChange('debtRatio', 100 - equity);
-                  }}
-                  className="w-full p-2 border border-gray-300 rounded-md"
-                  min="0"
-                  max="100"
-                />
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Debt Rate (%)</label>
-                <input
-                  type="number"
-                  value={financeStructure.debtRate}
-                  onChange={(e) => handleInputChange('debtRate', e.target.value)}
-                  className="w-full p-2 border border-gray-300 rounded-md"
-                  step="0.1"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Tax Rate (%)</label>
-                <input
-                  type="number"
-                  value={financeStructure.taxRate}
-                  onChange={(e) => handleInputChange('taxRate', e.target.value)}
-                  className="w-full p-2 border border-gray-300 rounded-md"
-                  step="0.1"
-                />
-              </div>
-            </div>
+          <h3 className="text-lg font-semibold mb-4">Detailed Cash Flow Analysis</h3>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b">
+                  <th className="text-left py-2">Year</th>
+                  <th className="text-right py-2">Revenue ($M)</th>
+                  <th className="text-right py-2">OPEX ($M)</th>
+                  <th className="text-right py-2">CFADS ($M)</th>
+                  <th className="text-right py-2">Debt Service ($M)</th>
+                  <th className="text-right py-2">DSCR</th>
+                  <th className="text-right py-2">Equity CF ($M)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {projectMetrics.portfolio.cashFlows.slice(0, 15).map((cf, index) => (
+                  <tr key={index} className="border-b">
+                    <td className="py-2">{cf.year}</td>
+                    <td className="text-right py-2">{formatCurrency(cf.revenue)}</td>
+                    <td className="text-right py-2">{formatCurrency(Math.abs(cf.opex))}</td>
+                    <td className="text-right py-2">{formatCurrency(cf.operatingCashFlow)}</td>
+                    <td className="text-right py-2">{formatCurrency(Math.abs(cf.debtService))}</td>
+                    <td className="text-right py-2">{cf.dscr ? cf.dscr.toFixed(2) + 'x' : 'N/A'}</td>
+                    <td className="text-right py-2">{formatCurrency(cf.equityCashFlow)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
+      )}
 
-        {/* Financial Summary */}
-        <div className="bg-white rounded-lg shadow border p-6">
-          <h3 className="text-lg font-semibold mb-4">Financial Summary</h3>
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <h4 className="font-medium mb-3 text-blue-900">Key Returns</h4>
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Project IRR:</span>
-                    <span className="font-medium">{returns.projectIRR}%</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Equity IRR:</span>
-                    <span className="font-medium">{returns.equityIRR}%</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">NPV @ 8%:</span>
-                    <span className="font-medium">${returns.npv}M</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Payback:</span>
-                    <span className="font-medium">{returns.paybackPeriod} years</span>
-                  </div>
-                </div>
-              </div>
-              
-              <div>
-                <h4 className="font-medium mb-3 text-green-900">Risk Metrics</h4>
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">DSCR (Avg):</span>
-                    <span className={`font-medium ${returns.debtServiceCoverage >= 1.25 ? 'text-green-600' : 'text-red-600'}`}>
-                      {returns.debtServiceCoverage}x
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Debt Amount:</span>
-                    <span className="font-medium">
-                      ${((financeStructure.totalCapex * financeStructure.debtRatio) / 100).toFixed(1)}M
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Equity Amount:</span>
-                    <span className="font-medium">
-                      ${((financeStructure.totalCapex * financeStructure.equityRatio) / 100).toFixed(1)}M
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Debt Service:</span>
-                    <span className="font-medium">
-                      ${(calculateAnnualDebtService(
-                        financeStructure.totalCapex * financeStructure.debtRatio / 100,
-                        financeStructure.debtRate,
-                        20
-                      )).toFixed(1)}M/year
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
+      {/* Analysis Notes */}
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
+        <h3 className="text-lg font-semibold mb-3 text-blue-900">Project Finance Analysis Notes</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+          <div>
+            <h4 className="font-medium text-blue-800 mb-2">Equity IRR Calculation:</h4>
+            <ul className="text-blue-700 space-y-1">
+              <li>• Initial equity investment: -(CAPEX × (1 - Gearing))</li>
+              <li>• Annual equity cash flows: CFADS - Debt Service</li>
+              <li>• Terminal value included in final year if enabled</li>
+              <li>• IRR calculated using Newton-Raphson method</li>
+            </ul>
+          </div>
+          <div>
+            <h4 className="font-medium text-blue-800 mb-2">Debt Structuring:</h4>
+            <ul className="text-blue-700 space-y-1">
+              <li>• {solveGearing ? 'Auto-solving' : 'Using configured'} gearing ratios</li>
+              <li>• DSCR-based debt sizing when auto-solve enabled</li>
+              <li>• Sculpted debt repayment profile</li>
+              <li>• Blended DSCR targets for mixed revenue streams</li>
+            </ul>
           </div>
         </div>
       </div>
 
-      {/* Integration Status */}
+      {/* Status Display */}
       <div className="bg-green-50 border border-green-200 rounded-lg p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <CheckCircle className="w-5 h-5 text-green-500" />
             <span className="text-green-800 font-medium">
-              Advanced finance modeling with integrated merchant price curves
+              Project finance analysis with proper equity IRR calculations
             </span>
           </div>
           <div className="text-green-600 text-sm">
-            Price Source: {priceSource} • Scenario: {selectedRevenueCase} • Updated: {new Date().toLocaleTimeString()}
+            Scenario: {selectedRevenueCase} • {solveGearing ? 'Auto-Solve' : 'Manual'} • Updated: {new Date().toLocaleTimeString()}
           </div>
         </div>
         <div className="mt-2 text-sm text-green-700">
-          Financial analysis incorporates real-time merchant prices with escalation, contract analysis, stress scenarios, 
-          and comprehensive sensitivity analysis. Revenue calculations flow directly from your price curve data.
+          Analysis includes initial equity investment, proper debt structuring, DSCR calculations, and leveraged returns to equity.
         </div>
       </div>
     </div>

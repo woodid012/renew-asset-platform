@@ -33,21 +33,20 @@ import {
 
 export default function IntegratedRevenuePage() {
   const { currentUser, currentPortfolio } = useUser();
-  const { getMerchantPrice } = useMerchantPrices();
+  const { getMerchantPrice, priceSource } = useMerchantPrices();
   
   // State management
   const [assets, setAssets] = useState({});
   const [constants, setConstants] = useState({});
   const [portfolioName, setPortfolioName] = useState('Portfolio');
   const [loading, setLoading] = useState(true);
-  const [priceData, setPriceData] = useState({});
   
-  // Analysis configuration
+  // Analysis configuration - Fixed defaults
   const [selectedRevenueCase, setSelectedRevenueCase] = useState('base');
-  const [selectedRegion, setSelectedRegion] = useState('QLD');
+  const [selectedRegion, setSelectedRegion] = useState('ALL'); // Changed to ALL
   const [selectedYear, setSelectedYear] = useState('2025');
   const [viewMode, setViewMode] = useState('annual');
-  const [analysisYears, setAnalysisYears] = useState(10);
+  const [analysisYears, setAnalysisYears] = useState(30); // Changed to 30 years
   
   // Results
   const [revenueProjections, setRevenueProjections] = useState([]);
@@ -64,10 +63,17 @@ export default function IntegratedRevenuePage() {
   // Recalculate when parameters change
   useEffect(() => {
     if (Object.keys(assets).length > 0) {
+      console.log('Recalculating revenue projections with:', {
+        assetsCount: Object.keys(assets).length,
+        selectedRevenueCase,
+        selectedRegion,
+        analysisYears,
+        priceSource
+      });
       calculateRevenueProjections();
       validateAssets();
     }
-  }, [assets, constants, selectedRevenueCase, analysisYears]);
+  }, [assets, constants, selectedRevenueCase, selectedRegion, analysisYears, getMerchantPrice]);
 
   const loadPortfolioData = async () => {
     if (!currentUser || !currentPortfolio) return;
@@ -82,7 +88,8 @@ export default function IntegratedRevenuePage() {
         const portfolioData = await response.json();
         console.log('Portfolio data loaded:', {
           assetsCount: Object.keys(portfolioData.assets || {}).length,
-          portfolioName: portfolioData.portfolioName
+          portfolioName: portfolioData.portfolioName,
+          priceSource
         });
         
         setAssets(portfolioData.assets || {});
@@ -116,15 +123,31 @@ export default function IntegratedRevenuePage() {
     const startYear = parseInt(selectedYear);
     const timeIntervals = Array.from({ length: analysisYears }, (_, i) => startYear + i);
     
-    // Generate portfolio data using the integrated calculations
-    const portfolioData = generatePortfolioData(assets, timeIntervals, constants, getMerchantPrice);
+    // Filter assets by selected region
+    const filteredAssets = selectedRegion === 'ALL' 
+      ? assets 
+      : Object.fromEntries(
+          Object.entries(assets).filter(([key, asset]) => asset.state === selectedRegion)
+        );
+    
+    console.log(`Generating portfolio data for ${timeIntervals.length} years from ${startYear} to ${startYear + analysisYears - 1}`);
+    console.log('Using price source:', priceSource);
+    console.log('Region filter:', selectedRegion);
+    console.log('Assets after region filter:', Object.keys(filteredAssets).length, 'of', Object.keys(assets).length);
+    
+    // Generate portfolio data using the filtered assets
+    const portfolioData = generatePortfolioData(filteredAssets, timeIntervals, constants, getMerchantPrice);
+    
+    console.log('Generated portfolio data:', portfolioData.slice(0, 2)); // Log first 2 periods
     
     // Process for visualization
     const visibleAssets = Object.fromEntries(
-      Object.values(assets).map(asset => [asset.name, true])
+      Object.values(filteredAssets).map(asset => [asset.name, true])
     );
     
-    const processedData = processPortfolioData(portfolioData, assets, visibleAssets);
+    const processedData = processPortfolioData(portfolioData, filteredAssets, visibleAssets);
+    
+    console.log('Processed data sample:', processedData.slice(0, 2)); // Log first 2 periods
     
     // Apply stress scenarios
     const stressedData = processedData.map(period => {
@@ -152,16 +175,23 @@ export default function IntegratedRevenuePage() {
       return stressedPeriod;
     });
     
+    console.log('Final stressed data sample:', stressedData.slice(0, 2));
     setRevenueProjections(stressedData);
     
-    // Calculate portfolio summary
-    const summary = calculatePortfolioSummary(portfolioData, assets);
+    // Calculate portfolio summary using filtered assets
+    const summary = calculatePortfolioSummary(portfolioData, filteredAssets);
+    console.log('Portfolio summary:', summary);
     setPortfolioSummary(summary);
   };
 
   const validateAssets = () => {
     const validations = {};
-    Object.values(assets).forEach(asset => {
+    // Filter assets by selected region for validation
+    const assetsToValidate = selectedRegion === 'ALL' 
+      ? Object.values(assets)
+      : Object.values(assets).filter(asset => asset.state === selectedRegion);
+      
+    assetsToValidate.forEach(asset => {
       validations[asset.name] = validateAssetForRevenue(asset);
     });
     setAssetValidations(validations);
@@ -197,6 +227,45 @@ export default function IntegratedRevenuePage() {
     document.body.removeChild(a);
   };
 
+  // Helper function to get asset colors
+  const getAssetColor = (index) => {
+    const colors = ['#4CAF50', '#2196F3', '#FF9800', '#9C27B0', '#F44336', '#00BCD4', '#795548', '#607D8B'];
+    return colors[index % colors.length];
+  };
+
+  // Helper function to prepare data for asset breakdown chart
+  const prepareAssetBreakdownData = () => {
+    if (revenueProjections.length === 0) return [];
+    
+    // Filter assets by selected region
+    const filteredAssets = selectedRegion === 'ALL' 
+      ? assets 
+      : Object.fromEntries(
+          Object.entries(assets).filter(([key, asset]) => asset.state === selectedRegion)
+        );
+    
+    // Take only first 10 years for readability
+    const dataToShow = revenueProjections.slice(0, Math.min(10, revenueProjections.length));
+    
+    return dataToShow.map(period => {
+      const chartData = {
+        year: period.timeInterval
+      };
+      
+      // Add each filtered asset's total revenue
+      Object.values(filteredAssets).forEach(asset => {
+        const contractedGreen = period[`${asset.name} Contracted Green`] || 0;
+        const contractedEnergy = period[`${asset.name} Contracted Energy`] || 0;
+        const merchantGreen = period[`${asset.name} Merchant Green`] || 0;
+        const merchantEnergy = period[`${asset.name} Merchant Energy`] || 0;
+        
+        chartData[asset.name] = contractedGreen + contractedEnergy + merchantGreen + merchantEnergy;
+      });
+      
+      return chartData;
+    });
+  };
+
   // Show loading state if no user/portfolio selected
   if (!currentUser || !currentPortfolio) {
     return (
@@ -221,6 +290,8 @@ export default function IntegratedRevenuePage() {
     );
   }
 
+  const assetBreakdownData = prepareAssetBreakdownData();
+
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
@@ -229,7 +300,11 @@ export default function IntegratedRevenuePage() {
           <h1 className="text-2xl font-bold text-gray-900">Integrated Revenue Analysis</h1>
           <p className="text-gray-600">Advanced revenue modeling with contract analysis and stress testing</p>
           <p className="text-sm text-gray-500">
-            Portfolio: {portfolioName} • {Object.keys(assets).length} assets
+            Portfolio: {portfolioName} • {
+              selectedRegion === 'ALL' 
+                ? `${Object.keys(assets).length} assets (All Regions)` 
+                : `${Object.values(assets).filter(asset => asset.state === selectedRegion).length} assets (${selectedRegion})`
+            } • Price Source: {priceSource}
           </p>
         </div>
         <div className="flex space-x-3">
@@ -298,6 +373,7 @@ export default function IntegratedRevenuePage() {
               <option value={15}>15 Years</option>
               <option value={20}>20 Years</option>
               <option value={25}>25 Years</option>
+              <option value={30}>30 Years</option>
             </select>
           </div>
           
@@ -320,6 +396,7 @@ export default function IntegratedRevenuePage() {
               onChange={(e) => setSelectedRegion(e.target.value)}
               className="w-full p-2 border border-gray-300 rounded-md"
             >
+              <option value="ALL">All Regions</option>
               <option value="QLD">Queensland</option>
               <option value="NSW">New South Wales</option>
               <option value="VIC">Victoria</option>
@@ -493,26 +570,43 @@ export default function IntegratedRevenuePage() {
         </div>
       </div>
 
-      {/* Asset Revenue Breakdown */}
-      {Object.keys(assets).length > 1 && revenueProjections.length > 0 && (
+      {/* Asset Revenue Breakdown - Fixed */}
+      {(() => {
+        const filteredAssets = selectedRegion === 'ALL' 
+          ? assets 
+          : Object.fromEntries(
+              Object.entries(assets).filter(([key, asset]) => asset.state === selectedRegion)
+            );
+        return Object.keys(filteredAssets).length > 1 && assetBreakdownData.length > 0;
+      })() && (
         <div className="bg-white rounded-lg shadow border p-6">
-          <h3 className="text-lg font-semibold mb-4">Asset Revenue Breakdown</h3>
+          <h3 className="text-lg font-semibold mb-4">
+            Asset Revenue Breakdown (First 10 Years)
+            {selectedRegion !== 'ALL' && <span className="text-sm font-normal text-gray-500"> - {selectedRegion} Region</span>}
+          </h3>
           <ResponsiveContainer width="100%" height={400}>
-            <BarChart data={revenueProjections.slice(0, 10)}>
+            <BarChart data={assetBreakdownData}>
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="timeInterval" />
+              <XAxis dataKey="year" />
               <YAxis />
               <Tooltip formatter={(value) => [`${value.toFixed(2)}M`, '']} />
               <Legend />
-              {Object.values(assets).map((asset, index) => (
-                <Bar
-                  key={asset.name}
-                  dataKey={asset.name}
-                  stackId="assets"
-                  fill={getAssetColor(index)}
-                  name={asset.name}
-                />
-              ))}
+              {(() => {
+                const filteredAssets = selectedRegion === 'ALL' 
+                  ? assets 
+                  : Object.fromEntries(
+                      Object.entries(assets).filter(([key, asset]) => asset.state === selectedRegion)
+                    );
+                return Object.values(filteredAssets).map((asset, index) => (
+                  <Bar
+                    key={asset.name}
+                    dataKey={asset.name}
+                    stackId="assets"
+                    fill={getAssetColor(index)}
+                    name={asset.name}
+                  />
+                ));
+              })()}
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -520,13 +614,17 @@ export default function IntegratedRevenuePage() {
 
       {/* Asset Details Table */}
       <div className="bg-white rounded-lg shadow border p-6">
-        <h3 className="text-lg font-semibold mb-4">Asset Portfolio Analysis</h3>
+        <h3 className="text-lg font-semibold mb-4">
+          Asset Portfolio Analysis
+          {selectedRegion !== 'ALL' && <span className="text-sm font-normal text-gray-500"> - {selectedRegion} Region</span>}
+        </h3>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b">
                 <th className="text-left py-2">Asset</th>
                 <th className="text-right py-2">Type</th>
+                <th className="text-right py-2">Region</th>
                 <th className="text-right py-2">Capacity (MW)</th>
                 <th className="text-right py-2">Contracts</th>
                 <th className="text-right py-2">Avg Revenue ($M)</th>
@@ -535,7 +633,9 @@ export default function IntegratedRevenuePage() {
               </tr>
             </thead>
             <tbody>
-              {Object.values(assets).map(asset => {
+              {Object.values(assets)
+                .filter(asset => selectedRegion === 'ALL' || asset.state === selectedRegion)
+                .map(asset => {
                 const validation = assetValidations[asset.name];
                 const assetRevenue = revenueProjections.length > 0 ? 
                   revenueProjections.reduce((sum, proj) => {
@@ -563,6 +663,15 @@ export default function IntegratedRevenuePage() {
                       </div>
                     </td>
                     <td className="text-right py-2 capitalize">{asset.type}</td>
+                    <td className="text-right py-2">
+                      <span className={`px-2 py-1 text-xs rounded-full ${
+                        selectedRegion !== 'ALL' && asset.state === selectedRegion 
+                          ? 'bg-green-100 text-green-800' 
+                          : 'bg-gray-100 text-gray-800'
+                      }`}>
+                        {asset.state || 'N/A'}
+                      </span>
+                    </td>
                     <td className="text-right py-2">{asset.capacity}</td>
                     <td className="text-right py-2">{asset.contracts?.length || 0}</td>
                     <td className="text-right py-2">${assetRevenue.toFixed(2)}</td>
@@ -618,20 +727,42 @@ export default function IntegratedRevenuePage() {
       )}
 
       {/* Empty State */}
-      {Object.keys(assets).length === 0 && (
+      {(() => {
+        const filteredAssetCount = selectedRegion === 'ALL' 
+          ? Object.keys(assets).length
+          : Object.values(assets).filter(asset => asset.state === selectedRegion).length;
+        return filteredAssetCount === 0;
+      })() && (
         <div className="bg-white rounded-lg shadow border p-8">
           <div className="text-center">
             <BarChart3 className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No Assets to Analyze</h3>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">
+              {selectedRegion === 'ALL' 
+                ? 'No Assets to Analyze' 
+                : `No Assets in ${selectedRegion}`
+              }
+            </h3>
             <p className="text-gray-600 mb-4">
-              Add assets to your portfolio to perform revenue analysis
+              {selectedRegion === 'ALL' 
+                ? 'Add assets to your portfolio to perform revenue analysis'
+                : `No assets found in the ${selectedRegion} region. Try selecting "All Regions" or add assets in this region.`
+              }
             </p>
-            <a
-              href="/assets"
-              className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
-            >
-              <span>Add Assets</span>
-            </a>
+            {selectedRegion === 'ALL' ? (
+              <a
+                href="/pages/assets"
+                className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+              >
+                <span>Add Assets</span>
+              </a>
+            ) : (
+              <button
+                onClick={() => setSelectedRegion('ALL')}
+                className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              >
+                <span>Show All Regions</span>
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -646,22 +777,17 @@ export default function IntegratedRevenuePage() {
             </span>
           </div>
           <div className="text-green-600 text-sm">
-            Scenario: {selectedRevenueCase} • Period: {analysisYears} years • Updated: {new Date().toLocaleTimeString()}
+            Scenario: {selectedRevenueCase} • Region: {selectedRegion} • Period: {analysisYears} years • Updated: {new Date().toLocaleTimeString()}
           </div>
         </div>
         <div className="mt-2 text-sm text-green-700">
-          Calculations include contract escalation, asset degradation, merchant price forecasts, quarterly capacity factors, and comprehensive stress scenarios.
+          Calculations include contract escalation, asset degradation, merchant price forecasts ({priceSource}), quarterly capacity factors, and comprehensive stress scenarios.
         </div>
       </div>
     </div>
   );
 
-  // Helper functions
-  function getAssetColor(index) {
-    const colors = ['#4CAF50', '#2196F3', '#FF9800', '#9C27B0', '#F44336', '#00BCD4'];
-    return colors[index % colors.length];
-  }
-
+  // Helper function to format revenue data for export
   function formatRevenueDataForExport(portfolioData, assets, format) {
     if (format === 'json') {
       return JSON.stringify({
