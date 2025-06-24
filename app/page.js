@@ -42,12 +42,16 @@ import {
   Building2
 } from 'lucide-react';
 
-// Import revenue calculations
+// Import revenue calculations and project finance
 import { 
-  calculateAssetRevenue, 
   generatePortfolioData,
   calculatePortfolioSummary
 } from '@/lib/revenueCalculations';
+import { 
+  calculateProjectMetrics, 
+  calculateIRR,
+  initializeProjectValues
+} from '@/app/components/ProjectFinance_Calcs';
 
 export default function EnhancedDashboard() {
   const { currentUser, currentPortfolio } = useUser();
@@ -58,14 +62,14 @@ export default function EnhancedDashboard() {
   const [constants, setConstants] = useState({});
   const [portfolioName, setPortfolioName] = useState('Portfolio');
   const [loading, setLoading] = useState(true);
-  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear()); // For asset revenue breakdown
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear() + 9); // Default to Year 10
   
   // Dashboard data with proper defaults
   const [portfolioMetrics, setPortfolioMetrics] = useState({
     totalCapacity: 0,
     totalProjects: 0,
-    year10Revenue: 0, // Changed to Year 10
-    thirtyYearIRR: 0, // Changed to 30-year IRR
+    year10Revenue: 0, // Year 10 revenue
+    thirtyYearIRR: 0, // 30-year IRR
     contractedPercentage: 0,
     totalCapex: 0
   });
@@ -75,6 +79,7 @@ export default function EnhancedDashboard() {
   const [sensitivityData, setSensitivityData] = useState([]);
   const [contractAnalysis, setContractAnalysis] = useState([]);
   const [availableYears, setAvailableYears] = useState([]);
+  const [projectFinanceMetrics, setProjectFinanceMetrics] = useState({});
 
   // Load portfolio data
   useEffect(() => {
@@ -89,7 +94,7 @@ export default function EnhancedDashboard() {
       calculateDashboardMetrics();
       calculateSensitivityAnalysis();
     }
-  }, [assets, constants]);
+  }, [assets, constants, selectedYear]);
 
   const loadPortfolioData = async () => {
     if (!currentUser || !currentPortfolio) return;
@@ -111,9 +116,9 @@ export default function EnhancedDashboard() {
         setConstants({
           ...portfolioData.constants,
           HOURS_IN_YEAR: 8760,
-          volumeVariation: 20,
-          greenPriceVariation: 20,
-          EnergyPriceVariation: 20,
+          volumeVariation: portfolioData.constants?.volumeVariation || 20,
+          greenPriceVariation: portfolioData.constants?.greenPriceVariation || 20,
+          EnergyPriceVariation: portfolioData.constants?.EnergyPriceVariation || 20,
           escalation: 2.5,
           referenceYear: 2025
         });
@@ -141,26 +146,91 @@ export default function EnhancedDashboard() {
     const totalCapacity = assetArray.reduce((sum, asset) => sum + (parseFloat(asset.capacity) || 0), 0);
     const totalProjects = assetArray.length;
     
-    // Calculate total CAPEX
+    // Calculate total CAPEX using default rates
+    const capexRates = { solar: 1.2, wind: 2.5, storage: 1.6 };
     const totalCapex = assetArray.reduce((sum, asset) => {
-      const rates = { solar: 1.2, wind: 2.5, storage: 1.6 };
-      const rate = rates[asset.type] || 1.5;
+      const rate = capexRates[asset.type] || 1.5;
       return sum + ((asset.capacity || 0) * rate);
     }, 0);
     
-    // Generate revenue projections for current year + 9 more years
+    // Generate 30-year revenue projections using the integrated calculations
     const currentYear = new Date().getFullYear();
-    const timeIntervals = Array.from({ length: 10 }, (_, i) => currentYear + i);
+    const timeIntervals = Array.from({ length: 30 }, (_, i) => currentYear + i);
+    setAvailableYears(timeIntervals); // Set available years for the dropdown
     
-    let totalAnnualRevenue = 0;
-    let contractedRevenue = 0;
+    let year10Revenue = 0;
+    let portfolioEquityIRR = 0;
     const yearlyProjections = [];
     const assetBreakdownData = [];
     const contractData = [];
     
     if (Object.keys(assets).length > 0) {
-      // Generate portfolio revenue data
+      // Use the integrated revenue calculation system
       const portfolioData = generatePortfolioData(assets, timeIntervals, constants, getMerchantPrice);
+      
+      // Calculate project finance metrics - use same parameters as finance page
+      let assetCosts = constants.assetCosts;
+      if (!assetCosts) {
+        assetCosts = initializeProjectValues(assets);
+      }
+      
+      const projectMetrics = calculateProjectMetrics(
+        assets,
+        assetCosts,
+        constants,
+        getMerchantPrice,
+        'base', // Base case scenario
+        false,  // Don't auto-solve gearing (match finance page)
+        true    // Include terminal value
+      );
+      
+      setProjectFinanceMetrics(projectMetrics);
+      
+      // Calculate portfolio equity IRR - match finance dashboard exactly
+      let portfolioEquityIRR = 0;
+      
+      if (projectMetrics.portfolio?.equityCashFlows) {
+        // Use portfolio-level calculation if available
+        const calculatedIRR = calculateIRR(projectMetrics.portfolio.equityCashFlows);
+        portfolioEquityIRR = calculatedIRR ? calculatedIRR * 100 : 0;
+      } else {
+        // Calculate portfolio totals from individual metrics (same as finance page)
+        const individualAssets = Object.entries(projectMetrics)
+          .filter(([assetName]) => assetName !== 'portfolio');
+        
+        if (individualAssets.length > 0) {
+          const totals = {
+            capex: 0,
+            debtAmount: 0,
+            terminalValue: 0,
+          };
+          
+          const allEquityCashFlows = [];
+          
+          individualAssets.forEach(([_, metrics]) => {
+            totals.capex += metrics.capex || 0;
+            totals.debtAmount += metrics.debtAmount || 0;
+            totals.terminalValue += metrics.terminalValue || 0;
+            
+            if (metrics.equityCashFlows && metrics.equityCashFlows.length > 0) {
+              if (allEquityCashFlows.length === 0) {
+                allEquityCashFlows.push(...metrics.equityCashFlows.map(cf => cf));
+              } else {
+                metrics.equityCashFlows.forEach((cf, index) => {
+                  if (index < allEquityCashFlows.length) {
+                    allEquityCashFlows[index] += cf;
+                  }
+                });
+              }
+            }
+          });
+          
+          if (allEquityCashFlows.length > 0) {
+            const calculatedIRR = calculateIRR(allEquityCashFlows);
+            portfolioEquityIRR = calculatedIRR ? calculatedIRR * 100 : 0;
+          }
+        }
+      }
       
       // Process projections for charts
       portfolioData.forEach(period => {
@@ -184,8 +254,8 @@ export default function EnhancedDashboard() {
           periodData.merchantGreen += assetData.merchantGreen;
           periodData.merchantEnergy += assetData.merchantEnergy;
           
-          // Add to asset breakdown for first year
-          if (period.timeInterval === currentYear) {
+          // Add to asset breakdown for selected year
+          if (period.timeInterval === selectedYear) {
             assetBreakdownData.push({
               name: assetName,
               revenue: assetData.total,
@@ -199,14 +269,13 @@ export default function EnhancedDashboard() {
         
         yearlyProjections.push(periodData);
         
-        // Use first year for metrics
-        if (period.timeInterval === currentYear) {
-          totalAnnualRevenue = periodData.totalRevenue;
-          contractedRevenue = periodData.contractedRevenue;
+        // Get Year 10 revenue (index 9 in the array)
+        if (period.timeInterval === currentYear + 9) {
+          year10Revenue = periodData.totalRevenue;
         }
       });
       
-      // Contract analysis
+      // Contract analysis from assets
       assetArray.forEach(asset => {
         if (asset.contracts && asset.contracts.length > 0) {
           asset.contracts.forEach(contract => {
@@ -226,16 +295,17 @@ export default function EnhancedDashboard() {
       });
     }
     
-    // Calculate approximate IRR (simplified)
-    const averageIRR = totalCapex > 0 ? ((totalAnnualRevenue * 0.7) / totalCapex) * 100 : 0; // Rough EBITDA to CAPEX ratio
-    
-    const contractedPercentage = totalAnnualRevenue > 0 ? (contractedRevenue / totalAnnualRevenue) * 100 : 0;
+    // Calculate contracted percentage from first 10 years
+    const first10Years = yearlyProjections.slice(0, 10);
+    const totalContracted = first10Years.reduce((sum, year) => sum + year.contractedRevenue, 0);
+    const totalRevenue = first10Years.reduce((sum, year) => sum + year.totalRevenue, 0);
+    const contractedPercentage = totalRevenue > 0 ? (totalContracted / totalRevenue) * 100 : 0;
     
     setPortfolioMetrics({
       totalCapacity,
       totalProjects,
-      totalRevenue: totalAnnualRevenue,
-      averageIRR,
+      year10Revenue,
+      thirtyYearIRR: portfolioEquityIRR,
       contractedPercentage,
       totalCapex
     });
@@ -248,22 +318,28 @@ export default function EnhancedDashboard() {
   const calculateSensitivityAnalysis = () => {
     if (Object.keys(assets).length === 0) return;
     
-    const baseIRR = portfolioMetrics.thirtyYearIRR || 12; // Base case 30-year IRR with fallback
+    const baseIRR = portfolioMetrics.thirtyYearIRR; // Use actual calculated IRR
+    
+    // Only calculate sensitivity if we have a valid base IRR
+    if (!baseIRR || baseIRR <= 0) {
+      setSensitivityData([]);
+      return;
+    }
     
     // Define sensitivity scenarios with more realistic impacts for 30-year analysis
     const scenarios = [
-      { parameter: 'Electricity Price', change: '+10%', impact: baseIRR * 1.25 - baseIRR },
-      { parameter: 'Electricity Price', change: '-10%', impact: baseIRR * 0.75 - baseIRR },
-      { parameter: 'Capacity Factor', change: '+10%', impact: baseIRR * 1.18 - baseIRR },
-      { parameter: 'Capacity Factor', change: '-10%', impact: baseIRR * 0.82 - baseIRR },
-      { parameter: 'CAPEX', change: '+10%', impact: baseIRR * 0.85 - baseIRR },
-      { parameter: 'CAPEX', change: '-10%', impact: baseIRR * 1.15 - baseIRR },
-      { parameter: 'OPEX', change: '+10%', impact: baseIRR * 0.92 - baseIRR },
-      { parameter: 'OPEX', change: '-10%', impact: baseIRR * 1.08 - baseIRR },
-      { parameter: 'Contract Price', change: '+10%', impact: baseIRR * 1.15 - baseIRR },
-      { parameter: 'Contract Price', change: '-10%', impact: baseIRR * 0.85 - baseIRR },
-      { parameter: 'Interest Rate', change: '+1pp', impact: baseIRR * 0.88 - baseIRR },
-      { parameter: 'Interest Rate', change: '-1pp', impact: baseIRR * 1.12 - baseIRR }
+      { parameter: 'Electricity Price', change: '+10%', impact: baseIRR * 0.25 }, // +25% impact
+      { parameter: 'Electricity Price', change: '-10%', impact: baseIRR * -0.25 }, // -25% impact
+      { parameter: 'Capacity Factor', change: '+10%', impact: baseIRR * 0.18 }, // +18% impact
+      { parameter: 'Capacity Factor', change: '-10%', impact: baseIRR * -0.18 }, // -18% impact
+      { parameter: 'CAPEX', change: '+10%', impact: baseIRR * -0.15 }, // -15% impact
+      { parameter: 'CAPEX', change: '-10%', impact: baseIRR * 0.15 }, // +15% impact
+      { parameter: 'OPEX', change: '+10%', impact: baseIRR * -0.08 }, // -8% impact
+      { parameter: 'OPEX', change: '-10%', impact: baseIRR * 0.08 }, // +8% impact
+      { parameter: 'Contract Price', change: '+10%', impact: baseIRR * 0.15 }, // +15% impact
+      { parameter: 'Contract Price', change: '-10%', impact: baseIRR * -0.15 }, // -15% impact
+      { parameter: 'Interest Rate', change: '+1pp', impact: baseIRR * -0.12 }, // -12% impact
+      { parameter: 'Interest Rate', change: '-1pp', impact: baseIRR * 0.12 } // +12% impact
     ];
     
     // Group by parameter and sort by absolute impact
@@ -278,20 +354,22 @@ export default function EnhancedDashboard() {
     // Create tornado data (sorted by maximum absolute impact)
     const tornadoData = Object.entries(groupedScenarios)
       .map(([parameter, paramScenarios]) => {
-        const maxAbsImpact = Math.max(...paramScenarios.map(s => Math.abs(s.impact || 0)));
-        const upside = paramScenarios.find(s => (s.impact || 0) > 0)?.impact || 0;
-        const downside = paramScenarios.find(s => (s.impact || 0) < 0)?.impact || 0;
+        const upside = paramScenarios.find(s => s.impact > 0)?.impact || 0;
+        const downside = paramScenarios.find(s => s.impact < 0)?.impact || 0;
+        const maxAbsImpact = Math.max(Math.abs(upside), Math.abs(downside));
         
         return {
           parameter,
-          upside: upside,
-          downside: downside,
+          upside: Number(upside.toFixed(2)),
+          downside: Number(downside.toFixed(2)),
           maxAbsImpact,
-          baseIRR
+          baseIRR: Number(baseIRR.toFixed(2))
         };
       })
-      .sort((a, b) => (b.maxAbsImpact || 0) - (a.maxAbsImpact || 0));
+      .filter(item => item.maxAbsImpact > 0) // Only include items with actual impact
+      .sort((a, b) => b.maxAbsImpact - a.maxAbsImpact);
     
+    console.log('Sensitivity analysis data:', { baseIRR, tornadoData });
     setSensitivityData(tornadoData);
   };
 
@@ -386,15 +464,15 @@ export default function EnhancedDashboard() {
           </div>
         </div>
 
-        {/* Annual Revenue - Year 10 */}
+        {/* Year 10 Revenue */}
         <div className="bg-white rounded-lg shadow p-6 border">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Annual Revenue</p>
+              <p className="text-sm font-medium text-gray-600">Year 10 Revenue</p>
               <p className="text-2xl font-bold text-gray-900">
                 ${(portfolioMetrics.year10Revenue || 0).toFixed(1)}M
               </p>
-              <p className="text-sm text-gray-500">Year 10 projection</p>
+              <p className="text-sm text-gray-500">Annual projection</p>
             </div>
             <div className="p-3 bg-blue-100 rounded-full">
               <DollarSign className="w-6 h-6 text-blue-600" />
@@ -402,7 +480,7 @@ export default function EnhancedDashboard() {
           </div>
         </div>
 
-        {/* Portfolio IRR - 30 Year */}
+        {/* 30-Year Portfolio IRR */}
         <div className="bg-white rounded-lg shadow p-6 border">
           <div className="flex items-center justify-between">
             <div>
@@ -410,7 +488,7 @@ export default function EnhancedDashboard() {
               <p className="text-2xl font-bold text-gray-900">
                 {(portfolioMetrics.thirtyYearIRR || 0).toFixed(1)}%
               </p>
-              <p className="text-sm text-gray-500">30-year project IRR</p>
+              <p className="text-sm text-gray-500">30-year equity IRR</p>
             </div>
             <div className="p-3 bg-purple-100 rounded-full">
               <TrendingUp className="w-6 h-6 text-purple-600" />
@@ -478,39 +556,50 @@ export default function EnhancedDashboard() {
         {/* IRR Sensitivity Tornado Plot */}
         <div className="bg-white rounded-lg shadow border p-6">
           <h3 className="text-lg font-semibold mb-4">30-Year IRR Sensitivity Analysis</h3>
-          {sensitivityData.length > 0 ? (
+          {sensitivityData.length > 0 && portfolioMetrics.thirtyYearIRR > 0 ? (
             <ResponsiveContainer width="100%" height={300}>
               <ComposedChart
                 data={sensitivityData}
                 layout="horizontal"
-                margin={{ top: 20, right: 30, left: 40, bottom: 5 }}
+                margin={{ top: 20, right: 30, left: 80, bottom: 5 }}
               >
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis type="number" domain={['dataMin - 1', 'dataMax + 1']} />
-                <YAxis dataKey="parameter" type="category" width={80} />
+                <XAxis 
+                  type="number" 
+                  domain={[
+                    (dataMin) => Math.min(dataMin - 1, -2),
+                    (dataMax) => Math.max(dataMax + 1, 2)
+                  ]}
+                  tickFormatter={(value) => `${value > 0 ? '+' : ''}${value.toFixed(1)}pp`}
+                />
+                <YAxis 
+                  dataKey="parameter" 
+                  type="category" 
+                  width={100}
+                  tick={{ fontSize: 11 }}
+                />
                 <Tooltip 
                   formatter={(value, name) => [
                     `${value > 0 ? '+' : ''}${value.toFixed(1)}pp`, 
                     name === 'upside' ? 'Upside Impact' : 'Downside Impact'
                   ]}
+                  labelFormatter={(label) => `Parameter: ${label}`}
                 />
+                <Legend />
                 <Bar dataKey="downside" fill="#EF4444" name="Downside" />
                 <Bar dataKey="upside" fill="#10B981" name="Upside" />
-                <Line 
-                  type="monotone" 
-                  dataKey="baseIRR" 
-                  stroke="#6B7280" 
-                  strokeWidth={2}
-                  dot={false}
-                  name="Base IRR"
-                />
               </ComposedChart>
             </ResponsiveContainer>
           ) : (
             <div className="text-center text-gray-500 py-12">
               <BarChart3 className="w-12 h-12 mx-auto mb-2 opacity-50" />
               <p>No sensitivity data available</p>
-              <p className="text-sm">Add assets to see analysis</p>
+              <p className="text-sm">
+                {portfolioMetrics.thirtyYearIRR <= 0 
+                  ? 'Portfolio IRR must be calculated first' 
+                  : 'Add assets to see analysis'
+                }
+              </p>
             </div>
           )}
         </div>
@@ -652,7 +741,7 @@ export default function EnhancedDashboard() {
         </div>
         <div className="mt-2 text-sm text-green-700">
           30-year IRR analysis with real-time revenue calculations, contract analysis, and sensitivity modeling. 
-          Annual revenue shows Year 10 projections. Asset breakdown allows year selection from 30-year forecast.
+          Year 10 revenue shows mature portfolio performance. Asset breakdown allows year selection from 30-year forecast.
         </div>
       </div>
     </div>
