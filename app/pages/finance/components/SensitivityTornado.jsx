@@ -87,6 +87,146 @@ export default function SensitivityTornado({
     return calculatedBaseIRR;
   };
 
+  // Calculate CAPEX sensitivity
+  const calculateCapexSensitivity = async (baseIRRValue) => {
+    try {
+      const { calculateProjectMetrics } = await import('@/app/components/ProjectFinance_Calcs');
+      
+      const results = { upside: 0, downside: 0 };
+      const range = ranges.capex;
+      
+      // CAPEX +range% (higher CAPEX = lower IRR = downside)
+      const modifiedConstantsUp = {
+        ...constants,
+        assetCosts: {}
+      };
+      
+      Object.keys(constants.assetCosts || {}).forEach(key => {
+        const originalData = constants.assetCosts[key] || {};
+        const originalCapex = originalData.capex || 0;
+        
+        modifiedConstantsUp.assetCosts[key] = {
+          ...originalData,
+          capex: originalCapex * (1 + range/100)
+        };
+      });
+      
+      console.log(`Calculating +${range}% CAPEX scenario...`);
+      
+      const modifiedMetricsUp = calculateProjectMetrics(
+        assets,
+        modifiedConstantsUp.assetCosts,
+        modifiedConstantsUp,
+        getMerchantPrice,
+        selectedRevenueCase,
+        true, // auto-solve gearing
+        includeTerminalValue
+      );
+      
+      let modifiedIRRUp = 0;
+      if (portfolioTotals?.equityCashFlows) {
+        const individualAssets = Object.entries(modifiedMetricsUp)
+          .filter(([assetName]) => assetName !== 'portfolio');
+        
+        const allEquityCashFlows = [];
+        individualAssets.forEach(([_, metrics]) => {
+          if (metrics.equityCashFlows && metrics.equityCashFlows.length > 0) {
+            const truncatedCashFlows = metrics.equityCashFlows.slice(0, analysisYears + 1);
+            
+            if (allEquityCashFlows.length === 0) {
+              allEquityCashFlows.push(...truncatedCashFlows.map(cf => cf));
+            } else {
+              truncatedCashFlows.forEach((cf, index) => {
+                if (index < allEquityCashFlows.length) {
+                  allEquityCashFlows[index] += cf;
+                } else {
+                  allEquityCashFlows.push(cf);
+                }
+              });
+            }
+          }
+        });
+        
+        if (allEquityCashFlows.length > 0) {
+          const irr = calculateIRR(allEquityCashFlows);
+          modifiedIRRUp = irr ? irr * 100 : 0;
+        }
+      }
+      
+      const impactUp = modifiedIRRUp - baseIRRValue;
+      results.downside = impactUp;
+      console.log(`CAPEX +${range}% impact:`, impactUp);
+      
+      // CAPEX -range% (lower CAPEX = higher IRR = upside)
+      const modifiedConstantsDown = {
+        ...constants,
+        assetCosts: {}
+      };
+      
+      Object.keys(constants.assetCosts || {}).forEach(key => {
+        const originalData = constants.assetCosts[key] || {};
+        const originalCapex = originalData.capex || 0;
+        
+        modifiedConstantsDown.assetCosts[key] = {
+          ...originalData,
+          capex: originalCapex * (1 - range/100)
+        };
+      });
+      
+      console.log(`Calculating -${range}% CAPEX scenario...`);
+      
+      const modifiedMetricsDown = calculateProjectMetrics(
+        assets,
+        modifiedConstantsDown.assetCosts,
+        modifiedConstantsDown,
+        getMerchantPrice,
+        selectedRevenueCase,
+        true, // auto-solve gearing
+        includeTerminalValue
+      );
+      
+      let modifiedIRRDown = 0;
+      if (portfolioTotals?.equityCashFlows) {
+        const individualAssets = Object.entries(modifiedMetricsDown)
+          .filter(([assetName]) => assetName !== 'portfolio');
+        
+        const allEquityCashFlows = [];
+        individualAssets.forEach(([_, metrics]) => {
+          if (metrics.equityCashFlows && metrics.equityCashFlows.length > 0) {
+            const truncatedCashFlows = metrics.equityCashFlows.slice(0, analysisYears + 1);
+            
+            if (allEquityCashFlows.length === 0) {
+              allEquityCashFlows.push(...truncatedCashFlows.map(cf => cf));
+            } else {
+              truncatedCashFlows.forEach((cf, index) => {
+                if (index < allEquityCashFlows.length) {
+                  allEquityCashFlows[index] += cf;
+                } else {
+                  allEquityCashFlows.push(cf);
+                }
+              });
+            }
+          }
+        });
+        
+        if (allEquityCashFlows.length > 0) {
+          const irr = calculateIRR(allEquityCashFlows);
+          modifiedIRRDown = irr ? irr * 100 : 0;
+        }
+      }
+      
+      const impactDown = modifiedIRRDown - baseIRRValue;
+      results.upside = impactDown;
+      console.log(`CAPEX -${range}% impact:`, impactDown);
+      
+      return results;
+      
+    } catch (error) {
+      console.error('Error calculating CAPEX sensitivity:', error);
+      return { upside: 0, downside: 0 };
+    }
+  };
+
   // Calculate Electricity Price sensitivity
   const calculateElectricityPriceSensitivity = async (baseIRRValue) => {
     try {
@@ -109,7 +249,7 @@ export default function SensitivityTornado({
         constants,
         modifiedGetMerchantPriceUp,
         selectedRevenueCase,
-        false,
+        true, // auto-solve gearing
         includeTerminalValue
       );
       
@@ -161,7 +301,7 @@ export default function SensitivityTornado({
         constants,
         modifiedGetMerchantPriceDown,
         selectedRevenueCase,
-        false,
+        true, // auto-solve gearing
         includeTerminalValue
       );
       
@@ -249,7 +389,7 @@ export default function SensitivityTornado({
         constants,
         getMerchantPrice,
         selectedRevenueCase,
-        false,
+        true, // auto-solve gearing
         includeTerminalValue
       );
       
@@ -321,7 +461,7 @@ export default function SensitivityTornado({
         constants,
         getMerchantPrice,
         selectedRevenueCase,
-        false,
+        true, // auto-solve gearing
         includeTerminalValue
       );
       
@@ -398,7 +538,7 @@ export default function SensitivityTornado({
         modifiedConstantsUp,
         getMerchantPrice,
         selectedRevenueCase,
-        false,
+        true, // auto-solve gearing
         includeTerminalValue
       );
       
@@ -460,7 +600,7 @@ export default function SensitivityTornado({
         modifiedConstantsDown,
         getMerchantPrice,
         selectedRevenueCase,
-        false,
+        true, // auto-solve gearing
         includeTerminalValue
       );
       
@@ -512,9 +652,10 @@ export default function SensitivityTornado({
       const { calculateProjectMetrics } = await import('@/app/components/ProjectFinance_Calcs');
       
       const results = { upside: 0, downside: 0 };
+      const range = ranges.opex;
       
-      // OPEX +10% (higher OPEX = lower IRR = downside)
-      console.log('Calculating +10% OPEX scenario...');
+      // OPEX +range% (higher OPEX = lower IRR = downside)
+      console.log(`Calculating +${range}% OPEX scenario...`);
       
       const modifiedConstantsUp = {
         ...constants,
@@ -527,7 +668,7 @@ export default function SensitivityTornado({
         
         modifiedConstantsUp.assetCosts[key] = {
           ...originalData,
-          operatingCosts: originalOpex * 1.1
+          operatingCosts: originalOpex * (1 + range/100)
         };
       });
       
@@ -537,7 +678,7 @@ export default function SensitivityTornado({
         modifiedConstantsUp,
         getMerchantPrice,
         selectedRevenueCase,
-        false,
+        true, // auto-solve gearing
         includeTerminalValue
       );
       
@@ -573,10 +714,10 @@ export default function SensitivityTornado({
       
       const impactUp = modifiedIRRUp - baseIRRValue;
       results.downside = impactUp; // Higher OPEX = downside
-      console.log('OPEX +10% impact:', impactUp);
+      console.log(`OPEX +${range}% impact:`, impactUp);
       
-      // OPEX -10% (lower OPEX = higher IRR = upside)
-      console.log('Calculating -10% OPEX scenario...');
+      // OPEX -range% (lower OPEX = higher IRR = upside)
+      console.log(`Calculating -${range}% OPEX scenario...`);
       
       const modifiedConstantsDown = {
         ...constants,
@@ -589,7 +730,7 @@ export default function SensitivityTornado({
         
         modifiedConstantsDown.assetCosts[key] = {
           ...originalData,
-          operatingCosts: originalOpex * 0.9
+          operatingCosts: originalOpex * (1 - range/100)
         };
       });
       
@@ -599,7 +740,7 @@ export default function SensitivityTornado({
         modifiedConstantsDown,
         getMerchantPrice,
         selectedRevenueCase,
-        false,
+        true, // auto-solve gearing
         includeTerminalValue
       );
       
@@ -635,7 +776,7 @@ export default function SensitivityTornado({
       
       const impactDown = modifiedIRRDown - baseIRRValue;
       results.upside = impactDown; // Lower OPEX = upside
-      console.log('OPEX -10% impact:', impactDown);
+      console.log(`OPEX -${range}% impact:`, impactDown);
       
       return results;
       
@@ -651,9 +792,10 @@ export default function SensitivityTornado({
       const { calculateProjectMetrics } = await import('@/app/components/ProjectFinance_Calcs');
       
       const results = { upside: 0, downside: 0 };
+      const range = ranges.terminalValue;
       
-      // Terminal Value +50% (higher terminal value = higher IRR = upside)
-      console.log('Calculating +50% Terminal Value scenario...');
+      // Terminal Value +range% (higher terminal value = higher IRR = upside)
+      console.log(`Calculating +${range}% Terminal Value scenario...`);
       
       const modifiedConstantsUp = {
         ...constants,
@@ -666,7 +808,7 @@ export default function SensitivityTornado({
         
         modifiedConstantsUp.assetCosts[key] = {
           ...originalData,
-          terminalValue: originalTerminal * 1.5
+          terminalValue: originalTerminal * (1 + range/100)
         };
       });
       
@@ -676,7 +818,7 @@ export default function SensitivityTornado({
         modifiedConstantsUp,
         getMerchantPrice,
         selectedRevenueCase,
-        false,
+        true, // auto-solve gearing
         includeTerminalValue
       );
       
@@ -712,10 +854,10 @@ export default function SensitivityTornado({
       
       const impactUp = modifiedIRRUp - baseIRRValue;
       results.upside = impactUp;
-      console.log('Terminal Value +50% impact:', impactUp);
+      console.log(`Terminal Value +${range}% impact:`, impactUp);
       
-      // Terminal Value -50% (lower terminal value = lower IRR = downside)
-      console.log('Calculating -50% Terminal Value scenario...');
+      // Terminal Value -range% (lower terminal value = lower IRR = downside)
+      console.log(`Calculating -${range}% Terminal Value scenario...`);
       
       const modifiedConstantsDown = {
         ...constants,
@@ -728,7 +870,7 @@ export default function SensitivityTornado({
         
         modifiedConstantsDown.assetCosts[key] = {
           ...originalData,
-          terminalValue: originalTerminal * 0.5
+          terminalValue: originalTerminal * (1 - range/100)
         };
       });
       
@@ -738,7 +880,7 @@ export default function SensitivityTornado({
         modifiedConstantsDown,
         getMerchantPrice,
         selectedRevenueCase,
-        false,
+        true, // auto-solve gearing
         includeTerminalValue
       );
       
@@ -774,155 +916,12 @@ export default function SensitivityTornado({
       
       const impactDown = modifiedIRRDown - baseIRRValue;
       results.downside = impactDown;
-      console.log('Terminal Value -50% impact:', impactDown);
+      console.log(`Terminal Value -${range}% impact:`, impactDown);
       
       return results;
       
     } catch (error) {
       console.error('Error calculating Terminal Value sensitivity:', error);
-      return { upside: 0, downside: 0 };
-    }
-  };
-  const calculateCapexSensitivity = async (baseIRRValue) => {
-    try {
-      const { calculateProjectMetrics } = await import('@/app/components/ProjectFinance_Calcs');
-      
-      const results = { upside: 0, downside: 0 };
-      
-      // CAPEX +10% (higher CAPEX = lower IRR = downside)
-      const modifiedConstantsUp = {
-        ...constants,
-        assetCosts: {}
-      };
-      
-      // Safely modify each asset's CAPEX
-      Object.keys(constants.assetCosts || {}).forEach(key => {
-        const originalData = constants.assetCosts[key] || {};
-        const originalCapex = originalData.capex || 0;
-        
-        modifiedConstantsUp.assetCosts[key] = {
-          ...originalData,
-          capex: originalCapex * 1.1
-        };
-      });
-      
-      console.log('Calculating +10% CAPEX scenario...');
-      
-      const modifiedMetricsUp = calculateProjectMetrics(
-        assets,
-        modifiedConstantsUp.assetCosts,
-        modifiedConstantsUp,
-        getMerchantPrice,
-        selectedRevenueCase,
-        false,
-        includeTerminalValue
-      );
-      
-      // Calculate new IRR using same method as base
-      let modifiedIRRUp = 0;
-      if (portfolioTotals?.equityCashFlows) {
-        // Recalculate portfolio totals
-        const individualAssets = Object.entries(modifiedMetricsUp)
-          .filter(([assetName]) => assetName !== 'portfolio');
-        
-        const allEquityCashFlows = [];
-        individualAssets.forEach(([_, metrics]) => {
-          if (metrics.equityCashFlows && metrics.equityCashFlows.length > 0) {
-            const truncatedCashFlows = metrics.equityCashFlows.slice(0, analysisYears + 1);
-            
-            if (allEquityCashFlows.length === 0) {
-              allEquityCashFlows.push(...truncatedCashFlows.map(cf => cf));
-            } else {
-              truncatedCashFlows.forEach((cf, index) => {
-                if (index < allEquityCashFlows.length) {
-                  allEquityCashFlows[index] += cf;
-                } else {
-                  allEquityCashFlows.push(cf);
-                }
-              });
-            }
-          }
-        });
-        
-        if (allEquityCashFlows.length > 0) {
-          const irr = calculateIRR(allEquityCashFlows);
-          modifiedIRRUp = irr ? irr * 100 : 0;
-        }
-      }
-      
-      const impactUp = modifiedIRRUp - baseIRRValue;
-      results.downside = impactUp;
-      
-      console.log('CAPEX +10% impact:', impactUp);
-      
-      // CAPEX -10% (lower CAPEX = higher IRR = upside)
-      const modifiedConstantsDown = {
-        ...constants,
-        assetCosts: {}
-      };
-      
-      Object.keys(constants.assetCosts || {}).forEach(key => {
-        const originalData = constants.assetCosts[key] || {};
-        const originalCapex = originalData.capex || 0;
-        
-        modifiedConstantsDown.assetCosts[key] = {
-          ...originalData,
-          capex: originalCapex * 0.9
-        };
-      });
-      
-      console.log('Calculating -10% CAPEX scenario...');
-      
-      const modifiedMetricsDown = calculateProjectMetrics(
-        assets,
-        modifiedConstantsDown.assetCosts,
-        modifiedConstantsDown,
-        getMerchantPrice,
-        selectedRevenueCase,
-        false,
-        includeTerminalValue
-      );
-      
-      // Calculate new IRR
-      let modifiedIRRDown = 0;
-      if (portfolioTotals?.equityCashFlows) {
-        const individualAssets = Object.entries(modifiedMetricsDown)
-          .filter(([assetName]) => assetName !== 'portfolio');
-        
-        const allEquityCashFlows = [];
-        individualAssets.forEach(([_, metrics]) => {
-          if (metrics.equityCashFlows && metrics.equityCashFlows.length > 0) {
-            const truncatedCashFlows = metrics.equityCashFlows.slice(0, analysisYears + 1);
-            
-            if (allEquityCashFlows.length === 0) {
-              allEquityCashFlows.push(...truncatedCashFlows.map(cf => cf));
-            } else {
-              truncatedCashFlows.forEach((cf, index) => {
-                if (index < allEquityCashFlows.length) {
-                  allEquityCashFlows[index] += cf;
-                } else {
-                  allEquityCashFlows.push(cf);
-                }
-              });
-            }
-          }
-        });
-        
-        if (allEquityCashFlows.length > 0) {
-          const irr = calculateIRR(allEquityCashFlows);
-          modifiedIRRDown = irr ? irr * 100 : 0;
-        }
-      }
-      
-      const impactDown = modifiedIRRDown - baseIRRValue;
-      results.upside = impactDown;
-      
-      console.log('CAPEX -10% impact:', impactDown);
-      
-      return results;
-      
-    } catch (error) {
-      console.error('Error calculating CAPEX sensitivity:', error);
       return { upside: 0, downside: 0 };
     }
   };
@@ -1165,16 +1164,16 @@ export default function SensitivityTornado({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
           <div>
             <ul className="text-xs space-y-1">
-              <li>• <strong>CAPEX:</strong> ±10% modification to asset costs</li>
-              <li>• <strong>Electricity Price:</strong> ±10% to all merchant prices</li>
-              <li>• <strong>Capacity Factor:</strong> ±10% to all quarterly capacity factors</li>
+              <li>• <strong>CAPEX:</strong> ±{ranges.capex}% modification to asset costs</li>
+              <li>• <strong>Electricity Price:</strong> ±{ranges.electricityPrice}% to all merchant prices</li>
+              <li>• <strong>Volume:</strong> ±{ranges.volume}% to all quarterly capacity factors</li>
             </ul>
           </div>
           <div>
             <ul className="text-xs space-y-1">
-              <li>• <strong>Interest Rate:</strong> ±1 percentage point to debt rates</li>
-              <li>• <strong>OPEX:</strong> ±10% to operating costs</li>
-              <li>• <strong>Terminal Value:</strong> ±50% to end-of-life asset values</li>
+              <li>• <strong>Interest Rate:</strong> ±{ranges.interestRate} percentage point to debt rates</li>
+              <li>• <strong>OPEX:</strong> ±{ranges.opex}% to operating costs</li>
+              <li>• <strong>Terminal Value:</strong> ±{ranges.terminalValue}% to end-of-life asset values</li>
             </ul>
           </div>
         </div>

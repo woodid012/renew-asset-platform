@@ -117,35 +117,6 @@ export default function PortfolioSummary({
               <p className="text-sm text-orange-600">{analysisYears}Y IRR</p>
             </div>
           </div>
-
-          {/* Asset Type Breakdown */}
-          <div className="mb-6">
-            <h4 className="font-medium text-gray-900 mb-3">Asset Type Breakdown</h4>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {Object.entries(portfolioInsights.assetTypes).map(([type, data]) => (
-                <div key={type} className="p-4 border border-gray-200 rounded-lg">
-                  <div className="flex items-center justify-between mb-2">
-                    <h5 className="font-medium text-gray-900 capitalize">{type}</h5>
-                    <span className="text-sm text-gray-500">{data.count} assets</span>
-                  </div>
-                  <div className="space-y-1">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">Capacity:</span>
-                      <span className="font-medium">{data.capacity.toFixed(0)} MW</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">CAPEX:</span>
-                      <span className="font-medium">{formatCurrency(data.capex)}</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">% of Portfolio:</span>
-                      <span className="font-medium">{((data.capex / portfolioTotals.capex) * 100).toFixed(1)}%</span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
         </div>
       )}
 

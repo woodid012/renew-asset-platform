@@ -27,10 +27,11 @@ import {
   calculatePortfolioSummary
 } from '@/lib/revenueCalculations';
 
-// Import components
+// Import components - using the real ones now
 import SensitivityTornado from './components/SensitivityTornado';
 import PortfolioSummary from './components/PortfolioSummary';
 import CashFlowAnalysis from './components/CashFlowAnalysis';
+import MetricsAndConfiguration from './components/MetricsAndConfiguration';
 
 export default function TabbedProjectFinancePage() {
   const { currentUser, currentPortfolio } = useUser();
@@ -48,7 +49,10 @@ export default function TabbedProjectFinancePage() {
   const [selectedRevenueCase, setSelectedRevenueCase] = useState('base');
   const [analysisYears, setAnalysisYears] = useState(30);
   const [includeTerminalValue, setIncludeTerminalValue] = useState(true);
+  const [solveGearing, setSolveGearing] = useState(true); // Always true for outputs
   const [showEquityTimingPanel, setShowEquityTimingPanel] = useState(false);
+  const [showCashFlowTable, setShowCashFlowTable] = useState(false);
+  const [showSensitivityAnalysis, setShowSensitivityAnalysis] = useState(true);
   
   // Results state
   const [projectMetrics, setProjectMetrics] = useState({});
@@ -321,22 +325,6 @@ export default function TabbedProjectFinancePage() {
 
   const portfolioTotals = getPortfolioTotals();
 
-  // Helper functions for formatting
-  const formatPercent = (value) => {
-    if (value === undefined || value === null) return 'N/A';
-    return `${(value * 100).toFixed(1)}%`;
-  };
-
-  const formatCurrency = (value) => {
-    if (value === undefined || value === null) return '$0.0M';
-    return `$${value.toFixed(1)}M`;
-  };
-
-  const formatDSCR = (value) => {
-    if (value === undefined || value === null) return 'N/A';
-    return value.toFixed(2) + 'x';
-  };
-
   // Show loading state if no user/portfolio selected
   if (!currentUser || !currentPortfolio) {
     return (
@@ -363,17 +351,6 @@ export default function TabbedProjectFinancePage() {
 
   return (
     <div className="px-4 py-6 space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-start">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Project Finance Analysis</h1>
-          <p className="text-gray-600">Configure project finance inputs and analyze outputs with auto-solved gearing</p>
-          <p className="text-sm text-gray-500">
-            Portfolio: {portfolioName} • {Object.keys(assets).length} assets • Analysis: {analysisYears} years
-          </p>
-        </div>
-      </div>
-
       {/* Tabs */}
       <div className="border-b border-gray-200">
         <nav className="-mb-px flex space-x-8">
@@ -417,6 +394,10 @@ export default function TabbedProjectFinancePage() {
           analysisYears={analysisYears}
           selectedRevenueCase={selectedRevenueCase}
           includeTerminalValue={includeTerminalValue}
+          showCashFlowTable={showCashFlowTable}
+          showSensitivityAnalysis={showSensitivityAnalysis}
+          setShowCashFlowTable={setShowCashFlowTable}
+          setShowSensitivityAnalysis={setShowSensitivityAnalysis}
         />
       )}
 
@@ -424,14 +405,22 @@ export default function TabbedProjectFinancePage() {
         <InputsTab
           assets={assets}
           constants={constants}
+          portfolioTotals={portfolioTotals}
+          portfolioName={portfolioName}
           selectedRevenueCase={selectedRevenueCase}
           setSelectedRevenueCase={setSelectedRevenueCase}
           analysisYears={analysisYears}
           setAnalysisYears={setAnalysisYears}
           includeTerminalValue={includeTerminalValue}
           setIncludeTerminalValue={setIncludeTerminalValue}
+          solveGearing={solveGearing}
+          setSolveGearing={setSolveGearing}
           showEquityTimingPanel={showEquityTimingPanel}
           setShowEquityTimingPanel={setShowEquityTimingPanel}
+          showCashFlowTable={showCashFlowTable}
+          setShowCashFlowTable={setShowCashFlowTable}
+          showSensitivityAnalysis={showSensitivityAnalysis}
+          setShowSensitivityAnalysis={setShowSensitivityAnalysis}
           updateAssetCosts={updateAssetCosts}
           updatePortfolioCosts={updatePortfolioCosts}
           updateAssetEquityTiming={updateAssetEquityTiming}
@@ -442,18 +431,26 @@ export default function TabbedProjectFinancePage() {
   );
 }
 
-// Inputs Tab Component
+// Inputs Tab Component - now uses MetricsAndConfiguration
 function InputsTab({
   assets,
   constants,
+  portfolioTotals,
+  portfolioName,
   selectedRevenueCase,
   setSelectedRevenueCase,
   analysisYears,
   setAnalysisYears,
   includeTerminalValue,
   setIncludeTerminalValue,
+  solveGearing,
+  setSolveGearing,
   showEquityTimingPanel,
   setShowEquityTimingPanel,
+  showCashFlowTable,
+  setShowCashFlowTable,
+  showSensitivityAnalysis,
+  setShowSensitivityAnalysis,
   updateAssetCosts,
   updatePortfolioCosts,
   updateAssetEquityTiming,
@@ -461,72 +458,29 @@ function InputsTab({
 }) {
   return (
     <div className="space-y-6">
-      {/* Configuration Panel */}
-      <div className="bg-white rounded-lg shadow border p-6">
-        <div className="flex items-center space-x-2 mb-4">
-          <Settings className="w-5 h-5 text-gray-600" />
-          <h3 className="text-lg font-semibold">Analysis Configuration</h3>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Revenue Scenario</label>
-            <select
-              value={selectedRevenueCase}
-              onChange={(e) => setSelectedRevenueCase(e.target.value)}
-              className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="base">Base Case</option>
-              <option value="worst">Combined Downside</option>
-              <option value="volume">Volume Stress</option>
-              <option value="price">Price Stress</option>
-            </select>
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Analysis Period (Years)</label>
-            <select
-              value={analysisYears}
-              onChange={(e) => setAnalysisYears(parseInt(e.target.value))}
-              className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value={15}>15 Years</option>
-              <option value={20}>20 Years</option>
-              <option value={25}>25 Years</option>
-              <option value={30}>30 Years</option>
-              <option value={35}>35 Years</option>
-            </select>
-          </div>
-          
-          <div className="flex items-center space-x-4">
-            <div className="flex items-center">
-              <input
-                type="checkbox"
-                id="terminal-value"
-                checked={includeTerminalValue}
-                onChange={(e) => setIncludeTerminalValue(e.target.checked)}
-                className="mr-2 rounded focus:ring-2 focus:ring-blue-500"
-              />
-              <label htmlFor="terminal-value" className="text-sm font-medium text-gray-700">
-                Include Terminal Value
-              </label>
-            </div>
-          </div>
-
-          <div className="flex justify-end">
-            <button 
-              onClick={() => setShowEquityTimingPanel(!showEquityTimingPanel)}
-              className={`px-4 py-2 rounded-lg flex items-center space-x-2 border ${
-                showEquityTimingPanel 
-                  ? 'bg-purple-50 border-purple-200 text-purple-700' 
-                  : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
-              }`}
-            >
-              <Clock className="w-4 h-4" />
-              <span>Equity Timing</span>
-            </button>
-          </div>
-        </div>
-      </div>
+      {/* Use MetricsAndConfiguration component */}
+      <MetricsAndConfiguration
+        portfolioName={portfolioName}
+        assets={assets}
+        constants={constants}
+        portfolioTotals={portfolioTotals}
+        analysisYears={analysisYears}
+        selectedRevenueCase={selectedRevenueCase}
+        includeTerminalValue={includeTerminalValue}
+        solveGearing={solveGearing}
+        showEquityTimingPanel={showEquityTimingPanel}
+        showCashFlowTable={showCashFlowTable}
+        showSensitivityAnalysis={showSensitivityAnalysis}
+        setAnalysisYears={setAnalysisYears}
+        setSelectedRevenueCase={setSelectedRevenueCase}
+        setIncludeTerminalValue={setIncludeTerminalValue}
+        setSolveGearing={setSolveGearing}
+        setShowEquityTimingPanel={setShowEquityTimingPanel}
+        setShowCashFlowTable={setShowCashFlowTable}
+        setShowSensitivityAnalysis={setShowSensitivityAnalysis}
+        updateAssetEquityTiming={updateAssetEquityTiming}
+        updatePortfolioEquityTiming={updatePortfolioEquityTiming}
+      />
 
       {/* Project Finance Inputs Table */}
       <div className="bg-white rounded-lg shadow border p-6">
@@ -667,126 +621,6 @@ function InputsTab({
         </div>
       </div>
 
-      {/* Equity Timing Configuration Panel */}
-      {showEquityTimingPanel && (
-        <div className="bg-purple-50 border border-purple-200 rounded-lg p-6">
-          <h3 className="text-lg font-semibold mb-4 text-purple-900">Equity Investment Timing</h3>
-          <div className="space-y-4">
-            {/* Individual Assets */}
-            {Object.values(assets).map((asset) => {
-              const assetCostData = constants.assetCosts?.[asset.name] || {};
-              return (
-                <div key={asset.name} className="bg-white rounded-lg p-4 border">
-                  <div className="flex items-center justify-between mb-3">
-                    <h4 className="font-medium text-gray-900">{asset.name}</h4>
-                    <span className="text-sm text-gray-500 capitalize">{asset.type}</span>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="flex items-center space-x-2">
-                      <input
-                        type="radio"
-                        id={`${asset.name}-upfront`}
-                        name={`${asset.name}-timing`}
-                        checked={assetCostData.equityTimingUpfront !== false}
-                        onChange={() => updateAssetEquityTiming(asset.name, true, assetCostData.constructionDuration || 12)}
-                        className="text-blue-600 focus:ring-blue-500"
-                      />
-                      <label htmlFor={`${asset.name}-upfront`} className="text-sm font-medium text-gray-700">
-                        Upfront Payment
-                      </label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <input
-                        type="radio"
-                        id={`${asset.name}-construction`}
-                        name={`${asset.name}-timing`}
-                        checked={assetCostData.equityTimingUpfront === false}
-                        onChange={() => updateAssetEquityTiming(asset.name, false, assetCostData.constructionDuration || 12)}
-                        className="text-blue-600 focus:ring-blue-500"
-                      />
-                      <label htmlFor={`${asset.name}-construction`} className="text-sm font-medium text-gray-700">
-                        During Construction
-                      </label>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">Construction Duration (months)</label>
-                      <input
-                        type="number"
-                        value={assetCostData.constructionDuration || 12}
-                        onChange={(e) => updateAssetEquityTiming(
-                          asset.name, 
-                          assetCostData.equityTimingUpfront !== false, 
-                          parseInt(e.target.value) || 12
-                        )}
-                        className="w-full p-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
-                        min="6"
-                        max="36"
-                      />
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-
-            {/* Portfolio Level (if multiple assets) */}
-            {Object.keys(assets).length >= 2 && (
-              <div className="bg-white rounded-lg p-4 border border-purple-200">
-                <div className="flex items-center justify-between mb-3">
-                  <h4 className="font-medium text-purple-900">Portfolio Level</h4>
-                  <span className="text-sm text-purple-600">Refinancing Phase</span>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="flex items-center space-x-2">
-                    <input
-                      type="radio"
-                      id="portfolio-upfront"
-                      name="portfolio-timing"
-                      checked={constants.assetCosts?.portfolio?.equityTimingUpfront !== false}
-                      onChange={() => updatePortfolioEquityTiming(true, constants.assetCosts?.portfolio?.constructionDuration || 18)}
-                      className="text-blue-600 focus:ring-blue-500"
-                    />
-                    <label htmlFor="portfolio-upfront" className="text-sm font-medium text-gray-700">
-                      Upfront Payment
-                    </label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <input
-                      type="radio"
-                      id="portfolio-construction"
-                      name="portfolio-timing"
-                      checked={constants.assetCosts?.portfolio?.equityTimingUpfront === false}
-                      onChange={() => updatePortfolioEquityTiming(false, constants.assetCosts?.portfolio?.constructionDuration || 18)}
-                      className="text-blue-600 focus:ring-blue-500"
-                    />
-                    <label htmlFor="portfolio-construction" className="text-sm font-medium text-gray-700">
-                      During Development
-                    </label>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Development Duration (months)</label>
-                    <input
-                      type="number"
-                      value={constants.assetCosts?.portfolio?.constructionDuration || 18}
-                      onChange={(e) => updatePortfolioEquityTiming(
-                        constants.assetCosts?.portfolio?.equityTimingUpfront !== false, 
-                        parseInt(e.target.value) || 18
-                      )}
-                      className="w-full p-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
-                      min="6"
-                      max="48"
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-          <div className="mt-4 text-sm text-purple-700">
-            <p><strong>Note:</strong> Equity timing significantly affects IRR calculations. Upfront payment concentrates the equity investment 
-            at Year 0, while pro-rata spreads it over construction/development period.</p>
-          </div>
-        </div>
-      )}
-
       {/* Summary Section */}
       <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
         <div className="flex items-center justify-between">
@@ -809,7 +643,7 @@ function InputsTab({
   );
 }
 
-// Outputs Tab Component
+// Outputs Tab Component - now uses all the real components
 function OutputsTab({
   projectMetrics,
   portfolioTotals,
@@ -818,87 +652,17 @@ function OutputsTab({
   getMerchantPrice,
   analysisYears,
   selectedRevenueCase,
-  includeTerminalValue
+  includeTerminalValue,
+  showCashFlowTable,
+  showSensitivityAnalysis,
+  setShowCashFlowTable,
+  setShowSensitivityAnalysis
 }) {
-  const [showCashFlowTable, setShowCashFlowTable] = useState(false);
-  const [showQuarterly, setShowQuarterly] = useState(false);
-
-  // Helper functions for formatting
-  const formatPercent = (value) => {
-    if (value === undefined || value === null) return 'N/A';
-    return `${(value * 100).toFixed(1)}%`;
-  };
-
-  const formatCurrency = (value) => {
-    if (value === undefined || value === null) return '$0.0M';
-    return `${value.toFixed(1)}M`;
-  };
-
-  const formatDSCR = (value) => {
-    if (value === undefined || value === null) return 'N/A';
-    return value.toFixed(2) + 'x';
-  };
-
-  // Calculate portfolio insights
-  const getPortfolioInsights = () => {
-    if (!portfolioTotals || Object.keys(projectMetrics).length === 0) return null;
-
-    const insights = {
-      totalAssets: Object.keys(assets).length,
-      totalCapacity: Object.values(assets).reduce((sum, asset) => sum + (parseFloat(asset.capacity) || 0), 0),
-      totalCapex: portfolioTotals.capex,
-      totalEquity: portfolioTotals.capex * (1 - portfolioTotals.calculatedGearing),
-      averageGearing: portfolioTotals.calculatedGearing,
-      portfolioIRR: portfolioTotals.equityCashFlows ? calculateIRR(portfolioTotals.equityCashFlows) * 100 : 0
-    };
-
-    return insights;
-  };
-
-  const portfolioInsights = getPortfolioInsights();
 
   return (
     <div className="space-y-6">
-      {/* Single Portfolio Overview */}
-      {portfolioInsights && (
-        <div className="bg-white rounded-lg shadow border p-6">
-          <div className="flex items-center space-x-2 mb-4">
-            <TrendingUp className="w-5 h-5 text-gray-600" />
-            <h3 className="text-lg font-semibold">Portfolio Overview</h3>
-            <span className="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">Auto-Solved Gearing</span>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
-            <div className="text-center p-3 bg-gray-50 rounded-lg">
-              <p className="text-2xl font-bold text-gray-900">{portfolioInsights.totalAssets}</p>
-              <p className="text-sm text-gray-600">Assets</p>
-            </div>
-            <div className="text-center p-3 bg-gray-50 rounded-lg">
-              <p className="text-2xl font-bold text-gray-900">{portfolioInsights.totalCapacity.toFixed(0)}MW</p>
-              <p className="text-sm text-gray-600">Total Capacity</p>
-            </div>
-            <div className="text-center p-3 bg-blue-50 rounded-lg">
-              <p className="text-2xl font-bold text-blue-900">{formatCurrency(portfolioInsights.totalCapex)}</p>
-              <p className="text-sm text-blue-600">Total CAPEX</p>
-            </div>
-            <div className="text-center p-3 bg-green-50 rounded-lg">
-              <p className="text-2xl font-bold text-green-900">{formatCurrency(portfolioInsights.totalEquity)}</p>
-              <p className="text-sm text-green-600">Total Equity</p>
-            </div>
-            <div className="text-center p-3 bg-purple-50 rounded-lg">
-              <p className="text-2xl font-bold text-purple-900">{formatPercent(portfolioInsights.averageGearing)}</p>
-              <p className="text-sm text-purple-600">Avg Gearing</p>
-            </div>
-            <div className="text-center p-3 bg-orange-50 rounded-lg">
-              <p className="text-2xl font-bold text-orange-900">{portfolioInsights.portfolioIRR.toFixed(1)}%</p>
-              <p className="text-sm text-orange-600">{analysisYears}Y IRR</p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Asset Summary Metrics */}
-      <AssetSummaryTable
+      {/* Portfolio Summary Component */}
+      <PortfolioSummary
         projectMetrics={projectMetrics}
         portfolioTotals={portfolioTotals}
         assets={assets}
@@ -906,68 +670,53 @@ function OutputsTab({
         analysisYears={analysisYears}
       />
 
-      {/* Cash Flow Projections */}
-      <div className="bg-white rounded-lg shadow border p-6">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center space-x-2">
-            <TrendingUp className="w-5 h-5 text-gray-600" />
-            <h3 className="text-lg font-semibold">Portfolio Cash Flow Projections</h3>
-          </div>
-          <div className="flex items-center space-x-2">
-            <button
-              onClick={() => setShowQuarterly(!showQuarterly)}
-              className={`px-3 py-1 text-sm rounded-md border ${
-                showQuarterly 
-                  ? 'bg-blue-50 border-blue-200 text-blue-700' 
-                  : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
-              }`}
-            >
-              {showQuarterly ? 'Show Annual' : 'Show Quarterly'}
-            </button>
-            <button
-              onClick={() => setShowCashFlowTable(!showCashFlowTable)}
-              className={`px-3 py-1 text-sm rounded-md border ${
-                showCashFlowTable 
-                  ? 'bg-green-50 border-green-200 text-green-700' 
-                  : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
-              }`}
-            >
-              {showCashFlowTable ? 'Hide Table' : 'Show Table'}
-            </button>
-          </div>
-        </div>
+      {/* Cash Flow Analysis Component */}
+      <CashFlowAnalysis
+        projectMetrics={projectMetrics}
+        showCashFlowTable={showCashFlowTable}
+        analysisYears={analysisYears}
+      />
 
-        {/* Cash Flow Chart */}
-        <CashFlowChart 
-          projectMetrics={projectMetrics}
-          analysisYears={analysisYears}
-          showQuarterly={showQuarterly}
-        />
-
-        {/* Cash Flow Table (expandable) */}
-        {showCashFlowTable && (
-          <div className="mt-6">
-            <CashFlowTable 
-              projectMetrics={projectMetrics}
-              analysisYears={analysisYears}
-              showQuarterly={showQuarterly}
-            />
-          </div>
-        )}
+      {/* Toggle Controls */}
+      <div className="flex justify-center space-x-4">
+        <button
+          onClick={() => setShowCashFlowTable(!showCashFlowTable)}
+          className={`px-4 py-2 rounded-lg flex items-center space-x-2 border ${
+            showCashFlowTable 
+              ? 'bg-green-50 border-green-200 text-green-700' 
+              : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+          }`}
+        >
+          <BarChart3 className="w-4 h-4" />
+          <span>{showCashFlowTable ? 'Hide Cash Flow Table' : 'Show Cash Flow Table'}</span>
+        </button>
+        
+        <button
+          onClick={() => setShowSensitivityAnalysis(!showSensitivityAnalysis)}
+          className={`px-4 py-2 rounded-lg flex items-center space-x-2 border ${
+            showSensitivityAnalysis 
+              ? 'bg-orange-50 border-orange-200 text-orange-700' 
+              : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+          }`}
+        >
+          <BarChart3 className="w-4 h-4" />
+          <span>{showSensitivityAnalysis ? 'Hide Sensitivity Analysis' : 'Show Sensitivity Analysis'}</span>
+        </button>
       </div>
 
-      {/* Simplified Sensitivity Tornado */}
-      <SimplifiedSensitivityTornado
-        projectMetrics={projectMetrics}
-        assets={assets}
-        constants={constants}
-        getMerchantPrice={getMerchantPrice}
-        analysisYears={analysisYears}
-        selectedRevenueCase={selectedRevenueCase}
-        includeTerminalValue={includeTerminalValue}
-        portfolioTotals={portfolioTotals}
-        baseIRR={portfolioInsights?.portfolioIRR}
-      />
+      {/* Sensitivity Analysis Component */}
+      {showSensitivityAnalysis && (
+        <SensitivityTornado
+          projectMetrics={projectMetrics}
+          assets={assets}
+          constants={constants}
+          getMerchantPrice={getMerchantPrice}
+          analysisYears={analysisYears}
+          selectedRevenueCase={selectedRevenueCase}
+          includeTerminalValue={includeTerminalValue}
+          portfolioTotals={portfolioTotals}
+        />
+      )}
 
       {/* Status Display */}
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
@@ -986,455 +735,6 @@ function OutputsTab({
         <div className="mt-2 text-sm text-blue-700">
           Portfolio overview → Asset summary → Cash flow projections → IRR sensitivity tornado
         </div>
-      </div>
-    </div>
-  );
-}
-
-// Cash Flow Chart Component
-function CashFlowChart({ projectMetrics, analysisYears, showQuarterly }) {
-  const cashFlows = projectMetrics.portfolio?.cashFlows || [];
-  
-  if (cashFlows.length === 0) {
-    return (
-      <div className="text-center text-gray-500 py-12">
-        <BarChart3 className="w-12 h-12 mx-auto mb-2 opacity-50" />
-        <p>No cash flow data available</p>
-        <p className="text-sm">Complete the project finance analysis to see cash flows</p>
-      </div>
-    );
-  }
-
-  // Prepare chart data
-  let chartData;
-  if (showQuarterly) {
-    // Convert annual data to quarterly (simplified - just divide by 4)
-    chartData = cashFlows.slice(0, Math.min(10, analysisYears)).flatMap(cf => [
-      { year: `${cf.year} Q1`, revenue: cf.revenue / 4, opex: Math.abs(cf.opex) / 4, operatingCashFlow: cf.operatingCashFlow / 4, equityCashFlow: cf.equityCashFlow / 4 },
-      { year: `${cf.year} Q2`, revenue: cf.revenue / 4, opex: Math.abs(cf.opex) / 4, operatingCashFlow: cf.operatingCashFlow / 4, equityCashFlow: cf.equityCashFlow / 4 },
-      { year: `${cf.year} Q3`, revenue: cf.revenue / 4, opex: Math.abs(cf.opex) / 4, operatingCashFlow: cf.operatingCashFlow / 4, equityCashFlow: cf.equityCashFlow / 4 },
-      { year: `${cf.year} Q4`, revenue: cf.revenue / 4, opex: Math.abs(cf.opex) / 4, operatingCashFlow: cf.operatingCashFlow / 4, equityCashFlow: cf.equityCashFlow / 4 }
-    ]);
-  } else {
-    chartData = cashFlows.slice(0, Math.min(25, analysisYears)).map(cf => ({
-      year: cf.year,
-      revenue: cf.revenue || 0,
-      opex: Math.abs(cf.opex || 0),
-      operatingCashFlow: cf.operatingCashFlow || 0,
-      equityCashFlow: cf.equityCashFlow || 0
-    }));
-  }
-
-  return (
-    <div>
-      <ResponsiveContainer width="100%" height={400}>
-        <LineChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis 
-            dataKey="year" 
-            tick={{ fontSize: 12 }}
-            angle={showQuarterly ? -45 : 0}
-            textAnchor={showQuarterly ? 'end' : 'middle'}
-            height={showQuarterly ? 80 : 60}
-          />
-          <YAxis 
-            tick={{ fontSize: 12 }}
-            tickFormatter={(value) => `${value.toFixed(0)}M`}
-          />
-          <Tooltip 
-            formatter={(value, name) => [`${value.toFixed(1)}M`, name]}
-            labelFormatter={(year) => `Period: ${year}`}
-          />
-          <Legend />
-          <Line 
-            type="monotone" 
-            dataKey="revenue" 
-            name="Revenue" 
-            stroke="#4CAF50" 
-            strokeWidth={2}
-            dot={{ r: 3 }}
-          />
-          <Line 
-            type="monotone" 
-            dataKey="opex" 
-            name="Operating Costs" 
-            stroke="#f44336" 
-            strokeWidth={2}
-            strokeDasharray="5 5"
-            dot={{ r: 3 }}
-          />
-          <Line 
-            type="monotone" 
-            dataKey="operatingCashFlow" 
-            name="Operating Cash Flow" 
-            stroke="#2196F3" 
-            strokeWidth={2}
-            dot={{ r: 3 }}
-          />
-          <Line 
-            type="monotone" 
-            dataKey="equityCashFlow" 
-            name="Equity Cash Flow" 
-            stroke="#FF9800" 
-            strokeWidth={3}
-            dot={{ r: 4 }}
-          />
-        </LineChart>
-      </ResponsiveContainer>
-      
-      <div className="mt-4 text-sm text-gray-600">
-        <p>
-          Showing {showQuarterly ? 'quarterly' : 'annual'} cash flows. 
-          Equity cash flow represents the net cash available to equity investors after all operating costs and debt service.
-        </p>
-      </div>
-    </div>
-  );
-}
-
-// Cash Flow Table Component
-function CashFlowTable({ projectMetrics, analysisYears, showQuarterly }) {
-  const cashFlows = projectMetrics.portfolio?.cashFlows || [];
-  
-  if (cashFlows.length === 0) return null;
-
-  const formatCurrency = (value) => {
-    if (value === undefined || value === null) return '$0.0M';
-    return `${value.toFixed(1)}M`;
-  };
-
-  const formatDSCR = (value) => {
-    if (value === undefined || value === null || !isFinite(value)) return 'N/A';
-    return value.toFixed(2) + 'x';
-  };
-
-  let tableData;
-  if (showQuarterly) {
-    // Convert annual to quarterly (simplified)
-    tableData = cashFlows.slice(0, Math.min(10, analysisYears)).flatMap(cf => [
-      { ...cf, year: `${cf.year} Q1`, revenue: cf.revenue / 4, opex: cf.opex / 4, operatingCashFlow: cf.operatingCashFlow / 4, debtService: cf.debtService / 4, equityCashFlow: cf.equityCashFlow / 4 },
-      { ...cf, year: `${cf.year} Q2`, revenue: cf.revenue / 4, opex: cf.opex / 4, operatingCashFlow: cf.operatingCashFlow / 4, debtService: cf.debtService / 4, equityCashFlow: cf.equityCashFlow / 4 },
-      { ...cf, year: `${cf.year} Q3`, revenue: cf.revenue / 4, opex: cf.opex / 4, operatingCashFlow: cf.operatingCashFlow / 4, debtService: cf.debtService / 4, equityCashFlow: cf.equityCashFlow / 4 },
-      { ...cf, year: `${cf.year} Q4`, revenue: cf.revenue / 4, opex: cf.opex / 4, operatingCashFlow: cf.operatingCashFlow / 4, debtService: cf.debtService / 4, equityCashFlow: cf.equityCashFlow / 4 }
-    ]);
-  } else {
-    tableData = cashFlows.slice(0, Math.min(30, analysisYears));
-  }
-
-  return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b border-gray-200">
-            <th className="text-left py-3 px-2 font-medium text-gray-900">Period</th>
-            <th className="text-right py-3 px-2 font-medium text-gray-900">Revenue ($M)</th>
-            <th className="text-right py-3 px-2 font-medium text-gray-900">OPEX ($M)</th>
-            <th className="text-right py-3 px-2 font-medium text-gray-900">Operating CF ($M)</th>
-            <th className="text-right py-3 px-2 font-medium text-gray-900">Debt Service ($M)</th>
-            <th className="text-right py-3 px-2 font-medium text-gray-900">DSCR</th>
-            <th className="text-right py-3 px-2 font-medium text-gray-900">Equity CF ($M)</th>
-            <th className="text-left py-3 px-2 font-medium text-gray-900">Phase</th>
-          </tr>
-        </thead>
-        <tbody>
-          {tableData.map((cf, index) => (
-            <tr key={index} className="border-b border-gray-100 hover:bg-gray-50">
-              <td className="py-2 px-2 font-medium text-gray-900">{cf.year}</td>
-              <td className="text-right py-2 px-2 text-gray-700">{formatCurrency(cf.revenue)}</td>
-              <td className="text-right py-2 px-2 text-red-600">{formatCurrency(Math.abs(cf.opex))}</td>
-              <td className="text-right py-2 px-2 text-blue-700">{formatCurrency(cf.operatingCashFlow)}</td>
-              <td className="text-right py-2 px-2 text-purple-600">{formatCurrency(Math.abs(cf.debtService))}</td>
-              <td className="text-right py-2 px-2 text-gray-700">{formatDSCR(cf.dscr)}</td>
-              <td className={`text-right py-2 px-2 font-medium ${
-                cf.equityCashFlow >= 0 ? 'text-green-600' : 'text-red-600'
-              }`}>
-                {formatCurrency(cf.equityCashFlow)}
-              </td>
-              <td className="text-left py-2 px-2">
-                <span className={`px-2 py-1 text-xs rounded-full ${
-                  cf.refinancePhase === 'individual' ? 'bg-blue-100 text-blue-800' :
-                  cf.refinancePhase === 'portfolio' ? 'bg-green-100 text-green-800' :
-                  'bg-gray-100 text-gray-800'
-                }`}>
-                  {cf.refinancePhase || 'individual'}
-                </span>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      
-      {cashFlows.length > 30 && !showQuarterly && (
-        <div className="mt-4 text-sm text-gray-500 text-center">
-          Showing first 30 years of {cashFlows.length} total years
-        </div>
-      )}
-      
-      {showQuarterly && (
-        <div className="mt-4 text-sm text-gray-500 text-center">
-          Showing quarterly breakdown for first 10 years (simplified quarterly split)
-        </div>
-      )}
-    </div>
-  );
-}
-
-// Asset Summary Table Component (without the duplicate overview)
-function AssetSummaryTable({
-  projectMetrics,
-  portfolioTotals,
-  assets,
-  includeTerminalValue,
-  analysisYears
-}) {
-  // Helper functions for formatting
-  const formatPercent = (value) => {
-    if (value === undefined || value === null) return 'N/A';
-    return `${(value * 100).toFixed(1)}%`;
-  };
-
-  const formatNumber = (value, digits = 1) => {
-    if (value === undefined || value === null) return 'N/A';
-    return value.toLocaleString(undefined, { maximumFractionDigits: digits });
-  };
-
-  const formatDSCR = (value) => {
-    if (value === undefined || value === null) return 'N/A';
-    return value.toFixed(2) + 'x';
-  };
-
-  const formatCurrency = (value) => {
-    if (value === undefined || value === null) return '$0.0M';
-    return `${formatNumber(value)}M`;
-  };
-
-  if (!projectMetrics || Object.keys(projectMetrics).length === 0) {
-    return (
-      <div className="bg-white rounded-lg shadow border p-6">
-        <h3 className="text-lg font-semibold mb-4">Asset Summary Metrics</h3>
-        <div className="text-center text-gray-500 py-8">
-          <BarChart3 className="w-12 h-12 mx-auto mb-2 opacity-50" />
-          <p>No portfolio metrics available</p>
-          <p className="text-sm">Complete the project finance analysis to see summary</p>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="bg-white rounded-lg shadow border p-6">
-      <div className="flex items-center space-x-2 mb-4">
-        <BarChart3 className="w-5 h-5 text-gray-600" />
-        <h3 className="text-lg font-semibold">Asset Summary Metrics</h3>
-      </div>
-      
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-gray-200">
-              <th className="text-left py-3 px-2 font-medium text-gray-900">Asset</th>
-              <th className="text-right py-3 px-2 font-medium text-gray-900">Type</th>
-              <th className="text-right py-3 px-2 font-medium text-gray-900">Capacity (MW)</th>
-              <th className="text-right py-3 px-2 font-medium text-gray-900">CAPEX ($M)</th>
-              <th className="text-right py-3 px-2 font-medium text-gray-900">Gearing (%)</th>
-              <th className="text-right py-3 px-2 font-medium text-gray-900">Debt ($M)</th>
-              <th className="text-right py-3 px-2 font-medium text-gray-900">Debt Service ($M)</th>
-              <th className="text-right py-3 px-2 font-medium text-gray-900">Min DSCR</th>
-              <th className="text-right py-3 px-2 font-medium text-gray-900">Terminal ($M)</th>
-              <th className="text-right py-3 px-2 font-medium text-gray-900">Equity Timing</th>
-              <th className="text-right py-3 px-2 font-medium text-gray-900">Equity IRR</th>
-            </tr>
-          </thead>
-          <tbody>
-            {Object.entries(projectMetrics)
-              .filter(([assetName]) => assetName !== 'portfolio')
-              .map(([assetName, metrics]) => {
-                const asset = Object.values(assets).find(a => a.name === assetName);
-                return (
-                  <tr key={assetName} className="border-b border-gray-100 hover:bg-gray-50">
-                    <td className="py-3 px-2 font-medium text-gray-900">{assetName}</td>
-                    <td className="text-right py-3 px-2 text-gray-700 capitalize">{asset?.type || '-'}</td>
-                    <td className="text-right py-3 px-2 text-gray-700">{asset?.capacity || '0'}</td>
-                    <td className="text-right py-3 px-2 text-gray-700">{formatCurrency(metrics.capex)}</td>
-                    <td className="text-right py-3 px-2 text-gray-700">{formatPercent(metrics.calculatedGearing)}</td>
-                    <td className="text-right py-3 px-2 text-gray-700">{formatCurrency(metrics.debtAmount)}</td>
-                    <td className="text-right py-3 px-2 text-gray-700">{formatCurrency(metrics.annualDebtService)}</td>
-                    <td className="text-right py-3 px-2 text-gray-700">{formatDSCR(metrics.minDSCR)}</td>
-                    <td className="text-right py-3 px-2 text-gray-700">
-                      {formatCurrency(includeTerminalValue ? metrics.terminalValue : 0)}
-                    </td>
-                    <td className="text-right py-3 px-2">
-                      <span className={`px-2 py-1 text-xs rounded-full ${
-                        metrics.equityTimingUpfront 
-                          ? 'bg-blue-100 text-blue-800' 
-                          : 'bg-purple-100 text-purple-800'
-                      }`}>
-                        {metrics.equityTimingUpfront ? 'Upfront' : 'Pro-rata'}
-                      </span>
-                    </td>
-                    <td className="text-right py-3 px-2 font-medium text-gray-900">
-                      {calculateIRR(metrics.equityCashFlows) 
-                        ? formatPercent(calculateIRR(metrics.equityCashFlows)) 
-                        : 'N/A'}
-                    </td>
-                  </tr>
-                );
-              })}
-            
-            {/* Portfolio Total Row */}
-            {portfolioTotals && Object.keys(assets).length >= 2 && (
-              <tr className="bg-blue-50 font-semibold border-t-2 border-blue-200">
-                <td className="py-3 px-2 text-blue-900">Portfolio Total</td>
-                <td className="text-right py-3 px-2 text-blue-700">Mixed</td>
-                <td className="text-right py-3 px-2 text-blue-700">
-                  {Object.values(assets).reduce((sum, asset) => sum + (parseFloat(asset.capacity) || 0), 0).toFixed(0)}
-                </td>
-                <td className="text-right py-3 px-2 text-blue-700">{formatCurrency(portfolioTotals.capex)}</td>
-                <td className="text-right py-3 px-2 text-blue-700">{formatPercent(portfolioTotals.calculatedGearing)}</td>
-                <td className="text-right py-3 px-2 text-blue-700">{formatCurrency(portfolioTotals.debtAmount)}</td>
-                <td className="text-right py-3 px-2 text-blue-700">{formatCurrency(portfolioTotals.annualDebtService)}</td>
-                <td className="text-right py-3 px-2 text-blue-700">{formatDSCR(portfolioTotals.minDSCR)}</td>
-                <td className="text-right py-3 px-2 text-blue-700">
-                  {formatCurrency(includeTerminalValue ? portfolioTotals.terminalValue : 0)}
-                </td>
-                <td className="text-right py-3 px-2">
-                  <span className={`px-2 py-1 text-xs rounded-full ${
-                    projectMetrics.portfolio?.equityTimingUpfront 
-                      ? 'bg-blue-100 text-blue-800' 
-                      : 'bg-purple-100 text-purple-800'
-                  }`}>
-                    {projectMetrics.portfolio?.equityTimingUpfront ? 'Upfront' : 'Pro-rata'}
-                  </span>
-                </td>
-                <td className="text-right py-3 px-2 font-bold text-blue-900">
-                  {portfolioTotals.equityCashFlows && calculateIRR(portfolioTotals.equityCashFlows) 
-                    ? formatPercent(calculateIRR(portfolioTotals.equityCashFlows)) 
-                    : 'N/A'}
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      <div className="mt-4 text-sm text-gray-600">
-        <p>
-          Analysis period: {analysisYears} years • 
-          Terminal value: {includeTerminalValue ? 'Included' : 'Excluded'} • 
-          Individual asset IRRs calculated with truncated cash flows for comparison
-        </p>
-      </div>
-    </div>
-  );
-}
-function SimplifiedSensitivityTornado({ 
-  projectMetrics, 
-  assets, 
-  constants, 
-  getMerchantPrice, 
-  analysisYears, 
-  selectedRevenueCase,
-  includeTerminalValue,
-  portfolioTotals,
-  baseIRR
-}) {
-  const [sensitivityData, setSensitivityData] = useState([]);
-  const [calculating, setCalculating] = useState(false);
-  
-  // Sensitivity range inputs
-  const [ranges, setRanges] = useState({
-    capex: 10,
-    electricityPrice: 10,
-    volume: 10,
-    interestRate: 1,
-    opex: 10,
-    terminalValue: 50
-  });
-
-  const updateRange = (parameter, value) => {
-    setRanges(prev => ({
-      ...prev,
-      [parameter]: Math.max(0.1, Math.min(100, parseFloat(value) || 0))
-    }));
-  };
-
-  // This would include all the sensitivity calculation logic from the original component
-  // ... (keeping the same calculation methods but simplified display)
-
-  return (
-    <div className="bg-white rounded-lg shadow border p-6">
-      <div className="flex items-center space-x-2 mb-4">
-        <BarChart3 className="w-5 h-5 text-gray-600" />
-        <h3 className="text-lg font-semibold">
-          IRR Sensitivity Analysis ({analysisYears} Years)
-        </h3>
-      </div>
-      
-      <div className="mb-4 p-3 bg-blue-50 rounded-lg">
-        <p className="text-sm text-blue-800">
-          <strong>Base Portfolio IRR:</strong> {baseIRR?.toFixed(2)}% • 
-          <strong>Analysis Period:</strong> {analysisYears} years • 
-          <strong>Scenarios:</strong> ±10% for most, ±1pp for interest, ±50% for terminal
-        </p>
-      </div>
-
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-gray-200">
-              <th className="text-left py-3 px-4 font-medium text-gray-900">Parameter</th>
-              <th className="text-center py-3 px-4 font-medium text-gray-900">Range</th>
-              <th className="text-center py-3 px-4 font-medium text-gray-900">Downside</th>
-              <th className="text-center py-3 px-4 font-medium text-gray-900">Upside</th>
-            </tr>
-          </thead>
-          <tbody>
-            {sensitivityData.map((item, index) => {
-              const parameterKey = item.parameter.toLowerCase().replace(' ', '');
-              const rangeKey = parameterKey === 'electricityprice' ? 'electricityPrice' : 
-                              parameterKey === 'interestrate' ? 'interestRate' : 
-                              parameterKey === 'terminalvalue' ? 'terminalValue' : parameterKey;
-              
-              return (
-                <tr key={index} className="border-b border-gray-100 hover:bg-gray-50">
-                  <td className="py-3 px-4 font-medium text-gray-900">{item.parameter}</td>
-                  <td className="text-center py-3 px-4">
-                    <div className="flex items-center justify-center space-x-1">
-                      <span>±</span>
-                      <input
-                        type="number"
-                        value={item.range}
-                        onChange={(e) => updateRange(rangeKey, e.target.value)}
-                        className="w-16 px-2 py-1 text-xs border border-gray-300 rounded text-center focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        min="0.1"
-                        max="100"
-                        step="0.1"
-                      />
-                      <span className="text-xs text-gray-500">{item.unit}</span>
-                    </div>
-                  </td>
-                  <td className={`text-center py-3 px-4 font-medium ${
-                    item.downside < 0 ? 'text-red-600' : 'text-green-600'
-                  }`}>
-                    {item.downside > 0 ? '+' : ''}{item.downside.toFixed(2)}pp
-                  </td>
-                  <td className={`text-center py-3 px-4 font-medium ${
-                    item.upside > 0 ? 'text-green-600' : 'text-red-600'
-                  }`}>
-                    {item.upside > 0 ? '+' : ''}{item.upside.toFixed(2)}pp
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-
-      <div className="mt-4 text-sm text-gray-600">
-        <p>
-          <strong>Live Sensitivity Analysis:</strong> All parameters recalculate project metrics with specified changes. 
-          Results show impact on portfolio IRR in percentage points.
-        </p>
       </div>
     </div>
   );
