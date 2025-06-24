@@ -27,22 +27,22 @@ const navigationItems = [
   },
   {
     name: 'Asset Definition',
-    href: '/assets',
+    href: '/pages/assets',
     icon: Building2
   },
   {
     name: 'Price Curves',
-    href: '/price-curves',
+    href: '/pages/price-curves',
     icon: BarChart3
   },
   {
     name: 'Revenue Analysis',
-    href: '/revenue',
+    href: '/pages/revenue',
     icon: TrendingUp
   },
   {
     name: 'Project Finance',
-    href: '/finance',
+    href: '/pages/finance',
     icon: Calculator
   }
 ]

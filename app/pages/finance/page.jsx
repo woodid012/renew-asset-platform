@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react';
-import { useUser } from '../contexts/UserContext';
-import { useMerchantPrices } from '@/app/contexts/MerchantPriceProvider';
+import { useUser } from '../../contexts/UserContext';
+
 import { 
   PieChart, 
   Pie, 

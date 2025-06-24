@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { useUser } from '../contexts/UserContext';
+import { useUser } from '@/app/contexts/UserContext';
 import { useMerchantPrices } from '@/app/contexts/MerchantPriceProvider';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar, AreaChart, Area } from 'recharts';
 import { 
