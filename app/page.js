@@ -1,4 +1,4 @@
-// app/page.js - Main page with integrated data loading and dashboard
+// app/page.js - Clean main page with simple data loading
 'use client'
 
 import { useState, useEffect, useCallback } from 'react';
@@ -24,10 +24,8 @@ export default function MainPage() {
   const { currentUser, currentPortfolio, loading: userLoading } = useUser();
   const { getMerchantPrice } = useMerchantPrices();
   
-  // Initialization states
-  const [isInitializing, setIsInitializing] = useState(true);
-  const [initializationStage, setInitializationStage] = useState('connecting');
-  const [initializationProgress, setInitializationProgress] = useState(0);
+  // Simple loading state
+  const [isLoadingPortfolio, setIsLoadingPortfolio] = useState(false);
   
   // Data states
   const [assets, setAssets] = useState({});
@@ -50,24 +48,14 @@ export default function MainPage() {
   // Chart data
   const [revenueProjections, setRevenueProjections] = useState([]);
 
-  // Initialization sequence
-  const initializeApplication = useCallback(async () => {
-    if (!currentUser || !currentPortfolio || userLoading) {
-      return;
-    }
-
+  // Load portfolio data
+  const loadPortfolioData = useCallback(async () => {
+    if (!currentUser || !currentPortfolio) return;
+    
+    console.log('Loading portfolio data for:', currentUser.name, currentPortfolio.portfolioId);
+    setIsLoadingPortfolio(true);
+    
     try {
-      console.log('Starting initialization for:', currentUser.name, currentPortfolio.portfolioId);
-
-      // Stage 1: Database Connection
-      setInitializationStage('connecting');
-      setInitializationProgress(10);
-      await new Promise(resolve => setTimeout(resolve, 800));
-
-      // Stage 2: Portfolio Loading
-      setInitializationStage('portfolio');
-      setInitializationProgress(30);
-      
       const response = await fetch(`/api/portfolio?userId=${currentUser.id}&portfolioId=${currentPortfolio.portfolioId}`);
       
       if (response.ok) {
@@ -96,56 +84,35 @@ export default function MainPage() {
         setConstants(updatedConstants);
       } else {
         console.error('Failed to load portfolio data:', response.status);
-        throw new Error('Failed to load portfolio data');
       }
-
-      // Stage 3: Asset Configuration
-      setInitializationStage('assets');
-      setInitializationProgress(60);
-      await new Promise(resolve => setTimeout(resolve, 600));
-
-      // Stage 4: Calculations
-      setInitializationStage('calculations');
-      setInitializationProgress(85);
-      await new Promise(resolve => setTimeout(resolve, 700));
-
-      // Stage 5: Complete
-      setInitializationStage('complete');
-      setInitializationProgress(100);
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      // Mark initialization as complete
-      setIsInitializing(false);
-      console.log('Initialization complete');
-
     } catch (error) {
-      console.error('Initialization error:', error);
-      // Still complete initialization even on error
-      setIsInitializing(false);
+      console.error('Error loading portfolio:', error);
+    } finally {
+      setIsLoadingPortfolio(false);
     }
-  }, [currentUser, currentPortfolio, userLoading]);
+  }, [currentUser, currentPortfolio]);
 
-  // Calculate metrics
-  const calculateMetrics = useCallback(() => {
+  // Calculate all metrics
+  const calculateAllMetrics = useCallback(() => {
     if (Object.keys(assets).length === 0 || !constants.HOURS_IN_YEAR) {
       console.log('Skipping metrics calculation - no assets or constants');
       return;
     }
     
+    console.log('Calculating metrics for', Object.keys(assets).length, 'assets');
+    
     try {
-      console.log('Calculating metrics for', Object.keys(assets).length, 'assets');
-      
       const currentYear = new Date().getFullYear();
       const timeIntervals = Array.from({ length: 30 }, (_, i) => currentYear + i);
       
-      // Calculate project finance metrics
+      // Get or initialize asset costs
       let assetCosts = constants.assetCosts;
       if (!assetCosts) {
         assetCosts = initializeProjectValues(assets);
-        console.log('Initialized asset costs for', Object.keys(assetCosts).length, 'assets');
       }
       
-      const projectMetrics = calculateProjectMetrics(
+      // Calculate project finance metrics
+      const calculatedProjectMetrics = calculateProjectMetrics(
         assets,
         assetCosts,
         constants,
@@ -155,108 +122,68 @@ export default function MainPage() {
         true
       );
       
-      setProjectMetrics(projectMetrics);
-      console.log('Project metrics calculated for', Object.keys(projectMetrics).length, 'items');
+      setProjectMetrics(calculatedProjectMetrics);
 
-      // Store sensitivity data for tornado chart
-      if (Object.keys(projectMetrics).length > 0) {
-        const individualAssets = Object.entries(projectMetrics)
-          .filter(([assetName]) => assetName !== 'portfolio');
-        
-        if (individualAssets.length > 0) {
-          const allEquityCashFlows = [];
-          
-          individualAssets.forEach(([assetName, metrics]) => {
-            if (metrics.equityCashFlows && metrics.equityCashFlows.length > 0) {
-              const truncatedCashFlows = metrics.equityCashFlows.slice(0, 31);
-              
-              if (allEquityCashFlows.length === 0) {
-                allEquityCashFlows.push(...truncatedCashFlows.map(cf => cf));
-              } else {
-                truncatedCashFlows.forEach((cf, index) => {
-                  if (index < allEquityCashFlows.length) {
-                    allEquityCashFlows[index] += cf;
-                  }
-                });
-              }
-            }
-          });
-          
-          if (allEquityCashFlows.length > 0) {
-            const calculatedIRR = calculateIRR(allEquityCashFlows);
-            const baseIRR = calculatedIRR ? calculatedIRR * 100 : 0;
-            console.log('Portfolio IRR calculated:', baseIRR.toFixed(2) + '%');
-            
-            const sensitivityData = [
-              {
-                parameter: "Volume",
-                baseIRR: baseIRR,
-                downside: baseIRR * -0.081,
-                upside: baseIRR * 0.299,
-                totalRange: baseIRR * 0.38
-              },
-              {
-                parameter: "CAPEX", 
-                baseIRR: baseIRR,
-                downside: baseIRR * -0.095,
-                upside: baseIRR * 0.142,
-                totalRange: baseIRR * 0.237
-              },
-              {
-                parameter: "Electricity Price",
-                baseIRR: baseIRR,
-                downside: baseIRR * -0.061,
-                upside: baseIRR * 0.063,
-                totalRange: baseIRR * 0.124
-              },
-              {
-                parameter: "Interest Rate",
-                baseIRR: baseIRR,
-                downside: baseIRR * -0.023,
-                upside: baseIRR * 0.042,
-                totalRange: baseIRR * 0.065
-              },
-              {
-                parameter: "OPEX",
-                baseIRR: baseIRR,
-                downside: baseIRR * -0.023,
-                upside: baseIRR * 0.024,
-                totalRange: baseIRR * 0.047
-              },
-              {
-                parameter: "Terminal Value",
-                baseIRR: baseIRR,
-                downside: baseIRR * -0.016,
-                upside: baseIRR * 0.015,
-                totalRange: baseIRR * 0.031
-              }
-            ];
-            
-            localStorage.setItem('financeSensitivityData', JSON.stringify(sensitivityData));
-            console.log('Sensitivity data stored');
-          }
-        }
-      }
-      
-      // Calculate portfolio totals
-      const individualAssets = Object.entries(projectMetrics)
+      // Generate sensitivity data for tornado chart
+      const individualAssets = Object.entries(calculatedProjectMetrics)
         .filter(([assetName]) => assetName !== 'portfolio');
-      
-      let totalCapex = 0;
-      let totalDebt = 0;
-      let totalEquity = 0;
-      let portfolioEquityIRR = 0;
       
       if (individualAssets.length > 0) {
         const allEquityCashFlows = [];
         
-        individualAssets.forEach(([assetName, metrics]) => {
-          totalCapex += metrics.capex || 0;
-          totalDebt += metrics.debtAmount || 0;
+        individualAssets.forEach(([_, metrics]) => {
+          if (metrics.equityCashFlows && metrics.equityCashFlows.length > 0) {
+            const truncatedCashFlows = metrics.equityCashFlows.slice(0, 31);
+            
+            if (allEquityCashFlows.length === 0) {
+              allEquityCashFlows.push(...truncatedCashFlows);
+            } else {
+              truncatedCashFlows.forEach((cf, index) => {
+                if (index < allEquityCashFlows.length) {
+                  allEquityCashFlows[index] += cf;
+                }
+              });
+            }
+          }
+        });
+        
+        if (allEquityCashFlows.length > 0) {
+          const calculatedIRR = calculateIRR(allEquityCashFlows);
+          const baseIRR = calculatedIRR ? calculatedIRR * 100 : 0;
           
+          const sensitivityData = [
+            { parameter: "Volume", baseIRR, downside: baseIRR * -0.081, upside: baseIRR * 0.299 },
+            { parameter: "CAPEX", baseIRR, downside: baseIRR * -0.095, upside: baseIRR * 0.142 },
+            { parameter: "Electricity Price", baseIRR, downside: baseIRR * -0.061, upside: baseIRR * 0.063 },
+            { parameter: "Interest Rate", baseIRR, downside: baseIRR * -0.023, upside: baseIRR * 0.042 },
+            { parameter: "OPEX", baseIRR, downside: baseIRR * -0.023, upside: baseIRR * 0.024 },
+            { parameter: "Terminal Value", baseIRR, downside: baseIRR * -0.016, upside: baseIRR * 0.015 }
+          ];
+          
+          localStorage.setItem('financeSensitivityData', JSON.stringify(sensitivityData));
+        }
+      }
+      
+      // Calculate portfolio totals
+      let totalCapex = 0;
+      let totalDebt = 0;
+      let portfolioEquityIRR = 0;
+      
+      individualAssets.forEach(([_, metrics]) => {
+        totalCapex += metrics.capex || 0;
+        totalDebt += metrics.debtAmount || 0;
+      });
+      
+      const totalEquity = totalCapex - totalDebt;
+      
+      // Calculate portfolio IRR
+      if (individualAssets.length > 0) {
+        const allEquityCashFlows = [];
+        
+        individualAssets.forEach(([_, metrics]) => {
           if (metrics.equityCashFlows && metrics.equityCashFlows.length > 0) {
             if (allEquityCashFlows.length === 0) {
-              allEquityCashFlows.push(...metrics.equityCashFlows.map(cf => cf));
+              allEquityCashFlows.push(...metrics.equityCashFlows);
             } else {
               metrics.equityCashFlows.forEach((cf, index) => {
                 if (index < allEquityCashFlows.length) {
@@ -267,8 +194,6 @@ export default function MainPage() {
           }
         });
         
-        totalEquity = totalCapex - totalDebt;
-        
         if (allEquityCashFlows.length > 0) {
           const calculatedIRR = calculateIRR(allEquityCashFlows);
           portfolioEquityIRR = calculatedIRR ? calculatedIRR * 100 : 0;
@@ -277,7 +202,6 @@ export default function MainPage() {
       
       // Generate revenue projections
       const portfolioData = generatePortfolioData(assets, timeIntervals, constants, getMerchantPrice);
-      console.log('Generated revenue projections for', portfolioData.length, 'periods');
       
       let year10Revenue = 0;
       const yearlyProjections = [];
@@ -290,7 +214,7 @@ export default function MainPage() {
           merchantRevenue: 0
         };
         
-        Object.entries(period.assets).forEach(([assetName, assetData]) => {
+        Object.entries(period.assets).forEach(([_, assetData]) => {
           periodData.totalRevenue += assetData.total;
           periodData.contractedRevenue += assetData.contractedGreen + assetData.contractedEnergy;
           periodData.merchantRevenue += assetData.merchantGreen + assetData.merchantEnergy;
@@ -298,21 +222,20 @@ export default function MainPage() {
         
         yearlyProjections.push(periodData);
         
-        // Get Year 10 revenue
         if (period.timeInterval === currentYear + 9) {
           year10Revenue = periodData.totalRevenue;
         }
       });
       
-      // Calculate contracted percentage from first 10 years
+      // Calculate contracted percentage
       const first10Years = yearlyProjections.slice(0, 10);
       const totalContracted = first10Years.reduce((sum, year) => sum + year.contractedRevenue, 0);
       const totalRevenue = first10Years.reduce((sum, year) => sum + year.totalRevenue, 0);
       const contractedPercentage = totalRevenue > 0 ? (totalContracted / totalRevenue) * 100 : 0;
       
-      // Update metrics
+      // Update all metrics
       const assetArray = Object.values(assets);
-      const newPortfolioMetrics = {
+      setPortfolioMetrics({
         totalCapacity: assetArray.reduce((sum, asset) => sum + (parseFloat(asset.capacity) || 0), 0),
         totalProjects: assetArray.length,
         year10Revenue,
@@ -321,50 +244,58 @@ export default function MainPage() {
         totalCapex,
         totalDebt,
         totalEquity
-      };
+      });
       
-      setPortfolioMetrics(newPortfolioMetrics);
       setRevenueProjections(yearlyProjections);
       
-      console.log('Metrics calculation complete:', {
-        capacity: newPortfolioMetrics.totalCapacity,
-        projects: newPortfolioMetrics.totalProjects,
-        irr: newPortfolioMetrics.portfolioIRR.toFixed(1) + '%'
-      });
+      console.log('Metrics calculation complete');
       
     } catch (error) {
       console.error('Error calculating metrics:', error);
     }
   }, [assets, constants, getMerchantPrice]);
 
-  // Initialize on mount and when user/portfolio changes
+  // Load data when user/portfolio changes
   useEffect(() => {
     if (currentUser && currentPortfolio && !userLoading) {
-      initializeApplication();
+      loadPortfolioData();
     }
-  }, [currentUser, currentPortfolio, userLoading, initializeApplication]);
+  }, [currentUser, currentPortfolio, userLoading, loadPortfolioData]);
 
-  // Calculate metrics when data is ready and initialization is complete
+  // Calculate metrics when data is ready
   useEffect(() => {
-    if (!isInitializing && Object.keys(assets).length > 0 && constants.HOURS_IN_YEAR) {
-      calculateMetrics();
+    if (Object.keys(assets).length > 0 && constants.HOURS_IN_YEAR && !isLoadingPortfolio) {
+      calculateAllMetrics();
     }
-  }, [isInitializing, assets, constants, calculateMetrics]);
+  }, [assets, constants, isLoadingPortfolio, calculateAllMetrics]);
 
-  // Show loading screen during initialization or when no user/portfolio
-  if (isInitializing || userLoading || !currentUser || !currentPortfolio) {
+  // Show full loading screen only when user context is loading or no user/portfolio
+  if (userLoading || !currentUser || !currentPortfolio) {
     return (
       <LoadingPage 
         currentUser={currentUser} 
         currentPortfolio={currentPortfolio}
-        stage={initializationStage}
-        progress={initializationProgress}
+        stage="connecting"
+        progress={userLoading ? 50 : 10}
       />
     );
   }
 
-  // Show empty state if no assets but initialization complete
-  if (!isInitializing && Object.keys(assets).length === 0) {
+  // Show simple loading when fetching portfolio data
+  if (isLoadingPortfolio) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4"></div>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">Loading Portfolio Data</h3>
+          <p className="text-gray-600">Fetching {currentPortfolio.portfolioId} assets and calculations...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show empty state if no assets
+  if (Object.keys(assets).length === 0) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
@@ -377,7 +308,7 @@ export default function MainPage() {
     );
   }
 
-  // Render the main dashboard
+  // Render the dashboard
   return (
     <Dashboard
       portfolioName={portfolioName}
