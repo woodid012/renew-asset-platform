@@ -80,6 +80,28 @@ const navigationItems = [
     section: 'analysis'
   },
   {
+    name: 'Scenario Manager',
+    href: '/pages/scenarios',
+    icon: BarChart3,
+    section: 'analysis'
+  },
+  {
+    section: 'Outputs',
+    isSection: true
+  },
+  {
+    name: 'Reporting',
+    href: '/pages/reporting',
+    icon: TrendingUp,
+    section: 'outputs'
+  },
+  {
+    name: 'Exports',
+    href: '/pages/exports',
+    icon: Save,
+    section: 'outputs'
+  },
+  {
     section: 'Settings',
     isSection: true
   },
