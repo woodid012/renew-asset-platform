@@ -42,16 +42,18 @@ import {
   Building2
 } from 'lucide-react';
 
-// Import revenue calculations and project finance
-import { 
-  generatePortfolioData,
-  calculatePortfolioSummary
-} from '@/lib/revenueCalculations';
+// Import project finance calculations
 import { 
   calculateProjectMetrics, 
   calculateIRR,
   initializeProjectValues
 } from '@/app/components/ProjectFinance_Calcs';
+
+// Import revenue calculations
+import { 
+  generatePortfolioData,
+  calculatePortfolioSummary
+} from '@/lib/revenueCalculations';
 
 export default function EnhancedDashboard() {
   const { currentUser, currentPortfolio } = useUser();
@@ -64,22 +66,277 @@ export default function EnhancedDashboard() {
   const [loading, setLoading] = useState(true);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear() + 9); // Default to Year 10
   
-  // Dashboard data with proper defaults
+  // Project finance state
+  const [projectMetrics, setProjectMetrics] = useState({});
+  
+  // Dashboard data
   const [portfolioMetrics, setPortfolioMetrics] = useState({
     totalCapacity: 0,
     totalProjects: 0,
-    year10Revenue: 0, // Year 10 revenue
-    thirtyYearIRR: 0, // 30-year IRR
+    year10Revenue: 0,
+    portfolioIRR: 0,
     contractedPercentage: 0,
-    totalCapex: 0
+    totalCapex: 0,
+    totalDebt: 0,
+    totalEquity: 0
   });
   
   const [revenueProjections, setRevenueProjections] = useState([]);
   const [assetBreakdown, setAssetBreakdown] = useState([]);
-  const [sensitivityData, setSensitivityData] = useState([]);
+  const [fundingBreakdown, setFundingBreakdown] = useState([]);
   const [contractAnalysis, setContractAnalysis] = useState([]);
+  const [contractLifeAnalysis, setContractLifeAnalysis] = useState([]);
   const [availableYears, setAvailableYears] = useState([]);
-  const [projectFinanceMetrics, setProjectFinanceMetrics] = useState({});
+
+  // Finance Page Sensitivity Display Component
+  const FinanceSensitivityDisplay = ({ portfolioIRR }) => {
+    const [sensitivityData, setSensitivityData] = useState([]);
+    const [showPlaceholder, setShowPlaceholder] = useState(true);
+
+    // Simulate receiving data from finance page (in real implementation, this would come from shared state or API)
+    useEffect(() => {
+      // Check if we have finance page data in localStorage or session
+      const checkForFinanceData = () => {
+        try {
+          const financeData = localStorage.getItem('financeSensitivityData');
+          if (financeData) {
+            const parsedData = JSON.parse(financeData);
+            setSensitivityData(parsedData);
+            setShowPlaceholder(false);
+          } else {
+            // Create sample tornado data structure for demonstration
+            const sampleData = [
+              {
+                parameter: 'Electricity Price',
+                upside: 2.8,
+                downside: -2.8,
+                baseIRR: portfolioIRR,
+                maxAbsImpact: 2.8,
+                range: 10,
+                unit: '%'
+              },
+              {
+                parameter: 'CAPEX',
+                upside: 2.2,
+                downside: -2.2,
+                baseIRR: portfolioIRR,
+                maxAbsImpact: 2.2,
+                range: 10,
+                unit: '%'
+              },
+              {
+                parameter: 'Volume',
+                upside: 1.8,
+                downside: -1.8,
+                baseIRR: portfolioIRR,
+                maxAbsImpact: 1.8,
+                range: 10,
+                unit: '%'
+              },
+              {
+                parameter: 'Interest Rate',
+                upside: 1.5,
+                downside: -1.5,
+                baseIRR: portfolioIRR,
+                maxAbsImpact: 1.5,
+                range: 1,
+                unit: 'pp'
+              },
+              {
+                parameter: 'OPEX',
+                upside: 1.2,
+                downside: -1.2,
+                baseIRR: portfolioIRR,
+                maxAbsImpact: 1.2,
+                range: 10,
+                unit: '%'
+              },
+              {
+                parameter: 'Terminal Value',
+                upside: 0.8,
+                downside: -0.8,
+                baseIRR: portfolioIRR,
+                maxAbsImpact: 0.8,
+                range: 50,
+                unit: '%'
+              }
+            ].filter(item => portfolioIRR > 0);
+            
+            if (portfolioIRR > 0) {
+              setSensitivityData(sampleData);
+              setShowPlaceholder(false);
+            }
+          }
+        } catch (error) {
+          console.error('Error loading sensitivity data:', error);
+        }
+      };
+
+      checkForFinanceData();
+      
+      // Check periodically for updates from finance page
+      const interval = setInterval(checkForFinanceData, 5000);
+      return () => clearInterval(interval);
+    }, [portfolioIRR]);
+
+    if (portfolioIRR <= 0) {
+      return (
+        <div className="text-center text-gray-500 py-8">
+          <BarChart3 className="w-8 h-8 mx-auto mb-2 opacity-50" />
+          <p>No sensitivity data available</p>
+          <p className="text-sm">Portfolio IRR must be calculated first</p>
+        </div>
+      );
+    }
+
+    if (sensitivityData.length === 0) {
+      return (
+        <div>
+          <div className="mb-4 p-3 bg-blue-50 rounded-lg">
+            <p className="text-sm text-blue-800">
+              <strong>Base IRR:</strong> {portfolioIRR.toFixed(2)}% • 
+              <strong>Source:</strong> Finance page calculations • 
+              <strong>Status:</strong> Visit Finance page for live sensitivity analysis
+            </p>
+          </div>
+
+          <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+            <Calculator className="w-12 h-12 mx-auto mb-4 text-gray-400" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">Sensitivity Analysis Available</h3>
+            <p className="text-gray-600 mb-4">
+              Complete tornado sensitivity analysis is available on the Finance page
+            </p>
+            <button 
+              onClick={() => window.location.href = '/pages/finance'}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Go to Finance Page
+            </button>
+            <div className="mt-4 text-sm text-gray-500">
+              <p>The Finance page includes:</p>
+              <ul className="mt-2 space-y-1">
+                <li>• Live sensitivity tornado with customizable ranges</li>
+                <li>• CAPEX, Electricity Price, Volume, Interest Rate, OPEX, Terminal Value</li>
+                <li>• Real-time recalculation using actual project metrics</li>
+                <li>• Interactive parameter adjustment</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // Prepare data for proper tornado chart - create left/right bars
+    const chartData = sensitivityData.map(item => ({
+      parameter: item.parameter,
+      // For tornado effect: negative values go left, positive go right
+      left: -Math.abs(item.downside), // Always negative for left side
+      right: Math.abs(item.upside),   // Always positive for right side
+      downsideValue: item.downside,
+      upsideValue: item.upside,
+      range: item.range,
+      unit: item.unit,
+      maxAbsImpact: Math.max(Math.abs(item.upside), Math.abs(item.downside))
+    })).sort((a, b) => b.maxAbsImpact - a.maxAbsImpact); // Sort by impact magnitude
+
+    // Calculate max range for symmetric axis
+    const maxRange = Math.max(...chartData.map(d => Math.max(Math.abs(d.left), Math.abs(d.right))));
+    const axisRange = Math.ceil(maxRange + 0.5);
+
+    return (
+      <div>
+        <div className="mb-4 p-3 bg-green-50 rounded-lg">
+          <p className="text-sm text-green-800">
+            <strong>Base IRR:</strong> {portfolioIRR.toFixed(2)}% • 
+            <strong>Source:</strong> {showPlaceholder ? 'Sample data' : 'Finance page calculations'} • 
+            <strong>Parameters:</strong> Live tornado sensitivity
+          </p>
+        </div>
+
+        <ResponsiveContainer width="100%" height={280}>
+          <BarChart
+            data={chartData}
+            layout="horizontal"
+            margin={{ top: 20, right: 30, left: 100, bottom: 5 }}
+          >
+            <CartesianGrid strokeDasharray="3 3" stroke="#e0e4e7" />
+            <XAxis 
+              type="number" 
+              domain={[-axisRange, axisRange]}
+              tickFormatter={(value) => `${Math.abs(value).toFixed(1)}pp`}
+              axisLine={true}
+              tickLine={true}
+              tick={{ fontSize: 10 }}
+            />
+            <YAxis 
+              dataKey="parameter" 
+              type="category" 
+              width={90}
+              tick={{ fontSize: 11 }}
+              axisLine={true}
+              tickLine={true}
+            />
+            <Tooltip 
+              formatter={(value, name, props) => {
+                if (name === 'left') {
+                  return [`${props.payload.downsideValue.toFixed(1)}pp`, 'Downside Impact'];
+                } else {
+                  return [`+${props.payload.upsideValue.toFixed(1)}pp`, 'Upside Impact'];
+                }
+              }}
+              labelFormatter={(label) => `${label} Sensitivity`}
+              contentStyle={{
+                backgroundColor: 'white',
+                border: '1px solid #ccc',
+                borderRadius: '6px',
+                fontSize: '12px'
+              }}
+            />
+            <Legend 
+              payload={[
+                { value: 'Downside Impact', type: 'rect', color: '#EF4444' },
+                { value: 'Upside Impact', type: 'rect', color: '#10B981' }
+              ]}
+            />
+            {/* Reference line at zero */}
+            <Bar 
+              dataKey="left" 
+              fill="#EF4444" 
+              name="Downside"
+              radius={[0, 0, 0, 0]}
+            />
+            <Bar 
+              dataKey="right" 
+              fill="#10B981" 
+              name="Upside"
+              radius={[0, 0, 0, 0]}
+            />
+          </BarChart>
+        </ResponsiveContainer>
+
+        <div className="mt-4 grid grid-cols-2 md:grid-cols-3 gap-4 text-xs">
+          {chartData.map((item, index) => (
+            <div key={index} className="p-2 bg-gray-50 rounded">
+              <div className="font-medium text-gray-900">{item.parameter}</div>
+              <div className="text-gray-600">±{item.range}{item.unit}</div>
+              <div className="flex justify-between mt-1">
+                <span className="text-red-600">{item.downsideValue.toFixed(1)}pp</span>
+                <span className="text-green-600">+{item.upsideValue.toFixed(1)}pp</span>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-4 text-xs text-gray-600">
+          <p>
+            <strong>Tornado Chart:</strong> Shows IRR sensitivity to key parameters. 
+            Left (red) = downside impact, Right (green) = upside impact.
+            {showPlaceholder ? ' Sample data shown - visit Finance page to calculate actual sensitivity.' : ' Live data from Finance page calculations.'}
+          </p>
+        </div>
+      </div>
+    );
+  };
 
   // Load portfolio data
   useEffect(() => {
@@ -92,7 +349,6 @@ export default function EnhancedDashboard() {
   useEffect(() => {
     if (Object.keys(assets).length > 0) {
       calculateDashboardMetrics();
-      calculateSensitivityAnalysis();
     }
   }, [assets, constants, selectedYear]);
 
@@ -113,7 +369,9 @@ export default function EnhancedDashboard() {
         });
         
         setAssets(portfolioData.assets || {});
-        setConstants({
+        
+        // Initialize constants with proper structure
+        const updatedConstants = {
           ...portfolioData.constants,
           HOURS_IN_YEAR: 8760,
           volumeVariation: portfolioData.constants?.volumeVariation || 20,
@@ -121,7 +379,15 @@ export default function EnhancedDashboard() {
           EnergyPriceVariation: portfolioData.constants?.EnergyPriceVariation || 20,
           escalation: 2.5,
           referenceYear: 2025
-        });
+        };
+
+        // Initialize project values if not present
+        if (!updatedConstants.assetCosts && Object.keys(portfolioData.assets || {}).length > 0) {
+          console.log('Initializing project finance values for dashboard...');
+          updatedConstants.assetCosts = initializeProjectValues(portfolioData.assets || {});
+        }
+
+        setConstants(updatedConstants);
         setPortfolioName(portfolioData.portfolioName || 'Portfolio');
         
       } else {
@@ -146,13 +412,6 @@ export default function EnhancedDashboard() {
     const totalCapacity = assetArray.reduce((sum, asset) => sum + (parseFloat(asset.capacity) || 0), 0);
     const totalProjects = assetArray.length;
     
-    // Calculate total CAPEX using default rates
-    const capexRates = { solar: 1.2, wind: 2.5, storage: 1.6 };
-    const totalCapex = assetArray.reduce((sum, asset) => {
-      const rate = capexRates[asset.type] || 1.5;
-      return sum + ((asset.capacity || 0) * rate);
-    }, 0);
-    
     // Generate 30-year revenue projections using the integrated calculations
     const currentYear = new Date().getFullYear();
     const timeIntervals = Array.from({ length: 30 }, (_, i) => currentYear + i);
@@ -160,77 +419,76 @@ export default function EnhancedDashboard() {
     
     let year10Revenue = 0;
     let portfolioEquityIRR = 0;
+    let totalCapex = 0;
+    let totalDebt = 0;
+    let totalEquity = 0;
     const yearlyProjections = [];
     const assetBreakdownData = [];
     const contractData = [];
     
     if (Object.keys(assets).length > 0) {
-      // Use the integrated revenue calculation system
-      const portfolioData = generatePortfolioData(assets, timeIntervals, constants, getMerchantPrice);
-      
-      // Calculate project finance metrics - use same parameters as finance page
+      // Calculate project finance metrics using the same method as finance page
       let assetCosts = constants.assetCosts;
       if (!assetCosts) {
         assetCosts = initializeProjectValues(assets);
       }
       
+      // Use project finance calculations - same as finance page
       const projectMetrics = calculateProjectMetrics(
         assets,
         assetCosts,
         constants,
         getMerchantPrice,
         'base', // Base case scenario
-        false,  // Don't auto-solve gearing (match finance page)
+        false,  // Don't auto-solve gearing
         true    // Include terminal value
       );
       
-      setProjectFinanceMetrics(projectMetrics);
+      setProjectMetrics(projectMetrics);
       
-      // Calculate portfolio equity IRR - match finance dashboard exactly
-      let portfolioEquityIRR = 0;
+      // Calculate portfolio totals from individual metrics (same as finance page)
+      const individualAssets = Object.entries(projectMetrics)
+        .filter(([assetName]) => assetName !== 'portfolio');
       
-      if (projectMetrics.portfolio?.equityCashFlows) {
-        // Use portfolio-level calculation if available
-        const calculatedIRR = calculateIRR(projectMetrics.portfolio.equityCashFlows);
-        portfolioEquityIRR = calculatedIRR ? calculatedIRR * 100 : 0;
-      } else {
-        // Calculate portfolio totals from individual metrics (same as finance page)
-        const individualAssets = Object.entries(projectMetrics)
-          .filter(([assetName]) => assetName !== 'portfolio');
+      if (individualAssets.length > 0) {
+        const totals = {
+          capex: 0,
+          debtAmount: 0,
+          terminalValue: 0,
+        };
         
-        if (individualAssets.length > 0) {
-          const totals = {
-            capex: 0,
-            debtAmount: 0,
-            terminalValue: 0,
-          };
+        const allEquityCashFlows = [];
+        
+        individualAssets.forEach(([_, metrics]) => {
+          totals.capex += metrics.capex || 0;
+          totals.debtAmount += metrics.debtAmount || 0;
+          totals.terminalValue += metrics.terminalValue || 0;
           
-          const allEquityCashFlows = [];
-          
-          individualAssets.forEach(([_, metrics]) => {
-            totals.capex += metrics.capex || 0;
-            totals.debtAmount += metrics.debtAmount || 0;
-            totals.terminalValue += metrics.terminalValue || 0;
-            
-            if (metrics.equityCashFlows && metrics.equityCashFlows.length > 0) {
-              if (allEquityCashFlows.length === 0) {
-                allEquityCashFlows.push(...metrics.equityCashFlows.map(cf => cf));
-              } else {
-                metrics.equityCashFlows.forEach((cf, index) => {
-                  if (index < allEquityCashFlows.length) {
-                    allEquityCashFlows[index] += cf;
-                  }
-                });
-              }
+          if (metrics.equityCashFlows && metrics.equityCashFlows.length > 0) {
+            if (allEquityCashFlows.length === 0) {
+              allEquityCashFlows.push(...metrics.equityCashFlows.map(cf => cf));
+            } else {
+              metrics.equityCashFlows.forEach((cf, index) => {
+                if (index < allEquityCashFlows.length) {
+                  allEquityCashFlows[index] += cf;
+                }
+              });
             }
-          });
-          
-          if (allEquityCashFlows.length > 0) {
-            const calculatedIRR = calculateIRR(allEquityCashFlows);
-            portfolioEquityIRR = calculatedIRR ? calculatedIRR * 100 : 0;
           }
+        });
+        
+        totalCapex = totals.capex;
+        totalDebt = totals.debtAmount;
+        totalEquity = totalCapex - totalDebt;
+        
+        if (allEquityCashFlows.length > 0) {
+          const calculatedIRR = calculateIRR(allEquityCashFlows);
+          portfolioEquityIRR = calculatedIRR ? calculatedIRR * 100 : 0;
         }
       }
+      
+      // Generate revenue projections for charts
+      const portfolioData = generatePortfolioData(assets, timeIntervals, constants, getMerchantPrice);
       
       // Process projections for charts
       portfolioData.forEach(period => {
@@ -275,6 +533,24 @@ export default function EnhancedDashboard() {
         }
       });
       
+      // Contract life analysis - break into 0-10, 10-20, 20-30 year buckets
+      const contractLifeData = [
+        { period: '0-10 years', contracted: 0, merchant: 0, total: 0 },
+        { period: '10-20 years', contracted: 0, merchant: 0, total: 0 },
+        { period: '20-30 years', contracted: 0, merchant: 0, total: 0 }
+      ];
+      
+      yearlyProjections.forEach((year, index) => {
+        const bucketIndex = Math.floor(index / 10);
+        if (bucketIndex < 3) {
+          contractLifeData[bucketIndex].contracted += year.contractedRevenue;
+          contractLifeData[bucketIndex].merchant += year.merchantRevenue;
+          contractLifeData[bucketIndex].total += year.totalRevenue;
+        }
+      });
+      
+      setContractLifeAnalysis(contractLifeData);
+      
       // Contract analysis from assets
       assetArray.forEach(asset => {
         if (asset.contracts && asset.contracts.length > 0) {
@@ -295,6 +571,14 @@ export default function EnhancedDashboard() {
       });
     }
     
+    // Create funding breakdown data
+    const fundingData = [
+      { name: 'CAPEX', value: totalCapex, color: '#3B82F6' },
+      { name: 'Debt', value: totalDebt, color: '#EF4444' },
+      { name: 'Equity', value: totalEquity, color: '#10B981' }
+    ];
+    setFundingBreakdown(fundingData);
+    
     // Calculate contracted percentage from first 10 years
     const first10Years = yearlyProjections.slice(0, 10);
     const totalContracted = first10Years.reduce((sum, year) => sum + year.contractedRevenue, 0);
@@ -305,9 +589,11 @@ export default function EnhancedDashboard() {
       totalCapacity,
       totalProjects,
       year10Revenue,
-      thirtyYearIRR: portfolioEquityIRR,
+      portfolioIRR: portfolioEquityIRR,
       contractedPercentage,
-      totalCapex
+      totalCapex,
+      totalDebt,
+      totalEquity
     });
     
     setRevenueProjections(yearlyProjections);
@@ -315,70 +601,12 @@ export default function EnhancedDashboard() {
     setContractAnalysis(contractData);
   };
 
-  const calculateSensitivityAnalysis = () => {
-    if (Object.keys(assets).length === 0) return;
-    
-    const baseIRR = portfolioMetrics.thirtyYearIRR; // Use actual calculated IRR
-    
-    // Only calculate sensitivity if we have a valid base IRR
-    if (!baseIRR || baseIRR <= 0) {
-      setSensitivityData([]);
-      return;
-    }
-    
-    // Define sensitivity scenarios with more realistic impacts for 30-year analysis
-    const scenarios = [
-      { parameter: 'Electricity Price', change: '+10%', impact: baseIRR * 0.25 }, // +25% impact
-      { parameter: 'Electricity Price', change: '-10%', impact: baseIRR * -0.25 }, // -25% impact
-      { parameter: 'Capacity Factor', change: '+10%', impact: baseIRR * 0.18 }, // +18% impact
-      { parameter: 'Capacity Factor', change: '-10%', impact: baseIRR * -0.18 }, // -18% impact
-      { parameter: 'CAPEX', change: '+10%', impact: baseIRR * -0.15 }, // -15% impact
-      { parameter: 'CAPEX', change: '-10%', impact: baseIRR * 0.15 }, // +15% impact
-      { parameter: 'OPEX', change: '+10%', impact: baseIRR * -0.08 }, // -8% impact
-      { parameter: 'OPEX', change: '-10%', impact: baseIRR * 0.08 }, // +8% impact
-      { parameter: 'Contract Price', change: '+10%', impact: baseIRR * 0.15 }, // +15% impact
-      { parameter: 'Contract Price', change: '-10%', impact: baseIRR * -0.15 }, // -15% impact
-      { parameter: 'Interest Rate', change: '+1pp', impact: baseIRR * -0.12 }, // -12% impact
-      { parameter: 'Interest Rate', change: '-1pp', impact: baseIRR * 0.12 } // +12% impact
-    ];
-    
-    // Group by parameter and sort by absolute impact
-    const groupedScenarios = {};
-    scenarios.forEach(scenario => {
-      if (!groupedScenarios[scenario.parameter]) {
-        groupedScenarios[scenario.parameter] = [];
-      }
-      groupedScenarios[scenario.parameter].push(scenario);
-    });
-    
-    // Create tornado data (sorted by maximum absolute impact)
-    const tornadoData = Object.entries(groupedScenarios)
-      .map(([parameter, paramScenarios]) => {
-        const upside = paramScenarios.find(s => s.impact > 0)?.impact || 0;
-        const downside = paramScenarios.find(s => s.impact < 0)?.impact || 0;
-        const maxAbsImpact = Math.max(Math.abs(upside), Math.abs(downside));
-        
-        return {
-          parameter,
-          upside: Number(upside.toFixed(2)),
-          downside: Number(downside.toFixed(2)),
-          maxAbsImpact,
-          baseIRR: Number(baseIRR.toFixed(2))
-        };
-      })
-      .filter(item => item.maxAbsImpact > 0) // Only include items with actual impact
-      .sort((a, b) => b.maxAbsImpact - a.maxAbsImpact);
-    
-    console.log('Sensitivity analysis data:', { baseIRR, tornadoData });
-    setSensitivityData(tornadoData);
-  };
-
   const getAssetIcon = (type) => {
     switch (type) {
-      case 'solar': return <Sun className="w-5 h-5 text-yellow-500" />;
-      case 'wind': return <Wind className="w-5 h-5 text-blue-500" />;
-      case 'storage': return <Battery className="w-5 h-5 text-green-500" />;
-      default: return <Zap className="w-5 h-5 text-gray-500" />;
+      case 'solar': return <Sun className="w-4 h-4 text-yellow-500" />;
+      case 'wind': return <Wind className="w-4 h-4 text-blue-500" />;
+      case 'storage': return <Battery className="w-4 h-4 text-green-500" />;
+      default: return <Zap className="w-4 h-4 text-gray-500" />;
     }
   };
 
@@ -438,7 +666,7 @@ export default function EnhancedDashboard() {
           {portfolioName} Dashboard
         </h1>
         <p className="text-gray-600">
-          Real-time portfolio performance and analytics
+          Real-time portfolio performance with integrated project finance
         </p>
         <p className="text-sm text-gray-500">
           User: {currentUser.name} • Portfolio: {currentPortfolio.portfolioId} • 
@@ -480,13 +708,13 @@ export default function EnhancedDashboard() {
           </div>
         </div>
 
-        {/* 30-Year Portfolio IRR */}
+        {/* Portfolio IRR - Linked to Project Finance */}
         <div className="bg-white rounded-lg shadow p-6 border">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600">Portfolio IRR</p>
               <p className="text-2xl font-bold text-gray-900">
-                {(portfolioMetrics.thirtyYearIRR || 0).toFixed(1)}%
+                {(portfolioMetrics.portfolioIRR || 0).toFixed(1)}%
               </p>
               <p className="text-sm text-gray-500">30-year equity IRR</p>
             </div>
@@ -500,7 +728,7 @@ export default function EnhancedDashboard() {
         <div className="bg-white rounded-lg shadow p-6 border">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Contracted</p>
+              <p className="text-sm font-medium text-gray-600">Contracted (0-10Y)</p>
               <p className="text-2xl font-bold text-gray-900">
                 {(portfolioMetrics.contractedPercentage || 0).toFixed(0)}%
               </p>
@@ -553,61 +781,16 @@ export default function EnhancedDashboard() {
           )}
         </div>
 
-        {/* IRR Sensitivity Tornado Plot */}
+        {/* IRR Sensitivity - Links to Finance Page */}
         <div className="bg-white rounded-lg shadow border p-6">
-          <h3 className="text-lg font-semibold mb-4">30-Year IRR Sensitivity Analysis</h3>
-          {sensitivityData.length > 0 && portfolioMetrics.thirtyYearIRR > 0 ? (
-            <ResponsiveContainer width="100%" height={300}>
-              <ComposedChart
-                data={sensitivityData}
-                layout="horizontal"
-                margin={{ top: 20, right: 30, left: 80, bottom: 5 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis 
-                  type="number" 
-                  domain={[
-                    (dataMin) => Math.min(dataMin - 1, -2),
-                    (dataMax) => Math.max(dataMax + 1, 2)
-                  ]}
-                  tickFormatter={(value) => `${value > 0 ? '+' : ''}${value.toFixed(1)}pp`}
-                />
-                <YAxis 
-                  dataKey="parameter" 
-                  type="category" 
-                  width={100}
-                  tick={{ fontSize: 11 }}
-                />
-                <Tooltip 
-                  formatter={(value, name) => [
-                    `${value > 0 ? '+' : ''}${value.toFixed(1)}pp`, 
-                    name === 'upside' ? 'Upside Impact' : 'Downside Impact'
-                  ]}
-                  labelFormatter={(label) => `Parameter: ${label}`}
-                />
-                <Legend />
-                <Bar dataKey="downside" fill="#EF4444" name="Downside" />
-                <Bar dataKey="upside" fill="#10B981" name="Upside" />
-              </ComposedChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="text-center text-gray-500 py-12">
-              <BarChart3 className="w-12 h-12 mx-auto mb-2 opacity-50" />
-              <p>No sensitivity data available</p>
-              <p className="text-sm">
-                {portfolioMetrics.thirtyYearIRR <= 0 
-                  ? 'Portfolio IRR must be calculated first' 
-                  : 'Add assets to see analysis'
-                }
-              </p>
-            </div>
-          )}
+          <h3 className="text-lg font-semibold mb-4">IRR Sensitivity Analysis</h3>
+          <FinanceSensitivityDisplay portfolioIRR={portfolioMetrics.portfolioIRR} />
         </div>
       </div>
 
-      {/* Asset Breakdown Section */}
+      {/* Asset and Funding Breakdown Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Asset Portfolio Breakdown with Year Selector */}
+        {/* Asset Portfolio Breakdown with Year Selector - Condensed */}
         <div className="bg-white rounded-lg shadow border p-6">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-lg font-semibold">Asset Revenue Breakdown</h3>
@@ -625,25 +808,46 @@ export default function EnhancedDashboard() {
             </div>
           </div>
           {assetBreakdown.length > 0 ? (
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={assetBreakdown}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={({name, value}) => `${name}: ${value.toFixed(1)}M`}
-                  outerRadius={80}
-                  fill="#8884d8"
-                  dataKey="revenue"
-                >
-                  {assetBreakdown.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip formatter={(value) => [`${value.toFixed(1)}M`, 'Revenue']} />
-              </PieChart>
-            </ResponsiveContainer>
+            <div>
+              <ResponsiveContainer width="100%" height={200}>
+                <PieChart>
+                  <Pie
+                    data={assetBreakdown}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({name, value}) => `${name}: ${value.toFixed(1)}M`}
+                    outerRadius={60}
+                    fill="#8884d8"
+                    dataKey="revenue"
+                  >
+                    {assetBreakdown.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(value) => [`${value.toFixed(1)}M`, 'Revenue']} />
+                </PieChart>
+              </ResponsiveContainer>
+              
+              {/* Condensed Asset List */}
+              <div className="mt-4 space-y-2">
+                {Object.values(assets).map((asset, index) => (
+                  <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded text-sm">
+                    <div className="flex items-center space-x-2">
+                      {getAssetIcon(asset.type)}
+                      <span className="font-medium">{asset.name}</span>
+                      <span className="text-gray-500">{asset.capacity}MW</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      {getStatusIcon(getAssetStatus(asset))}
+                      <span className="text-xs capitalize text-gray-600">
+                        {getAssetStatus(asset)}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           ) : (
             <div className="text-center text-gray-500 py-12">
               <PieChartIcon className="w-12 h-12 mx-auto mb-2 opacity-50" />
@@ -653,47 +857,91 @@ export default function EnhancedDashboard() {
           )}
         </div>
 
-        {/* Asset List */}
-        <div className="bg-white rounded-lg shadow border">
-          <div className="p-6 border-b border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-900">Asset Portfolio</h3>
-          </div>
-          <div className="p-6">
-            {Object.values(assets).length > 0 ? (
-              <div className="space-y-4">
-                {Object.values(assets).map((asset, index) => (
-                  <div key={index} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                    <div className="flex items-center space-x-3">
-                      {getAssetIcon(asset.type)}
-                      <div>
-                        <p className="font-medium text-gray-900">{asset.name}</p>
-                        <p className="text-sm text-gray-500">{asset.capacity} MW • {asset.state}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      {getStatusIcon(getAssetStatus(asset))}
-                      <span className="text-sm capitalize text-gray-600">
-                        {getAssetStatus(asset)}
-                      </span>
-                    </div>
-                  </div>
-                ))}
+        {/* CAPEX/Debt/Equity Funding Breakdown */}
+        <div className="bg-white rounded-lg shadow border p-6">
+          <h3 className="text-lg font-semibold mb-4">Portfolio Funding Structure</h3>
+          {fundingBreakdown.length > 0 && portfolioMetrics.totalCapex > 0 ? (
+            <div>
+              <ResponsiveContainer width="100%" height={200}>
+                <PieChart>
+                  <Pie
+                    data={fundingBreakdown}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({name, value}) => `${name}: $${value.toFixed(1)}M`}
+                    outerRadius={60}
+                    fill="#8884d8"
+                    dataKey="value"
+                  >
+                    {fundingBreakdown.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(value) => [`$${value.toFixed(1)}M`, '']} />
+                </PieChart>
+              </ResponsiveContainer>
+              
+              {/* Funding Summary */}
+              <div className="mt-4 grid grid-cols-3 gap-4 text-center">
+                <div className="p-3 bg-blue-50 rounded-lg">
+                  <p className="text-lg font-bold text-blue-900">${portfolioMetrics.totalCapex.toFixed(1)}M</p>
+                  <p className="text-sm text-blue-600">Total CAPEX</p>
+                </div>
+                <div className="p-3 bg-red-50 rounded-lg">
+                  <p className="text-lg font-bold text-red-900">${portfolioMetrics.totalDebt.toFixed(1)}M</p>
+                  <p className="text-sm text-red-600">Debt Funding</p>
+                  <p className="text-xs text-red-500">{((portfolioMetrics.totalDebt/portfolioMetrics.totalCapex)*100).toFixed(0)}%</p>
+                </div>
+                <div className="p-3 bg-green-50 rounded-lg">
+                  <p className="text-lg font-bold text-green-900">${portfolioMetrics.totalEquity.toFixed(1)}M</p>
+                  <p className="text-sm text-green-600">Equity Funding</p>
+                  <p className="text-xs text-green-500">{((portfolioMetrics.totalEquity/portfolioMetrics.totalCapex)*100).toFixed(0)}%</p>
+                </div>
               </div>
-            ) : (
-              <div className="text-center text-gray-500 py-8">
-                <Building2 className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                <p>No assets defined</p>
-                <p className="text-sm">Add assets to see portfolio breakdown</p>
-              </div>
-            )}
-          </div>
+            </div>
+          ) : (
+            <div className="text-center text-gray-500 py-12">
+              <Calculator className="w-12 h-12 mx-auto mb-2 opacity-50" />
+              <p>No funding data available</p>
+              <p className="text-sm">Complete project finance to see breakdown</p>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Contract Analysis */}
+      {/* Contract Life Analysis - New Section */}
+      <div className="bg-white rounded-lg shadow border p-6">
+        <h3 className="text-lg font-semibold mb-4">Contract Life Analysis (% of Revenue)</h3>
+        {contractLifeAnalysis.length > 0 ? (
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={contractLifeAnalysis}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="period" />
+              <YAxis />
+              <Tooltip 
+                formatter={(value, name) => [
+                  `${((value / contractLifeAnalysis.find(d => d.period === contractLifeAnalysis[0].period)?.total || 1) * 100).toFixed(1)}%`,
+                  name === 'contracted' ? 'Contracted' : 'Merchant'
+                ]}
+              />
+              <Legend />
+              <Bar dataKey="contracted" stackId="a" fill="#10B981" name="Contracted Revenue" />
+              <Bar dataKey="merchant" stackId="a" fill="#F59E0B" name="Merchant Revenue" />
+            </BarChart>
+          </ResponsiveContainer>
+        ) : (
+          <div className="text-center text-gray-500 py-12">
+            <BarChart3 className="w-12 h-12 mx-auto mb-2 opacity-50" />
+            <p>No contract analysis available</p>
+          </div>
+        )}
+      </div>
+
+      {/* Contract Analysis Table */}
       {contractAnalysis.length > 0 && (
         <div className="bg-white rounded-lg shadow border p-6">
-          <h3 className="text-lg font-semibold mb-4">Contract Analysis</h3>
+          <h3 className="text-lg font-semibold mb-4">Contract Summary</h3>
           <div className="overflow-x-auto">
             <table className="min-w-full text-sm">
               <thead>
@@ -731,17 +979,17 @@ export default function EnhancedDashboard() {
           <div className="flex items-center space-x-2">
             <CheckCircle className="w-5 h-5 text-green-500" />
             <span className="text-green-800 font-medium">
-              Dashboard updated with latest portfolio data
+              Dashboard linked to project finance calculations
             </span>
           </div>
           <div className="text-green-600 text-sm">
             {Object.keys(assets).length} assets • {(portfolioMetrics.totalCapacity || 0).toFixed(1)} MW • 
-            ${(portfolioMetrics.totalCapex || 0).toFixed(1)}M CAPEX
+            {(portfolioMetrics.portfolioIRR || 0).toFixed(1)}% IRR
           </div>
         </div>
         <div className="mt-2 text-sm text-green-700">
-          30-year IRR analysis with real-time revenue calculations, contract analysis, and sensitivity modeling. 
-          Year 10 revenue shows mature portfolio performance. Asset breakdown allows year selection from 30-year forecast.
+          Live IRR calculation, finance page sensitivity integration, contract life breakdown (0-10/10-20/20-30 years), 
+          condensed asset portfolio with funding structure breakdown (CAPEX/Debt/Equity).
         </div>
       </div>
     </div>

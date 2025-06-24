@@ -39,32 +39,55 @@ export const useSaveContext = () => {
   return context;
 };
 
-// Navigation items
+// Navigation items with sections
 const navigationItems = [
   {
     name: 'Dashboard',
     href: '/',
-    icon: Home
+    icon: Home,
+    section: null
+  },
+  {
+    section: 'Inputs',
+    isSection: true
   },
   {
     name: 'Asset Definition',
     href: '/pages/assets',
-    icon: Building2
+    icon: Building2,
+    section: 'inputs'
   },
   {
     name: 'Price Curves',
     href: '/pages/price-curves',
-    icon: BarChart3
+    icon: BarChart3,
+    section: 'inputs'
+  },
+  {
+    section: 'Analysis',
+    isSection: true
   },
   {
     name: 'Revenue Analysis',
     href: '/pages/revenue',
-    icon: TrendingUp
+    icon: TrendingUp,
+    section: 'analysis'
   },
   {
     name: 'Project Finance',
     href: '/pages/finance',
-    icon: Calculator
+    icon: Calculator,
+    section: 'analysis'
+  },
+  {
+    section: 'Settings',
+    isSection: true
+  },
+  {
+    name: 'Settings',
+    href: '/pages/settings',
+    icon: Settings,
+    section: 'settings'
   }
 ]
 
@@ -141,7 +164,19 @@ function LayoutContent({ children }) {
           {/* Navigation */}
           <nav className="mt-6 px-3">
             <div className="space-y-1">
-              {navigationItems.map((item) => {
+              {navigationItems.map((item, index) => {
+                // Render section headers
+                if (item.isSection) {
+                  return (
+                    <div key={`section-${index}`} className="pt-4 pb-2">
+                      <h3 className="px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                        {item.section}
+                      </h3>
+                    </div>
+                  )
+                }
+
+                // Render navigation items
                 const Icon = item.icon
                 const isActive = pathname === item.href
                 
@@ -171,24 +206,14 @@ function LayoutContent({ children }) {
 
           {/* Bottom section */}
           <div className="absolute bottom-0 w-full p-4 border-t border-gray-200">
-            <button className="flex items-center w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-md transition-colors duration-200">
-              <Settings className="mr-3 h-5 w-5 text-gray-400" />
-              Settings
-            </button>
-            
             {/* Status indicator */}
-            <div className="mt-3 px-3 py-2 bg-green-50 rounded-md">
+            <div className="px-3 py-2 bg-green-50 rounded-md">
               <div className="flex items-center">
                 <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
                 <span className="ml-2 text-xs text-green-700 font-medium">
                   System Online
                 </span>
               </div>
-              {mounted && (
-                <p className="text-xs text-green-600 mt-1">
-                  Last sync: {new Date().toLocaleTimeString()}
-                </p>
-              )}
             </div>
           </div>
         </div>
@@ -210,7 +235,7 @@ function LayoutContent({ children }) {
                 {/* Page title */}
                 <div className="ml-4 lg:ml-0">
                   <h1 className="text-lg font-semibold text-gray-900">
-                    {navigationItems.find(item => item.href === pathname)?.name || 'Dashboard'}
+                    {navigationItems.find(item => !item.isSection && item.href === pathname)?.name || 'Dashboard'}
                   </h1>
                 </div>
               </div>
@@ -255,18 +280,6 @@ function LayoutContent({ children }) {
 
                 {/* User and Portfolio Selector */}
                 <UserSelector />
-
-                {/* Current date */}
-                {mounted && (
-                  <div className="hidden sm:block text-sm text-gray-500">
-                    {new Date().toLocaleDateString('en-AU', {
-                      weekday: 'short',
-                      year: 'numeric',
-                      month: 'short',
-                      day: 'numeric'
-                    })}
-                  </div>
-                )}
               </div>
             </div>
           </div>
