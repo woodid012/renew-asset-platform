@@ -4,9 +4,9 @@ import './globals.css'
 import { useState, useEffect, createContext, useContext } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { UserProvider } from './contexts/UserContext'
-import { MerchantPriceProvider } from './contexts/MerchantPriceProvider'
-import UserSelector from './components/UserSelector'
+import { UserProvider } from '@/app/contexts/UserContext'
+import { MerchantPriceProvider } from '@/app/contexts/MerchantPriceProvider'
+import UserSelector from '@/app/components/UserSelector'
 import { 
   Building2, 
   Home, 

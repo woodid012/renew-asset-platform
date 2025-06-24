@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useUser } from '../contexts/UserContext'
+import { useUser } from '@/app/contexts/UserContext'
 import { 
   Building2,
   Plus, 

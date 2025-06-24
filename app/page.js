@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react';
-import { useUser } from './contexts/UserContext';
-import { useMerchantPrices } from './contexts/MerchantPriceProvider';
+import { useUser } from '@/app/contexts/UserContext';
+import { useMerchantPrices } from '@/app/contexts/MerchantPriceProvider';
 import { 
   LineChart, 
   Line, 
@@ -47,7 +47,7 @@ import {
   calculateAssetRevenue, 
   generatePortfolioData,
   calculatePortfolioSummary
-} from '../lib/revenueCalculations';
+} from '@/lib/revenueCalculations';
 
 export default function EnhancedDashboard() {
   const { currentUser, currentPortfolio } = useUser();

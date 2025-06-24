@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useMerchantPrices } from '@/app/contexts/MerchantPriceProvider';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { 
   TrendingUp, 
   RefreshCw, 
@@ -26,12 +26,12 @@ const PriceCurvesPage = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   
-  // Chart configuration
+  // Chart configuration - Changed default timeRange to '2025'
   const [viewMode, setViewMode] = useState('profiles'); // profiles, regions, types
   const [selectedRegion, setSelectedRegion] = useState('QLD');
   const [selectedProfile, setSelectedProfile] = useState('solar');
   const [selectedType, setSelectedType] = useState('ALL');
-  const [timeRange, setTimeRange] = useState('all');
+  const [timeRange, setTimeRange] = useState('2025'); // Changed from 'all' to '2025'
   const [aggregationLevel, setAggregationLevel] = useState('monthly');
   const [showRawData, setShowRawData] = useState(false);
 
@@ -39,7 +39,7 @@ const PriceCurvesPage = () => {
   const availableRegions = ['QLD', 'NSW', 'VIC', 'SA'];
   const availableProfiles = ['solar', 'wind', 'baseload', 'storage'];
   const availableTypes = ['ALL', 'Energy', 'green'];
-  const availableYears = ['all', '2025', '2026', '2027', '2028', '2029', '2030', '2035', '2040', '2045', '2050'];
+  const availableYears = ['2025', '2026', '2027', '2028', '2029', '2030', '2035', '2040', '2045', '2050', 'all']; // Moved 'all' to end
 
   // Initialize storage type properly
   useEffect(() => {
@@ -546,7 +546,9 @@ const PriceCurvesPage = () => {
               className="w-full p-2 border border-gray-300 rounded-md"
             >
               {availableYears.map(year => (
-                <option key={year} value={year}>{year}</option>
+                <option key={year} value={year}>
+                  {year === 'all' ? 'All Years (2025-2050)' : year}
+                </option>
               ))}
             </select>
           </div>
@@ -676,7 +678,7 @@ const PriceCurvesPage = () => {
         </div>
       )}
 
-      {/* Price Curves Chart */}
+      {/* Price Curves Chart - Bar chart removed */}
       {priceData.length > 0 && (
         <div className="bg-white rounded-lg shadow border p-6">
           <h2 className="text-xl font-semibold text-gray-800 mb-4">
@@ -714,42 +716,6 @@ const PriceCurvesPage = () => {
                   />
                 ))}
               </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-      )}
-
-      {/* Price Bar Chart */}
-      {priceData.length > 0 && (
-        <div className="bg-white rounded-lg shadow border p-6">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">Price Comparison (Bar Chart)</h2>
-          <div className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={priceData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis 
-                  dataKey="time" 
-                  angle={-45}
-                  textAnchor="end"
-                  height={80}
-                />
-                <YAxis 
-                  label={{ value: 'Price ($/MWh)', angle: -90, position: 'insideLeft' }}
-                />
-                <Tooltip 
-                  formatter={(value, name) => [`$${value?.toFixed(2) || 0}/MWh`, name]}
-                />
-                <Legend />
-                
-                {lineConfig.map(({ key, color, name }) => (
-                  <Bar
-                    key={key}
-                    dataKey={key}
-                    fill={color}
-                    name={name}
-                  />
-                ))}
-              </BarChart>
             </ResponsiveContainer>
           </div>
         </div>
