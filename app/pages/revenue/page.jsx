@@ -6,10 +6,6 @@ import { useMerchantPrices } from '@/app/contexts/MerchantPriceProvider';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar, AreaChart, Area } from 'recharts';
 import { 
   TrendingUp, 
-  RefreshCw, 
-  Download, 
-  Settings, 
-  Calendar,
   DollarSign,
   Zap,
   AlertCircle,
@@ -41,12 +37,12 @@ export default function IntegratedRevenuePage() {
   const [portfolioName, setPortfolioName] = useState('Portfolio');
   const [loading, setLoading] = useState(true);
   
-  // Analysis configuration - Fixed defaults
-  const [selectedRevenueCase, setSelectedRevenueCase] = useState('base');
-  const [selectedRegion, setSelectedRegion] = useState('ALL'); // Changed to ALL
+  // Analysis configuration - simplified
+  const [revenueFilter, setRevenueFilter] = useState('all'); // all, energy, green
+  const [selectedRegion, setSelectedRegion] = useState('ALL');
   const [selectedYear, setSelectedYear] = useState('2025');
-  const [viewMode, setViewMode] = useState('annual');
-  const [analysisYears, setAnalysisYears] = useState(30); // Changed to 30 years
+  const [viewMode, setViewMode] = useState('annual'); // annual, quarterly
+  const [analysisYears, setAnalysisYears] = useState(30);
   
   // Results
   const [revenueProjections, setRevenueProjections] = useState([]);
@@ -60,12 +56,12 @@ export default function IntegratedRevenuePage() {
     }
   }, [currentUser, currentPortfolio]);
 
-  // Recalculate when parameters change
+  // Auto-recalculate when parameters change
   useEffect(() => {
     if (Object.keys(assets).length > 0) {
-      console.log('Recalculating revenue projections with:', {
+      console.log('Auto-calculating revenue projections with:', {
         assetsCount: Object.keys(assets).length,
-        selectedRevenueCase,
+        revenueFilter,
         selectedRegion,
         analysisYears,
         priceSource
@@ -73,7 +69,7 @@ export default function IntegratedRevenuePage() {
       calculateRevenueProjections();
       validateAssets();
     }
-  }, [assets, constants, selectedRevenueCase, selectedRegion, analysisYears, getMerchantPrice]);
+  }, [assets, constants, revenueFilter, selectedRegion, analysisYears, getMerchantPrice]);
 
   const loadPortfolioData = async () => {
     if (!currentUser || !currentPortfolio) return;
@@ -100,8 +96,8 @@ export default function IntegratedRevenuePage() {
           volumeVariation: portfolioData.constants?.volumeVariation || 20,
           greenPriceVariation: portfolioData.constants?.greenPriceVariation || 20,
           EnergyPriceVariation: portfolioData.constants?.EnergyPriceVariation || 20,
-          escalation: 2.5, // Hardcoded for now
-          referenceYear: 2025 // Hardcoded for now
+          escalation: 2.5,
+          referenceYear: 2025
         });
         setPortfolioName(portfolioData.portfolioName || 'Portfolio');
         
@@ -121,7 +117,20 @@ export default function IntegratedRevenuePage() {
     if (Object.keys(assets).length === 0) return;
     
     const startYear = parseInt(selectedYear);
-    const timeIntervals = Array.from({ length: analysisYears }, (_, i) => startYear + i);
+    let timeIntervals;
+    
+    // Generate time intervals based on view mode
+    if (viewMode === 'quarterly') {
+      timeIntervals = [];
+      for (let year = startYear; year < startYear + analysisYears; year++) {
+        for (let quarter = 1; quarter <= 4; quarter++) {
+          timeIntervals.push(`${year}-Q${quarter}`);
+        }
+      }
+    } else {
+      // Annual view
+      timeIntervals = Array.from({ length: analysisYears }, (_, i) => startYear + i);
+    }
     
     // Filter assets by selected region
     const filteredAssets = selectedRegion === 'ALL' 
@@ -130,7 +139,7 @@ export default function IntegratedRevenuePage() {
           Object.entries(assets).filter(([key, asset]) => asset.state === selectedRegion)
         );
     
-    console.log(`Generating portfolio data for ${timeIntervals.length} years from ${startYear} to ${startYear + analysisYears - 1}`);
+    console.log(`Generating portfolio data for ${timeIntervals.length} ${viewMode} periods`);
     console.log('Using price source:', priceSource);
     console.log('Region filter:', selectedRegion);
     console.log('Assets after region filter:', Object.keys(filteredAssets).length, 'of', Object.keys(assets).length);
@@ -138,7 +147,7 @@ export default function IntegratedRevenuePage() {
     // Generate portfolio data using the filtered assets
     const portfolioData = generatePortfolioData(filteredAssets, timeIntervals, constants, getMerchantPrice);
     
-    console.log('Generated portfolio data:', portfolioData.slice(0, 2)); // Log first 2 periods
+    console.log('Generated portfolio data:', portfolioData.slice(0, 2));
     
     // Process for visualization
     const visibleAssets = Object.fromEntries(
@@ -147,38 +156,12 @@ export default function IntegratedRevenuePage() {
     
     const processedData = processPortfolioData(portfolioData, filteredAssets, visibleAssets);
     
-    console.log('Processed data sample:', processedData.slice(0, 2)); // Log first 2 periods
+    console.log('Processed data sample:', processedData.slice(0, 2));
     
-    // Apply stress scenarios
-    const stressedData = processedData.map(period => {
-      const stressedPeriod = { ...period };
-      
-      if (selectedRevenueCase !== 'base') {
-        // Apply stress to each component
-        const baseRevenue = {
-          contractedGreen: period.contractedGreen,
-          contractedEnergy: period.contractedEnergy,
-          merchantGreen: period.merchantGreen,
-          merchantEnergy: period.merchantEnergy
-        };
-        
-        const stressedRevenue = calculateStressRevenue(baseRevenue, selectedRevenueCase, constants);
-        
-        stressedPeriod.contractedGreen = stressedRevenue.contractedGreen;
-        stressedPeriod.contractedEnergy = stressedRevenue.contractedEnergy;
-        stressedPeriod.merchantGreen = stressedRevenue.merchantGreen;
-        stressedPeriod.merchantEnergy = stressedRevenue.merchantEnergy;
-        stressedPeriod.total = stressedRevenue.contractedGreen + stressedRevenue.contractedEnergy + 
-                              stressedRevenue.merchantGreen + stressedRevenue.merchantEnergy;
-      }
-      
-      return stressedPeriod;
-    });
+    // Don't apply revenue filter to the data itself - let the chart handle display
+    setRevenueProjections(processedData);
     
-    console.log('Final stressed data sample:', stressedData.slice(0, 2));
-    setRevenueProjections(stressedData);
-    
-    // Calculate portfolio summary using filtered assets
+    // Calculate portfolio summary using filtered assets (use original data for summary)
     const summary = calculatePortfolioSummary(portfolioData, filteredAssets);
     console.log('Portfolio summary:', summary);
     setPortfolioSummary(summary);
@@ -206,27 +189,6 @@ export default function IntegratedRevenuePage() {
     }
   };
 
-  const exportData = () => {
-    const portfolioData = generatePortfolioData(
-      assets, 
-      Array.from({ length: analysisYears }, (_, i) => parseInt(selectedYear) + i), 
-      constants, 
-      getMerchantPrice
-    );
-    
-    const csvData = formatRevenueDataForExport(portfolioData, assets, 'csv');
-    
-    const blob = new Blob([csvData], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.setAttribute('hidden', '');
-    a.setAttribute('href', url);
-    a.setAttribute('download', `${portfolioName}_revenue_projections.csv`);
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-  };
-
   // Helper function to get asset colors
   const getAssetColor = (index) => {
     const colors = ['#4CAF50', '#2196F3', '#FF9800', '#9C27B0', '#F44336', '#00BCD4', '#795548', '#607D8B'];
@@ -252,19 +214,50 @@ export default function IntegratedRevenuePage() {
         year: period.timeInterval
       };
       
-      // Add each filtered asset's total revenue
+      // Add each filtered asset's revenue based on current filter
       Object.values(filteredAssets).forEach(asset => {
-        const contractedGreen = period[`${asset.name} Contracted Green`] || 0;
-        const contractedEnergy = period[`${asset.name} Contracted Energy`] || 0;
-        const merchantGreen = period[`${asset.name} Merchant Green`] || 0;
-        const merchantEnergy = period[`${asset.name} Merchant Energy`] || 0;
+        let assetRevenue = 0;
         
-        chartData[asset.name] = contractedGreen + contractedEnergy + merchantGreen + merchantEnergy;
+        switch (revenueFilter) {
+          case 'energy':
+            assetRevenue = (period[`${asset.name} Contracted Energy`] || 0) + 
+                          (period[`${asset.name} Merchant Energy`] || 0);
+            break;
+          case 'green':
+            assetRevenue = (period[`${asset.name} Contracted Green`] || 0) + 
+                          (period[`${asset.name} Merchant Green`] || 0);
+            break;
+          default:
+            assetRevenue = (period[`${asset.name} Contracted Green`] || 0) + 
+                          (period[`${asset.name} Contracted Energy`] || 0) + 
+                          (period[`${asset.name} Merchant Green`] || 0) + 
+                          (period[`${asset.name} Merchant Energy`] || 0);
+            break;
+        }
+        
+        chartData[asset.name] = assetRevenue;
       });
       
       return chartData;
     });
   };
+
+  // Calculate max revenue for fixed Y-axis - handle filtered display
+  const maxRevenue = useMemo(() => {
+    if (revenueProjections.length === 0) return 100;
+    
+    const maxValue = Math.max(...revenueProjections.map(period => {
+      switch (revenueFilter) {
+        case 'energy':
+          return (period.contractedEnergy || 0) + (period.merchantEnergy || 0);
+        case 'green':
+          return (period.contractedGreen || 0) + (period.merchantGreen || 0);
+        default:
+          return period.total || 0;
+      }
+    }));
+    return Math.ceil(maxValue * 1.1); // Add 10% padding
+  }, [revenueProjections, revenueFilter]);
 
   // Show loading state if no user/portfolio selected
   if (!currentUser || !currentPortfolio) {
@@ -297,8 +290,8 @@ export default function IntegratedRevenuePage() {
       {/* Header */}
       <div className="flex justify-between items-start">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Integrated Revenue Analysis</h1>
-          <p className="text-gray-600">Advanced revenue modeling with contract analysis and stress testing</p>
+          <h1 className="text-2xl font-bold text-gray-900">Revenue Analysis</h1>
+          <p className="text-gray-600">Portfolio revenue modeling with contract analysis</p>
           <p className="text-sm text-gray-500">
             Portfolio: {portfolioName} • {
               selectedRegion === 'ALL' 
@@ -307,44 +300,22 @@ export default function IntegratedRevenuePage() {
             } • Price Source: {priceSource}
           </p>
         </div>
-        <div className="flex space-x-3">
-          <button 
-            onClick={calculateRevenueProjections}
-            disabled={loading}
-            className="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg flex items-center space-x-2 hover:bg-gray-50 disabled:opacity-50"
-          >
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-            <span>Recalculate</span>
-          </button>
-          <button className="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg flex items-center space-x-2 hover:bg-gray-50">
-            <Settings className="w-4 h-4" />
-            <span>Settings</span>
-          </button>
-          <button 
-            onClick={exportData}
-            className="bg-green-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2 hover:bg-green-700"
-          >
-            <Download className="w-4 h-4" />
-            <span>Export</span>
-          </button>
-        </div>
       </div>
 
-      {/* Configuration Panel */}
+      {/* Configuration Panel - Simplified */}
       <div className="bg-white rounded-lg shadow border p-6">
         <h3 className="text-lg font-semibold mb-4">Analysis Configuration</h3>
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Revenue Scenario</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Revenue Type</label>
             <select
-              value={selectedRevenueCase}
-              onChange={(e) => setSelectedRevenueCase(e.target.value)}
+              value={revenueFilter}
+              onChange={(e) => setRevenueFilter(e.target.value)}
               className="w-full p-2 border border-gray-300 rounded-md"
             >
-              <option value="base">Base Case</option>
-              <option value="worst">Combined Downside</option>
-              <option value="volume">Volume Stress</option>
-              <option value="price">Price Stress</option>
+              <option value="all">All Revenue</option>
+              <option value="energy">Energy Only</option>
+              <option value="green">Green Only</option>
             </select>
           </div>
           
@@ -471,17 +442,29 @@ export default function IntegratedRevenuePage() {
         </div>
       </div>
 
-      {/* Revenue Projections Chart */}
+      {/* Revenue Projections Chart with Fixed Y-Axis */}
       {revenueProjections.length > 0 && (
         <div className="bg-white rounded-lg shadow border p-6">
           <h3 className="text-lg font-semibold mb-4">
-            Revenue Projections - {selectedRevenueCase.charAt(0).toUpperCase() + selectedRevenueCase.slice(1)} Scenario
+            Revenue Projections - {
+              revenueFilter === 'all' ? 'All Revenue' :
+              revenueFilter === 'energy' ? 'Energy Revenue Only' :
+              'Green Revenue Only'
+            }
           </h3>
           <ResponsiveContainer width="100%" height={400}>
             <AreaChart data={revenueProjections}>
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="timeInterval" />
-              <YAxis />
+              <XAxis 
+                dataKey="timeInterval"
+                angle={viewMode === 'quarterly' ? -45 : 0}
+                textAnchor={viewMode === 'quarterly' ? 'end' : 'middle'}
+                height={viewMode === 'quarterly' ? 80 : 60}
+              />
+              <YAxis 
+                domain={[0, maxRevenue]}
+                tickFormatter={(value) => `${value}M`}
+              />
               <Tooltip 
                 formatter={(value) => [`${value.toFixed(2)}M`, '']}
                 labelFormatter={(label) => `Year: ${label}`}
@@ -494,6 +477,7 @@ export default function IntegratedRevenuePage() {
                 stroke="#10B981" 
                 fill="#10B981"
                 name="Contracted Green"
+                hide={revenueFilter === 'energy'}
               />
               <Area 
                 type="monotone" 
@@ -502,6 +486,7 @@ export default function IntegratedRevenuePage() {
                 stroke="#3B82F6" 
                 fill="#3B82F6"
                 name="Contracted Energy"
+                hide={revenueFilter === 'green'}
               />
               <Area 
                 type="monotone" 
@@ -510,6 +495,7 @@ export default function IntegratedRevenuePage() {
                 stroke="#F59E0B" 
                 fill="#F59E0B"
                 name="Merchant Green"
+                hide={revenueFilter === 'energy'}
               />
               <Area 
                 type="monotone" 
@@ -518,48 +504,36 @@ export default function IntegratedRevenuePage() {
                 stroke="#EF4444" 
                 fill="#EF4444"
                 name="Merchant Energy"
+                hide={revenueFilter === 'green'}
               />
             </AreaChart>
           </ResponsiveContainer>
         </div>
       )}
 
-      {/* Scenario Comparison */}
+      {/* Revenue Type Filter Explanation */}
       <div className="bg-white rounded-lg shadow border p-6">
-        <h3 className="text-lg font-semibold mb-4">Revenue Scenario Comparison</h3>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          {['base', 'volume', 'price', 'worst'].map(scenario => {
-            const isSelected = selectedRevenueCase === scenario;
-            const scenarioName = scenario === 'worst' ? 'Combined Downside' : 
-                               scenario.charAt(0).toUpperCase() + scenario.slice(1);
+        <h3 className="text-lg font-semibold mb-4">Revenue Filter Options</h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {[
+            { key: 'all', name: 'All Revenue', description: 'Shows both energy and green revenue streams', color: 'border-green-500 bg-green-50' },
+            { key: 'energy', name: 'Energy Only', description: 'Shows only electricity energy revenue', color: 'border-blue-500 bg-blue-50' },
+            { key: 'green', name: 'Green Only', description: 'Shows only green certificate revenue', color: 'border-yellow-500 bg-yellow-50' }
+          ].map(filter => {
+            const isSelected = revenueFilter === filter.key;
             
             return (
               <div 
-                key={scenario} 
+                key={filter.key} 
                 className={`p-4 border rounded-lg cursor-pointer transition-colors ${
-                  isSelected ? 'border-green-500 bg-green-50' : 'border-gray-200 hover:border-gray-300'
+                  isSelected ? filter.color : 'border-gray-200 hover:border-gray-300'
                 }`}
-                onClick={() => setSelectedRevenueCase(scenario)}
+                onClick={() => setRevenueFilter(filter.key)}
               >
-                <h4 className="font-medium text-gray-900 mb-2">{scenarioName}</h4>
-                <div className="text-sm text-gray-600">
-                  <div className="flex justify-between mb-1">
-                    <span>Revenue Impact:</span>
-                    <span className={scenario === 'base' ? 'text-green-600' : 'text-red-600'}>
-                      {scenario === 'base' ? '100%' : 
-                       scenario === 'volume' ? '-15%' :
-                       scenario === 'price' ? '-10%' : '-25%'}
-                    </span>
-                  </div>
-                  <div className="text-xs text-gray-500 mt-1">
-                    {scenario === 'base' && 'No stress applied'}
-                    {scenario === 'volume' && 'Volume stress only'}
-                    {scenario === 'price' && 'Price stress only'}
-                    {scenario === 'worst' && 'Combined stress'}
-                  </div>
-                </div>
+                <h4 className="font-medium text-gray-900 mb-2">{filter.name}</h4>
+                <p className="text-sm text-gray-600 mb-2">{filter.description}</p>
                 {isSelected && (
-                  <div className="mt-2 flex items-center text-green-600 text-sm">
+                  <div className="flex items-center text-green-600 text-sm">
                     <CheckCircle className="w-4 h-4 mr-1" />
                     Selected
                   </div>
@@ -570,7 +544,7 @@ export default function IntegratedRevenuePage() {
         </div>
       </div>
 
-      {/* Asset Revenue Breakdown - Fixed */}
+      {/* Asset Revenue Breakdown */}
       {(() => {
         const filteredAssets = selectedRegion === 'ALL' 
           ? assets 
@@ -581,14 +555,18 @@ export default function IntegratedRevenuePage() {
       })() && (
         <div className="bg-white rounded-lg shadow border p-6">
           <h3 className="text-lg font-semibold mb-4">
-            Asset Revenue Breakdown (First 10 Years)
+            Asset Revenue Breakdown (First 10 Years) - {
+              revenueFilter === 'all' ? 'All Revenue' :
+              revenueFilter === 'energy' ? 'Energy Only' :
+              'Green Only'
+            }
             {selectedRegion !== 'ALL' && <span className="text-sm font-normal text-gray-500"> - {selectedRegion} Region</span>}
           </h3>
           <ResponsiveContainer width="100%" height={400}>
             <BarChart data={assetBreakdownData}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="year" />
-              <YAxis />
+              <YAxis tickFormatter={(value) => `$${value}M`} />
               <Tooltip formatter={(value) => [`${value.toFixed(2)}M`, '']} />
               <Legend />
               {(() => {
@@ -639,17 +617,42 @@ export default function IntegratedRevenuePage() {
                 const validation = assetValidations[asset.name];
                 const assetRevenue = revenueProjections.length > 0 ? 
                   revenueProjections.reduce((sum, proj) => {
-                    const total = (proj[`${asset.name} Contracted Green`] || 0) + 
-                                 (proj[`${asset.name} Contracted Energy`] || 0) + 
-                                 (proj[`${asset.name} Merchant Green`] || 0) + 
-                                 (proj[`${asset.name} Merchant Energy`] || 0);
+                    let total = 0;
+                    switch (revenueFilter) {
+                      case 'energy':
+                        total = (proj[`${asset.name} Contracted Energy`] || 0) + 
+                               (proj[`${asset.name} Merchant Energy`] || 0);
+                        break;
+                      case 'green':
+                        total = (proj[`${asset.name} Contracted Green`] || 0) + 
+                               (proj[`${asset.name} Merchant Green`] || 0);
+                        break;
+                      default:
+                        total = (proj[`${asset.name} Contracted Green`] || 0) + 
+                               (proj[`${asset.name} Contracted Energy`] || 0) + 
+                               (proj[`${asset.name} Merchant Green`] || 0) + 
+                               (proj[`${asset.name} Merchant Energy`] || 0);
+                        break;
+                    }
                     return sum + total;
                   }, 0) / revenueProjections.length : 0;
                 
                 const contractedRev = revenueProjections.length > 0 ? 
                   revenueProjections.reduce((sum, proj) => {
-                    return sum + (proj[`${asset.name} Contracted Green`] || 0) + 
-                               (proj[`${asset.name} Contracted Energy`] || 0);
+                    let contracted = 0;
+                    switch (revenueFilter) {
+                      case 'energy':
+                        contracted = (proj[`${asset.name} Contracted Energy`] || 0);
+                        break;
+                      case 'green':
+                        contracted = (proj[`${asset.name} Contracted Green`] || 0);
+                        break;
+                      default:
+                        contracted = (proj[`${asset.name} Contracted Green`] || 0) + 
+                                   (proj[`${asset.name} Contracted Energy`] || 0);
+                        break;
+                    }
+                    return sum + contracted;
                   }, 0) / revenueProjections.length : 0;
                 
                 const contractedPercent = assetRevenue > 0 ? (contractedRev / assetRevenue) * 100 : 0;
@@ -773,68 +776,21 @@ export default function IntegratedRevenuePage() {
           <div className="flex items-center space-x-2">
             <CheckCircle className="w-5 h-5 text-green-500" />
             <span className="text-green-800 font-medium">
-              Revenue analysis using integrated performance calculations
+              Revenue analysis with automatic recalculation
             </span>
           </div>
           <div className="text-green-600 text-sm">
-            Scenario: {selectedRevenueCase} • Region: {selectedRegion} • Period: {analysisYears} years • Updated: {new Date().toLocaleTimeString()}
+            Filter: {
+              revenueFilter === 'all' ? 'All Revenue' :
+              revenueFilter === 'energy' ? 'Energy Only' :
+              'Green Only'
+            } • Region: {selectedRegion} • Period: {analysisYears} years • Updated: {new Date().toLocaleTimeString()}
           </div>
         </div>
         <div className="mt-2 text-sm text-green-700">
-          Calculations include contract escalation, asset degradation, merchant price forecasts ({priceSource}), quarterly capacity factors, and comprehensive stress scenarios.
+          Live calculations include contract escalation, asset degradation, merchant price forecasts ({priceSource}), and revenue type filtering with fixed Y-axis scaling.
         </div>
       </div>
     </div>
   );
-
-  // Helper function to format revenue data for export
-  function formatRevenueDataForExport(portfolioData, assets, format) {
-    if (format === 'json') {
-      return JSON.stringify({
-        metadata: {
-          exportDate: new Date().toISOString(),
-          assetCount: Object.keys(assets).length,
-          periodCount: portfolioData.length,
-          scenario: selectedRevenueCase
-        },
-        assets: assets,
-        revenueData: portfolioData
-      }, null, 2);
-    }
-
-    // CSV format
-    const headers = ['Period', 'Total Revenue', 'Contracted Green', 'Contracted Energy', 'Merchant Green', 'Merchant Energy'];
-    
-    // Add asset-specific columns
-    Object.values(assets).forEach(asset => {
-      headers.push(`${asset.name} Total`, `${asset.name} Contracted`, `${asset.name} Merchant`);
-    });
-
-    const rows = [headers.join(',')];
-
-    portfolioData.forEach(period => {
-      const row = [
-        period.timeInterval,
-        Object.values(period.assets).reduce((sum, asset) => sum + asset.total, 0).toFixed(2),
-        Object.values(period.assets).reduce((sum, asset) => sum + asset.contractedGreen, 0).toFixed(2),
-        Object.values(period.assets).reduce((sum, asset) => sum + asset.contractedEnergy, 0).toFixed(2),
-        Object.values(period.assets).reduce((sum, asset) => sum + asset.merchantGreen, 0).toFixed(2),
-        Object.values(period.assets).reduce((sum, asset) => sum + asset.merchantEnergy, 0).toFixed(2)
-      ];
-
-      // Add asset-specific data
-      Object.values(assets).forEach(asset => {
-        const assetData = period.assets[asset.name] || { total: 0, contractedGreen: 0, contractedEnergy: 0, merchantGreen: 0, merchantEnergy: 0 };
-        row.push(
-          assetData.total.toFixed(2),
-          (assetData.contractedGreen + assetData.contractedEnergy).toFixed(2),
-          (assetData.merchantGreen + assetData.merchantEnergy).toFixed(2)
-        );
-      });
-
-      rows.push(row.join(','));
-    });
-
-    return rows.join('\n');
-  }
 }

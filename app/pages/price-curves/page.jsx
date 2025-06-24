@@ -5,9 +5,7 @@ import { useMerchantPrices } from '@/app/contexts/MerchantPriceProvider';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { 
   TrendingUp, 
-  RefreshCw, 
   Download, 
-  Settings, 
   Calendar,
   DollarSign,
   Zap,
@@ -26,20 +24,20 @@ const PriceCurvesPage = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   
-  // Chart configuration - Changed default timeRange to '2025'
-  const [viewMode, setViewMode] = useState('profiles'); // profiles, regions, types
+  // Chart configuration - Updated defaults
+  const [viewMode, setViewMode] = useState('regions'); // Changed from 'profiles' to 'regions'
   const [selectedRegion, setSelectedRegion] = useState('QLD');
-  const [selectedProfile, setSelectedProfile] = useState('solar');
-  const [selectedType, setSelectedType] = useState('ALL');
-  const [timeRange, setTimeRange] = useState('2025'); // Changed from 'all' to '2025'
-  const [aggregationLevel, setAggregationLevel] = useState('monthly');
+  const [selectedProfile, setSelectedProfile] = useState('baseload'); // Changed from 'solar' to 'baseload'
+  const [selectedType, setSelectedType] = useState('ALL'); // Already correct
+  const [timeRange, setTimeRange] = useState('all'); // Changed from '2025' to 'all'
+  const [aggregationLevel, setAggregationLevel] = useState('yearly'); // Changed from 'monthly' to 'yearly'
   const [showRawData, setShowRawData] = useState(false);
 
   // Available options
   const availableRegions = ['QLD', 'NSW', 'VIC', 'SA'];
   const availableProfiles = ['solar', 'wind', 'baseload', 'storage'];
   const availableTypes = ['ALL', 'Energy', 'green'];
-  const availableYears = ['2025', '2026', '2027', '2028', '2029', '2030', '2035', '2040', '2045', '2050', 'all']; // Moved 'all' to end
+  const availableYears = ['2025', '2026', '2027', '2028', '2029', '2030', '2035', '2040', '2045', '2050', 'all'];
 
   // Initialize storage type properly
   useEffect(() => {
@@ -203,22 +201,45 @@ const PriceCurvesPage = () => {
           }
         } else if (viewMode === 'regions') {
           // Compare different regions for selected profile and type
-          availableRegions.forEach(region => {
-            try {
-              let price;
-              if (selectedProfile === 'storage') {
-                // For storage, the type parameter is actually the duration (Energy/Green becomes duration)
-                // Use the timeInterval as the year parameter for spreads lookup
-                price = getMerchantPrice('storage', selectedType, region, timeInterval);
-              } else {
-                price = getMerchantPrice(selectedProfile, selectedType, region, timeInterval);
+          if (selectedType === 'ALL' && selectedProfile === 'baseload') {
+            // For baseload with ALL type, show both Energy and Green across regions
+            availableRegions.forEach(region => {
+              try {
+                const energyPrice = getMerchantPrice('baseload', 'Energy', region, timeInterval);
+                dataPoint[`${region}_Energy`] = energyPrice || 0;
+              } catch (err) {
+                console.warn(`Error getting energy price for ${region} at ${timeInterval}:`, err);
+                dataPoint[`${region}_Energy`] = 0;
               }
-              dataPoint[region] = price || 0;
+            });
+            
+            // For green certificates, since they're the same across regions, just show one line
+            try {
+              const greenPrice = getMerchantPrice('baseload', 'green', 'QLD', timeInterval);
+              dataPoint['Green'] = greenPrice || 0;
             } catch (err) {
-              console.warn(`Error getting price for ${region} at ${timeInterval}:`, err);
-              dataPoint[region] = 0;
+              console.warn(`Error getting green price at ${timeInterval}:`, err);
+              dataPoint['Green'] = 0;
             }
-          });
+          } else {
+            // Standard region comparison
+            availableRegions.forEach(region => {
+              try {
+                let price;
+                if (selectedProfile === 'storage') {
+                  // For storage, the type parameter is actually the duration (Energy/Green becomes duration)
+                  // Use the timeInterval as the year parameter for spreads lookup
+                  price = getMerchantPrice('storage', selectedType, region, timeInterval);
+                } else {
+                  price = getMerchantPrice(selectedProfile, selectedType, region, timeInterval);
+                }
+                dataPoint[region] = price || 0;
+              } catch (err) {
+                console.warn(`Error getting price for ${region} at ${timeInterval}:`, err);
+                dataPoint[region] = 0;
+              }
+            });
+          }
         } else { // types
           // Compare different types for selected profile and region
           if (selectedProfile === 'storage') {
@@ -313,11 +334,26 @@ const PriceCurvesPage = () => {
         }));
       }
     } else if (viewMode === 'regions') {
-      return availableRegions.map(region => ({
-        key: region,
-        color: regionColors[region] || '#6B7280',
-        name: region
-      }));
+      if (selectedType === 'ALL' && selectedProfile === 'baseload') {
+        // For baseload with ALL type, show Energy for each region plus one Green line
+        const config = availableRegions.map(region => ({
+          key: `${region}_Energy`,
+          color: regionColors[region] || '#6B7280',
+          name: `${region} Energy`
+        }));
+        config.push({
+          key: 'Green',
+          color: '#22C55E',
+          name: 'Green (All Regions)'
+        });
+        return config;
+      } else {
+        return availableRegions.map(region => ({
+          key: region,
+          color: regionColors[region] || '#6B7280',
+          name: region
+        }));
+      }
     } else {
       // For types view, check if we're looking at storage
       if (selectedProfile === 'storage') {
@@ -422,14 +458,6 @@ const PriceCurvesPage = () => {
           <p className="text-sm text-gray-500">Data source: {priceSource}</p>
         </div>
         <div className="flex space-x-3">
-          <button
-            onClick={fetchPriceData}
-            disabled={loading}
-            className="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg flex items-center space-x-2 hover:bg-gray-50 disabled:opacity-50"
-          >
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-            <span>{loading ? 'Loading...' : 'Refresh'}</span>
-          </button>
           <label className="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg flex items-center space-x-2 hover:bg-gray-50 cursor-pointer">
             <Upload className="w-4 h-4" />
             <span>Import CSV</span>
@@ -440,10 +468,6 @@ const PriceCurvesPage = () => {
               className="hidden"
             />
           </label>
-          <button className="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg flex items-center space-x-2 hover:bg-gray-50">
-            <Settings className="w-4 h-4" />
-            <span>Settings</span>
-          </button>
           <button 
             onClick={exportData}
             className="bg-green-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2 hover:bg-green-700"
@@ -678,7 +702,7 @@ const PriceCurvesPage = () => {
         </div>
       )}
 
-      {/* Price Curves Chart - Bar chart removed */}
+      {/* Price Curves Chart */}
       {priceData.length > 0 && (
         <div className="bg-white rounded-lg shadow border p-6">
           <h2 className="text-xl font-semibold text-gray-800 mb-4">
