@@ -601,6 +601,8 @@ export default function AssetDetailPage() {
           <strong>Project Metric Keys:</strong> {Object.keys(projectMetrics).join(', ')}
         </div>
       </div>
+
+      {/* Configuration Panel */}
       <div className="bg-white rounded-lg shadow border p-6">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
           <div>
@@ -820,13 +822,298 @@ export default function AssetDetailPage() {
         </div>
       )}
 
-      {/* Cash Flow Analysis - Direct from Project Finance */}
+      {/* Complete Equity Cash Flow Analysis - Investment through Operations */}
+      <div className="bg-white rounded-lg shadow border p-6">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center space-x-2">
+            <DollarSign className="w-5 h-5 text-gray-600" />
+            <h3 className="text-lg font-semibold">Complete Equity Cash Flow Timeline</h3>
+            <span className="text-sm text-blue-600">(Investment + Operations)</span>
+          </div>
+          <div className="text-sm text-gray-500">
+            {selectedAsset ? `Asset: ${selectedAsset}` : 'No asset selected'}
+          </div>
+        </div>
+
+        {selectedAsset && projectMetrics[selectedAsset] && projectMetrics[selectedAsset].equityCashFlows ? (
+          <div>
+            {/* Equity Summary Metrics */}
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6 p-4 bg-purple-50 rounded-lg">
+              <div className="text-center">
+                <p className="text-lg font-bold text-purple-900">
+                  {formatCurrency(Math.abs(projectMetrics[selectedAsset].equityCashFlows[0]))}
+                </p>
+                <p className="text-sm text-purple-600">Initial Investment</p>
+              </div>
+              <div className="text-center">
+                <p className="text-lg font-bold text-purple-900">
+                  {projectMetrics[selectedAsset].equityTimingUpfront ? 'Upfront' : 'Pro-rata'}
+                </p>
+                <p className="text-sm text-purple-600">Investment Timing</p>
+              </div>
+              <div className="text-center">
+                <p className="text-lg font-bold text-purple-900">
+                  {formatCurrency(projectMetrics[selectedAsset].equityCashFlows.reduce((sum, cf) => sum + cf, 0))}
+                </p>
+                <p className="text-sm text-purple-600">Cumulative Equity CF</p>
+              </div>
+              <div className="text-center">
+                <p className="text-lg font-bold text-purple-900">
+                  {summaryMetrics?.equityIRR ? `${summaryMetrics.equityIRR.toFixed(1)}%` : 'N/A'}
+                </p>
+                <p className="text-sm text-purple-600">Equity IRR</p>
+              </div>
+              <div className="text-center">
+                <p className="text-lg font-bold text-purple-900">
+                  {projectMetrics[selectedAsset].equityCashFlows.length}
+                </p>
+                <p className="text-sm text-purple-600">Total Periods</p>
+              </div>
+            </div>
+
+            {/* Complete Equity Cash Flow Table */}
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-gray-200">
+                    <th className="text-left py-3 px-2 font-medium text-gray-900">Period</th>
+                    <th className="text-left py-3 px-2 font-medium text-gray-900">Phase</th>
+                    <th className="text-right py-3 px-2 font-medium text-gray-900">Investment CF ($M)</th>
+                    <th className="text-right py-3 px-2 font-medium text-gray-900">Operating CF ($M)</th>
+                    <th className="text-right py-3 px-2 font-medium text-gray-900">Terminal Value ($M)</th>
+                    <th className="text-right py-3 px-2 font-medium text-gray-900 bg-yellow-50">NET Equity CF ($M)</th>
+                    <th className="text-right py-3 px-2 font-medium text-gray-900 bg-yellow-50">Cumulative ($M)</th>
+                    <th className="text-right py-3 px-2 font-medium text-gray-900">Revenue ($M)</th>
+                    <th className="text-right py-3 px-2 font-medium text-gray-900">OPEX ($M)</th>
+                    <th className="text-right py-3 px-2 font-medium text-gray-900">Debt Service ($M)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {projectMetrics[selectedAsset].equityCashFlows.slice(0, Math.min(35, analysisYears + 5)).map((equityCF, index) => {
+                    const asset = Object.values(assets).find(a => a.name === selectedAsset);
+                    const assetStartYear = asset ? new Date(asset.assetStartDate).getFullYear() : 2025;
+                    const assetMetrics = projectMetrics[selectedAsset];
+                    
+                    // Determine phase and breakdown components
+                    let phase, year, revenue = 0, opex = 0, debtService = 0, terminalValue = 0;
+                    let investmentCF = 0, operatingCF = 0;
+                    
+                    if (assetMetrics.equityTimingUpfront && index === 0) {
+                      // Year 0 - upfront equity investment
+                      phase = 'Investment';
+                      year = 0;
+                      investmentCF = equityCF; // This is the negative investment
+                      operatingCF = 0;
+                      terminalValue = 0;
+                    } else if (!assetMetrics.equityTimingUpfront) {
+                      // Pro-rata equity timing
+                      const constructionYears = Math.ceil(assetMetrics.constructionDuration / 12);
+                      if (index < constructionYears) {
+                        phase = 'Investment';
+                        year = index;
+                        investmentCF = equityCF; // This is the negative investment
+                        operatingCF = 0;
+                        terminalValue = 0;
+                      } else {
+                        phase = 'Returns';
+                        year = index - constructionYears + 1;
+                        investmentCF = 0;
+                        const opIndex = index - constructionYears;
+                        if (assetMetrics.cashFlows && assetMetrics.cashFlows[opIndex]) {
+                          const cf = assetMetrics.cashFlows[opIndex];
+                          revenue = cf.revenue;
+                          opex = cf.opex;
+                          debtService = cf.debtService;
+                          operatingCF = cf.equityCashFlow;
+                          if (cf.terminalValue) {
+                            terminalValue = cf.terminalValue;
+                          }
+                        }
+                      }
+                    } else {
+                      // Upfront timing - operational phase
+                      if (index === 0) {
+                        phase = 'Investment';
+                        year = 0;
+                        investmentCF = equityCF;
+                        operatingCF = 0;
+                        terminalValue = 0;
+                      } else {
+                        phase = 'Returns';
+                        year = index;
+                        investmentCF = 0;
+                        const opIndex = index - 1;
+                        
+                        if (opIndex >= 0 && assetMetrics.cashFlows && assetMetrics.cashFlows[opIndex]) {
+                          const cf = assetMetrics.cashFlows[opIndex];
+                          revenue = cf.revenue;
+                          opex = cf.opex;
+                          debtService = cf.debtService;
+                          operatingCF = cf.equityCashFlow;
+                          if (cf.terminalValue) {
+                            terminalValue = cf.terminalValue;
+                          }
+                        }
+                      }
+                    }
+                    
+                    // Calculate NET equity cash flow (should equal equityCF from your calculations)
+                    const netEquityCF = investmentCF + operatingCF + terminalValue;
+                    
+                    // Calculate cumulative equity cash flow for payback analysis
+                    const cumulativeEquityCF = projectMetrics[selectedAsset].equityCashFlows
+                      .slice(0, index + 1)
+                      .reduce((sum, cf) => sum + cf, 0);
+                    
+                    return (
+                      <tr key={index} className={`border-b border-gray-100 hover:bg-gray-50 ${
+                        phase === 'Investment' ? 'bg-red-25' : 'bg-green-25'
+                      }`}>
+                        <td className="py-2 px-2 font-medium text-gray-900">
+                          {year}
+                        </td>
+                        <td className="py-2 px-2">
+                          <span className={`px-2 py-1 text-xs rounded-full ${
+                            phase === 'Investment' 
+                              ? 'bg-red-100 text-red-800' 
+                              : 'bg-green-100 text-green-800'
+                          }`}>
+                            {phase}
+                          </span>
+                        </td>
+                        <td className="text-right py-2 px-2 text-red-600">
+                          {investmentCF !== 0 ? formatCurrency(investmentCF) : '-'}
+                        </td>
+                        <td className="text-right py-2 px-2 text-green-600">
+                          {operatingCF !== 0 ? formatCurrency(operatingCF) : '-'}
+                        </td>
+                        <td className="text-right py-2 px-2 text-orange-600">
+                          {terminalValue !== 0 ? formatCurrency(terminalValue) : '-'}
+                        </td>
+                        <td className={`text-right py-2 px-2 font-bold bg-yellow-50 ${
+                          netEquityCF >= 0 ? 'text-green-600' : 'text-red-600'
+                        }`}>
+                          {netEquityCF >= 0 ? '+' : ''}{formatCurrency(netEquityCF)}
+                        </td>
+                        <td className={`text-right py-2 px-2 font-medium bg-yellow-50 ${
+                          cumulativeEquityCF >= 0 ? 'text-green-700' : 'text-red-700'
+                        }`}>
+                          {formatCurrency(cumulativeEquityCF)}
+                        </td>
+                        <td className="text-right py-2 px-2 text-green-700">
+                          {revenue ? formatCurrency(revenue) : '-'}
+                        </td>
+                        <td className="text-right py-2 px-2 text-red-600">
+                          {opex ? formatCurrency(Math.abs(opex)) : '-'}
+                        </td>
+                        <td className="text-right py-2 px-2 text-purple-600">
+                          {debtService ? formatCurrency(Math.abs(debtService)) : '-'}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* IRR Manual Verification Section */}
+            <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <h4 className="font-medium text-yellow-800 mb-3">📊 IRR Manual Verification</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <h5 className="font-medium text-gray-900 mb-2">Cash Flow Array for IRR Calculation:</h5>
+                  <div className="bg-white p-3 rounded border text-xs font-mono">
+                    [{projectMetrics[selectedAsset].equityCashFlows.slice(0, Math.min(10, analysisYears + 5)).map(cf => cf.toFixed(2)).join(', ')}{projectMetrics[selectedAsset].equityCashFlows.length > 10 ? '...' : ''}]
+                  </div>
+                  <p className="text-xs text-gray-600 mt-1">
+                    Array length: {projectMetrics[selectedAsset].equityCashFlows.length} periods
+                  </p>
+                </div>
+                <div>
+                  <h5 className="font-medium text-gray-900 mb-2">Key IRR Metrics:</h5>
+                  <div className="space-y-1 text-sm">
+                    <div className="flex justify-between">
+                      <span>Initial Investment:</span>
+                      <span className="font-mono text-red-600">
+                        {formatCurrency(projectMetrics[selectedAsset].equityCashFlows[0])}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Total Cash Returned:</span>
+                      <span className="font-mono text-green-600">
+                        {formatCurrency(projectMetrics[selectedAsset].equityCashFlows.slice(1).reduce((sum, cf) => sum + cf, 0))}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Net Profit:</span>
+                      <span className="font-mono text-blue-600">
+                        {formatCurrency(projectMetrics[selectedAsset].equityCashFlows.reduce((sum, cf) => sum + cf, 0))}
+                      </span>
+                    </div>
+                    <div className="flex justify-between border-t pt-1">
+                      <span>Calculated IRR:</span>
+                      <span className="font-mono font-bold text-purple-600">
+                        {summaryMetrics?.equityIRR ? `${summaryMetrics.equityIRR.toFixed(2)}%` : 'N/A'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="mt-3 text-xs text-yellow-700">
+                <strong>💡 To manually verify IRR:</strong> Use the cash flow array above in Excel with =IRR() function or financial calculator. 
+                The yellow-highlighted "NET Equity CF" column shows the exact values used for IRR calculation: 
+                negative investment flows followed by positive returns.
+              </div>
+            </div>
+
+            {projectMetrics[selectedAsset].equityCashFlows.length > 35 && (
+              <div className="mt-4 text-sm text-gray-500 text-center">
+                Showing first 35 periods of {projectMetrics[selectedAsset].equityCashFlows.length} total equity cash flows
+              </div>
+            )}
+
+            <div className="mt-4 text-sm text-gray-600">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <h4 className="font-medium mb-2">Equity Timeline Components:</h4>
+                  <ul className="text-xs space-y-1">
+                    <li>• <span className="text-red-600">Construction Phase:</span> Negative equity investment flows</li>
+                    <li>• <span className="text-green-600">Operations Phase:</span> Positive operational cash flows</li>
+                    <li>• <span className="text-purple-600">Debt Service:</span> Principal and interest payments</li>
+                    <li>• <span className="text-orange-600">Terminal Value:</span> Asset residual value (final year)</li>
+                  </ul>
+                </div>
+                <div>
+                  <h4 className="font-medium mb-2">Investment Timing:</h4>
+                  <ul className="text-xs space-y-1">
+                    <li>• <span className="font-medium">Upfront:</span> All equity paid in Year 0</li>
+                    <li>• <span className="font-medium">Pro-rata:</span> Equity spread over construction period</li>
+                    <li>• <span className="font-medium">Cumulative CF:</span> Running total of equity flows</li>
+                    <li>• <span className="font-medium">IRR:</span> {summaryMetrics?.equityIRR ? `${summaryMetrics.equityIRR.toFixed(1)}%` : 'N/A'} based on complete timeline</li>
+                  </ul>
+                </div>
+              </div>
+              <div className="mt-2 text-center text-purple-600">
+                Complete equity perspective from initial investment through asset life - {projectMetrics[selectedAsset].equityCashFlows.length} total periods
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="text-center text-gray-500 py-8">
+            <DollarSign className="w-12 h-12 mx-auto mb-2 opacity-50" />
+            <p>No equity cash flow data available for selected asset</p>
+            <p className="text-sm">Ensure project finance calculations are complete</p>
+          </div>
+        )}
+      </div>
+
+      {/* Annual Operational Cash Flow Analysis */}
       <div className="bg-white rounded-lg shadow border p-6">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center space-x-2">
             <Calendar className="w-5 h-5 text-gray-600" />
-            <h3 className="text-lg font-semibold">Annual Cash Flow Analysis</h3>
-            <span className="text-sm text-blue-600">(From Project Finance Calculations)</span>
+            <h3 className="text-lg font-semibold">Annual Operational Cash Flow Analysis</h3>
+            <span className="text-sm text-green-600">(Operations Period Only)</span>
           </div>
           <div className="text-sm text-gray-500">
             {selectedAsset ? `Asset: ${selectedAsset}` : 'No asset selected'}
@@ -859,7 +1146,7 @@ export default function AssetDetailPage() {
                 <p className="text-lg font-bold text-gray-900">
                   {formatCurrency(projectMetrics[selectedAsset].cashFlows.reduce((sum, cf) => sum + cf.equityCashFlow, 0))}
                 </p>
-                <p className="text-sm text-gray-600">Cumulative Equity CF</p>
+                <p className="text-sm text-gray-600">Operating Equity CF</p>
               </div>
               <div className="text-center">
                 <p className="text-lg font-bold text-gray-900">
@@ -933,14 +1220,14 @@ export default function AssetDetailPage() {
 
             {projectMetrics[selectedAsset].cashFlows.length > 30 && (
               <div className="mt-4 text-sm text-gray-500 text-center">
-                Showing first 30 years of {projectMetrics[selectedAsset].cashFlows.length} total years
+                Showing first 30 years of {projectMetrics[selectedAsset].cashFlows.length} total operational years
               </div>
             )}
 
             <div className="mt-4 text-sm text-gray-600">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <h4 className="font-medium mb-2">Cash Flow Components:</h4>
+                  <h4 className="font-medium mb-2">Operational Cash Flow Components:</h4>
                   <ul className="text-xs space-y-1">
                     <li>• <span className="text-green-600">Revenue:</span> Total annual revenue from all sources</li>
                     <li>• <span className="text-green-600">Contracted:</span> Fixed price contract revenue</li>
@@ -958,15 +1245,15 @@ export default function AssetDetailPage() {
                   </ul>
                 </div>
               </div>
-              <div className="mt-2 text-center text-blue-600">
-                Data sourced directly from Project Finance calculations - IRR: {summaryMetrics?.equityIRR ? formatPercent(summaryMetrics.equityIRR) : 'N/A'}
+              <div className="mt-2 text-center text-green-600">
+                Operational cash flows only - see equity timeline above for complete investment perspective
               </div>
             </div>
           </div>
         ) : (
           <div className="text-center text-gray-500 py-8">
             <Calendar className="w-12 h-12 mx-auto mb-2 opacity-50" />
-            <p>No cash flow data available for selected asset</p>
+            <p>No operational cash flow data available for selected asset</p>
             <p className="text-sm">Ensure project finance calculations are complete</p>
             {selectedAsset && (
               <div className="mt-2 text-xs text-red-600">
