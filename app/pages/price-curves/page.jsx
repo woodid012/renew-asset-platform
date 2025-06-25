@@ -1,7 +1,8 @@
-// app/pages/price-curves/page.jsx - Updated with escalation settings
+// app/pages/price-curves/page.jsx - Updated with enhanced backend integration
 'use client'
 
 import React, { useState, useEffect, useMemo } from 'react';
+import { useUser } from '@/app/contexts/UserContext';
 import { useMerchantPrices } from '@/app/contexts/MerchantPriceProvider';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { 
@@ -14,280 +15,21 @@ import {
   CheckCircle,
   Upload,
   Database,
-  FileText
+  FileText,
+  RefreshCw,
+  Settings
 } from 'lucide-react';
 
-// Escalation Settings Panel Component (embedded)
-const EscalationSettingsPanel = () => {
-  const { 
-    escalationSettings, 
-    updateEscalationSettings, 
-    resetEscalationSettings 
-  } = useMerchantPrices();
-  
-  const [isExpanded, setIsExpanded] = useState(false);
-  const [localSettings, setLocalSettings] = useState(escalationSettings);
-
-  // Sync with context when escalation settings change
-  useEffect(() => {
-    setLocalSettings(escalationSettings);
-  }, [escalationSettings]);
-
-  // Handle input changes
-  const handleSettingChange = (field, value) => {
-    const newSettings = { ...localSettings, [field]: value };
-    setLocalSettings(newSettings);
-    updateEscalationSettings(newSettings);
-  };
-
-  // Reset to defaults
-  const handleReset = () => {
-    resetEscalationSettings();
-    setLocalSettings({
-      enabled: true,
-      rate: 2.5,
-      referenceYear: 2025,
-      applyToStorage: true,
-      applyToRenewables: true
-    });
-  };
-
-  return (
-    <div className="bg-white rounded-lg shadow border p-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-3">
-          <div className="p-2 bg-blue-100 rounded-lg">
-            <TrendingUp className="w-5 h-5 text-blue-600" />
-          </div>
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900">Price Escalation Settings</h3>
-            <p className="text-sm text-gray-600">Configure how prices are escalated over time</p>
-          </div>
-        </div>
-        
-        <div className="flex items-center space-x-2">
-          {/* Status indicator */}
-          <div className={`flex items-center space-x-1 px-2 py-1 rounded-full text-xs font-medium ${
-            escalationSettings.enabled 
-              ? 'bg-green-100 text-green-800' 
-              : 'bg-gray-100 text-gray-800'
-          }`}>
-            {escalationSettings.enabled ? (
-              <CheckCircle className="w-3 h-3" />
-            ) : (
-              <AlertCircle className="w-3 h-3" />
-            )}
-            <span>{escalationSettings.enabled ? 'Enabled' : 'Disabled'}</span>
-          </div>
-
-          <button
-            onClick={() => setIsExpanded(!isExpanded)}
-            className="flex items-center space-x-1 px-3 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
-          >
-            <span>{isExpanded ? 'Hide' : 'Configure'}</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Quick summary when collapsed */}
-      {!isExpanded && (
-        <div className="mt-4 p-3 bg-blue-50 rounded-lg">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
-            <div className="text-center">
-              <div className="text-gray-600">Status</div>
-              <div className="font-semibold text-blue-900">
-                {escalationSettings.enabled ? 'Active' : 'Disabled'}
-              </div>
-            </div>
-            <div className="text-center">
-              <div className="text-gray-600">Rate</div>
-              <div className="font-semibold text-blue-900">
-                {escalationSettings.rate}% p.a.
-              </div>
-            </div>
-            <div className="text-center">
-              <div className="text-gray-600">Reference Year</div>
-              <div className="font-semibold text-blue-900">
-                {escalationSettings.referenceYear}
-              </div>
-            </div>
-            <div className="text-center">
-              <div className="text-gray-600">Applies To</div>
-              <div className="font-semibold text-blue-900">
-                {escalationSettings.applyToStorage && escalationSettings.applyToRenewables ? 'All' :
-                 escalationSettings.applyToRenewables ? 'Renewables' :
-                 escalationSettings.applyToStorage ? 'Storage' : 'None'}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Expanded configuration */}
-      {isExpanded && (
-        <div className="mt-6 space-y-6">
-          {/* Main Settings */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Enable Escalation
-              </label>
-              <div className="flex items-center space-x-3">
-                <button
-                  onClick={() => handleSettingChange('enabled', !localSettings.enabled)}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                    localSettings.enabled ? 'bg-green-600' : 'bg-gray-300'
-                  }`}
-                >
-                  <span
-                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                      localSettings.enabled ? 'translate-x-6' : 'translate-x-1'
-                    }`}
-                  />
-                </button>
-                <span className="text-sm text-gray-600">
-                  {localSettings.enabled ? 'Escalation applied' : 'No escalation'}
-                </span>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Annual Escalation Rate (%)
-              </label>
-              <input
-                type="number"
-                step="0.1"
-                min="0"
-                max="10"
-                value={localSettings.rate}
-                onChange={(e) => handleSettingChange('rate', parseFloat(e.target.value))}
-                disabled={!localSettings.enabled}
-                className="w-full p-2 border border-gray-300 rounded-md disabled:bg-gray-100 disabled:text-gray-500"
-                placeholder="2.5"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Reference Year
-              </label>
-              <input
-                type="number"
-                min="2020"
-                max="2030"
-                value={localSettings.referenceYear}
-                onChange={(e) => handleSettingChange('referenceYear', parseInt(e.target.value))}
-                disabled={!localSettings.enabled}
-                className="w-full p-2 border border-gray-300 rounded-md disabled:bg-gray-100 disabled:text-gray-500"
-                placeholder="2025"
-              />
-            </div>
-          </div>
-
-          {/* Application Settings */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-3">
-              Apply Escalation To:
-            </label>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="flex items-center space-x-3">
-                <input
-                  type="checkbox"
-                  id="applyToRenewables"
-                  checked={localSettings.applyToRenewables}
-                  onChange={(e) => handleSettingChange('applyToRenewables', e.target.checked)}
-                  disabled={!localSettings.enabled}
-                  className="h-4 w-4 text-green-600 border-gray-300 rounded disabled:opacity-50"
-                />
-                <label htmlFor="applyToRenewables" className="text-sm text-gray-700">
-                  Renewable Assets (Solar, Wind)
-                </label>
-              </div>
-
-              <div className="flex items-center space-x-3">
-                <input
-                  type="checkbox"
-                  id="applyToStorage"
-                  checked={localSettings.applyToStorage}
-                  onChange={(e) => handleSettingChange('applyToStorage', e.target.checked)}
-                  disabled={!localSettings.enabled}
-                  className="h-4 w-4 text-green-600 border-gray-300 rounded disabled:opacity-50"
-                />
-                <label htmlFor="applyToStorage" className="text-sm text-gray-700">
-                  Storage Assets
-                </label>
-              </div>
-            </div>
-          </div>
-
-          {/* Example Calculation */}
-          {localSettings.enabled && (
-            <div className="p-4 bg-gray-50 rounded-lg">
-              <h4 className="text-sm font-medium text-gray-900 mb-3">Example Calculation</h4>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                <div>
-                  <div className="text-gray-600">Base Price (2025)</div>
-                  <div className="font-semibold">$65.00/MWh</div>
-                </div>
-                <div>
-                  <div className="text-gray-600">Year 5 (2030)</div>
-                  <div className="font-semibold text-blue-600">
-                    ${(65 * Math.pow(1 + localSettings.rate/100, 5)).toFixed(2)}/MWh
-                  </div>
-                </div>
-                <div>
-                  <div className="text-gray-600">Year 10 (2035)</div>
-                  <div className="font-semibold text-green-600">
-                    ${(65 * Math.pow(1 + localSettings.rate/100, 10)).toFixed(2)}/MWh
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Information Panel */}
-          <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-            <div className="flex items-start space-x-3">
-              <div className="text-sm text-blue-800">
-                <h4 className="font-medium mb-2">How Escalation Works</h4>
-                <ul className="space-y-1 text-blue-700">
-                  <li>• Base prices from your price curves are escalated using the formula: Price × (1 + rate/100)^(year - reference_year)</li>
-                  <li>• This affects both renewable energy/green prices and storage price spreads</li>
-                  <li>• Revenue calculations automatically use escalated prices for future years</li>
-                  <li>• Contract indexation is separate and applied on top of escalated merchant prices</li>
-                </ul>
-              </div>
-            </div>
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex items-center justify-between pt-4 border-t border-gray-200">
-            <div className="text-sm text-gray-600">
-              Changes are applied immediately to all price calculations
-            </div>
-            <button
-              onClick={handleReset}
-              className="flex items-center space-x-2 px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md transition-colors"
-            >
-              <span>Reset to Defaults</span>
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
-
 const PriceCurvesPage = () => {
+  const { currentUser, currentPortfolio } = useUser();
   const { 
     getMerchantPrice, 
     priceSource, 
     setPriceSource, 
-    setMerchantPrices, 
-    spreadSource, 
-    setSpreadSource,
-    escalationSettings 
+    setMerchantPrices,
+    escalationSettings,
+    updateEscalationSettings,
+    resetEscalationSettings
   } = useMerchantPrices();
   
   // State management
@@ -295,14 +37,15 @@ const PriceCurvesPage = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   
-  // Chart configuration - Updated defaults
-  const [viewMode, setViewMode] = useState('regions'); // Changed from 'profiles' to 'regions'
+  // Chart configuration
+  const [viewMode, setViewMode] = useState('regions');
   const [selectedRegion, setSelectedRegion] = useState('QLD');
-  const [selectedProfile, setSelectedProfile] = useState('baseload'); // Changed from 'solar' to 'baseload'
-  const [selectedType, setSelectedType] = useState('ALL'); // Already correct
-  const [timeRange, setTimeRange] = useState('all'); // Changed from '2025' to 'all'
-  const [aggregationLevel, setAggregationLevel] = useState('yearly'); // Changed from 'monthly' to 'yearly'
+  const [selectedProfile, setSelectedProfile] = useState('baseload');
+  const [selectedType, setSelectedType] = useState('ALL');
+  const [timeRange, setTimeRange] = useState('all');
+  const [aggregationLevel, setAggregationLevel] = useState('yearly');
   const [showRawData, setShowRawData] = useState(false);
+  const [showEscalationSettings, setShowEscalationSettings] = useState(false);
 
   // Available options
   const availableRegions = ['QLD', 'NSW', 'VIC', 'SA'];
@@ -310,21 +53,12 @@ const PriceCurvesPage = () => {
   const availableTypes = ['ALL', 'Energy', 'green'];
   const availableYears = ['2025', '2026', '2027', '2028', '2029', '2030', '2035', '2040', '2045', '2050', 'all'];
 
-  // Initialize storage type properly
-  useEffect(() => {
-    if (selectedProfile === 'storage' && !['0.5', '1', '2', '4'].includes(selectedType)) {
-      setSelectedType('2'); // Default to 2 hour for storage
-    } else if (selectedProfile !== 'storage' && !['ALL', 'Energy', 'green'].includes(selectedType)) {
-      setSelectedType('ALL'); // Default to ALL for other profiles
-    }
-  }, [selectedProfile, selectedType]);
-
   // Colors for different series
   const profileColors = {
-    solar: '#F59E0B', // Yellow/Orange
-    wind: '#3B82F6', // Blue
-    baseload: '#000000', // Black
-    storage: '#8B5CF6' // Purple
+    solar: '#F59E0B',
+    wind: '#3B82F6',
+    baseload: '#000000',
+    storage: '#8B5CF6'
   };
 
   const regionColors = {
@@ -339,47 +73,52 @@ const PriceCurvesPage = () => {
     green: '#10B981'
   };
 
-  // Generate time intervals for the selected year or all years
-  const generateTimeIntervals = (timeSelection) => {
+  // Initialize storage type when profile changes
+  useEffect(() => {
+    if (selectedProfile === 'storage' && !['0.5', '1', '2', '4'].includes(selectedType)) {
+      setSelectedType('2');
+    } else if (selectedProfile !== 'storage' && !['ALL', 'Energy', 'green'].includes(selectedType)) {
+      setSelectedType('ALL');
+    }
+  }, [selectedProfile, selectedType]);
+
+  // Generate time intervals using enhanced backend
+  const generateTimeIntervals = (timeSelection, aggregation) => {
     const intervals = [];
     
     if (timeSelection === 'all') {
-      // Generate intervals from 1/1/2025 to 12/31/2050 (26 years)
       const startYear = 2025;
       const endYear = 2050;
       
-      if (aggregationLevel === 'monthly') {
+      if (aggregation === 'monthly') {
         for (let year = startYear; year <= endYear; year++) {
           for (let month = 1; month <= 12; month++) {
-            // Use D/MM/YYYY format to match your CSV (no zero-padding on day, zero-padding on month)
             intervals.push(`1/${month.toString().padStart(2, '0')}/${year}`);
           }
         }
-      } else if (aggregationLevel === 'quarterly') {
+      } else if (aggregation === 'quarterly') {
         for (let year = startYear; year <= endYear; year++) {
           for (let quarter = 1; quarter <= 4; quarter++) {
             intervals.push(`${year}-Q${quarter}`);
           }
         }
-      } else { // yearly
+      } else {
         for (let year = startYear; year <= endYear; year++) {
           intervals.push(year.toString());
         }
       }
     } else {
-      // Single year selection
       const year = parseInt(timeSelection);
       
-      if (aggregationLevel === 'monthly') {
+      if (aggregation === 'monthly') {
         for (let month = 1; month <= 12; month++) {
-          // Use D/MM/YYYY format to match your CSV (no zero-padding on day, zero-padding on month)
           intervals.push(`1/${month.toString().padStart(2, '0')}/${year}`);
         }
-      } else if (aggregationLevel === 'quarterly') {
+      } else if (aggregation === 'quarterly') {
         for (let quarter = 1; quarter <= 4; quarter++) {
           intervals.push(`${year}-Q${quarter}`);
         }
-      } else { // yearly
+      } else {
         intervals.push(year.toString());
       }
     }
@@ -388,28 +127,26 @@ const PriceCurvesPage = () => {
   };
 
   // Fetch and process price data
-  const fetchPriceData = () => {
+  const fetchPriceData = async () => {
     setLoading(true);
     setError('');
     
     try {
-      const timeIntervals = generateTimeIntervals(timeRange);
+      const timeIntervals = generateTimeIntervals(timeRange, aggregationLevel);
       const chartData = [];
       
-      console.log(`Generating price data for ${timeIntervals.length} time intervals from ${timeIntervals[0]} to ${timeIntervals[timeIntervals.length - 1]}`);
-      console.log('Using escalation settings:', escalationSettings);
+      console.log(`Generating price data for ${timeIntervals.length} intervals`);
+      console.log('Current escalation settings:', escalationSettings);
       
       timeIntervals.forEach((timeInterval, index) => {
         const dataPoint = { 
           time: timeInterval,
-          // Add a sortable index for proper chart ordering
           sortIndex: index 
         };
         
         if (viewMode === 'profiles') {
           // Compare different profiles for selected region and type
           if (selectedType === 'ALL') {
-            // Show Solar, Baseload, Wind, Green, and 2HR Storage
             const profilesWithStorage = ['solar', 'wind', 'baseload'];
             
             profilesWithStorage.forEach(profile => {
@@ -441,7 +178,6 @@ const PriceCurvesPage = () => {
             }
             
           } else if (selectedType === 'green') {
-            // For green, only show profiles that have green certificates (no storage)
             const greenProfiles = ['solar', 'wind', 'baseload'];
             greenProfiles.forEach(profile => {
               try {
@@ -454,12 +190,10 @@ const PriceCurvesPage = () => {
             });
             
           } else {
-            // Energy type - show all profiles including storage
             availableProfiles.forEach(profile => {
               try {
                 let price;
                 if (profile === 'storage') {
-                  // Use 2 hour duration for storage in profiles comparison
                   price = getMerchantPrice(profile, '2', selectedRegion, timeInterval);
                 } else {
                   price = getMerchantPrice(profile, selectedType, selectedRegion, timeInterval);
@@ -474,7 +208,6 @@ const PriceCurvesPage = () => {
         } else if (viewMode === 'regions') {
           // Compare different regions for selected profile and type
           if (selectedType === 'ALL' && selectedProfile === 'baseload') {
-            // For baseload with ALL type, show both Energy and Green across regions
             availableRegions.forEach(region => {
               try {
                 const energyPrice = getMerchantPrice('baseload', 'Energy', region, timeInterval);
@@ -485,7 +218,7 @@ const PriceCurvesPage = () => {
               }
             });
             
-            // For green certificates, since they're the same across regions, just show one line
+            // Green certificates are the same across regions, show one line
             try {
               const greenPrice = getMerchantPrice('baseload', 'green', 'QLD', timeInterval);
               dataPoint['Green'] = greenPrice || 0;
@@ -499,8 +232,6 @@ const PriceCurvesPage = () => {
               try {
                 let price;
                 if (selectedProfile === 'storage') {
-                  // For storage, the type parameter is actually the duration (Energy/Green becomes duration)
-                  // Use the timeInterval as the year parameter for spreads lookup
                   price = getMerchantPrice('storage', selectedType, region, timeInterval);
                 } else {
                   price = getMerchantPrice(selectedProfile, selectedType, region, timeInterval);
@@ -512,10 +243,8 @@ const PriceCurvesPage = () => {
               }
             });
           }
-        } else { // types
-          // Compare different types for selected profile and region
+        } else { // types comparison
           if (selectedProfile === 'storage') {
-            // For storage, we'll show different durations from your CSV: 0.5, 1, 2, 4
             const storageDurations = ['0.5', '1', '2', '4'];
             storageDurations.forEach(duration => {
               try {
@@ -527,7 +256,7 @@ const PriceCurvesPage = () => {
               }
             });
           } else {
-            availableTypes.forEach(type => {
+            availableTypes.filter(type => type !== 'ALL').forEach(type => {
               try {
                 const price = getMerchantPrice(selectedProfile, type, selectedRegion, timeInterval);
                 dataPoint[type] = price || 0;
@@ -565,7 +294,7 @@ const PriceCurvesPage = () => {
     const allPrices = [];
     priceData.forEach(point => {
       Object.keys(point).forEach(key => {
-        if (key !== 'time' && typeof point[key] === 'number') {
+        if (key !== 'time' && key !== 'sortIndex' && typeof point[key] === 'number') {
           allPrices.push(point[key]);
         }
       });
@@ -607,7 +336,6 @@ const PriceCurvesPage = () => {
       }
     } else if (viewMode === 'regions') {
       if (selectedType === 'ALL' && selectedProfile === 'baseload') {
-        // For baseload with ALL type, show Energy for each region plus one Green line
         const config = availableRegions.map(region => ({
           key: `${region}_Energy`,
           color: regionColors[region] || '#6B7280',
@@ -627,7 +355,6 @@ const PriceCurvesPage = () => {
         }));
       }
     } else {
-      // For types view, check if we're looking at storage
       if (selectedProfile === 'storage') {
         const storageDurations = ['0.5h', '1h', '2h', '4h'];
         const storageColors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4'];
@@ -667,14 +394,7 @@ const PriceCurvesPage = () => {
               if (header === 'price') {
                 row[header] = parseFloat(values[index]) || 0;
               } else if (header === 'time' && values[index]) {
-                // Handle D/MM/YYYY format to match your CSV exactly
-                const timeValue = values[index].trim();
-                if (timeValue.match(/^\d{1,2}\/\d{1,2}\/\d{4}$/)) {
-                  // Keep the format as-is if it's already D/MM/YYYY or DD/MM/YYYY
-                  row[header] = timeValue;
-                } else {
-                  row[header] = timeValue;
-                }
+                row[header] = values[index].trim();
               } else {
                 row[header] = values[index]?.trim() || '';
               }
@@ -685,7 +405,7 @@ const PriceCurvesPage = () => {
         
         setMerchantPrices(data);
         setPriceSource('imported');
-        fetchPriceData(); // Refresh with new data
+        fetchPriceData();
         
       } catch (err) {
         setError(`Failed to parse CSV file: ${err.message}`);
@@ -727,9 +447,16 @@ const PriceCurvesPage = () => {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Price Curves</h1>
           <p className="text-gray-600">Market electricity price analysis and visualization</p>
-          <p className="text-sm text-gray-500">Data source: {priceSource}</p>
+          <p className="text-sm text-gray-500">Data source: {priceSource} • User: {currentUser?.name} • Portfolio: {currentPortfolio?.portfolioId}</p>
         </div>
         <div className="flex space-x-3">
+          <button
+            onClick={() => setShowEscalationSettings(!showEscalationSettings)}
+            className="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg flex items-center space-x-2 hover:bg-gray-50"
+          >
+            <Settings className="w-4 h-4" />
+            <span>Escalation</span>
+          </button>
           <label className="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg flex items-center space-x-2 hover:bg-gray-50 cursor-pointer">
             <Upload className="w-4 h-4" />
             <span>Import CSV</span>
@@ -750,8 +477,86 @@ const PriceCurvesPage = () => {
         </div>
       </div>
 
-      {/* NEW: Escalation Settings Panel */}
-      <EscalationSettingsPanel />
+      {/* Escalation Settings Panel */}
+      {showEscalationSettings && (
+        <div className="bg-white rounded-lg shadow border p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-gray-900">Price Escalation Settings</h3>
+            <div className="flex items-center space-x-2">
+              <span className={`px-2 py-1 rounded text-xs font-medium ${
+                escalationSettings.enabled ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+              }`}>
+                {escalationSettings.enabled ? 'Active' : 'Disabled'}
+              </span>
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Enable Escalation</label>
+              <button
+                onClick={() => updateEscalationSettings({ enabled: !escalationSettings.enabled })}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                  escalationSettings.enabled ? 'bg-green-600' : 'bg-gray-300'
+                }`}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                    escalationSettings.enabled ? 'translate-x-6' : 'translate-x-1'
+                  }`}
+                />
+              </button>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Rate (% p.a.)</label>
+              <input
+                type="number"
+                step="0.1"
+                min="0"
+                max="10"
+                value={escalationSettings.rate}
+                onChange={(e) => updateEscalationSettings({ rate: parseFloat(e.target.value) })}
+                disabled={!escalationSettings.enabled}
+                className="w-full p-2 border border-gray-300 rounded-md disabled:bg-gray-100"
+                placeholder="2.5"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Reference Year</label>
+              <input
+                type="number"
+                min="2020"
+                max="2030"
+                value={escalationSettings.referenceYear}
+                onChange={(e) => updateEscalationSettings({ referenceYear: parseInt(e.target.value) })}
+                disabled={!escalationSettings.enabled}
+                className="w-full p-2 border border-gray-300 rounded-md disabled:bg-gray-100"
+                placeholder="2025"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Actions</label>
+              <button
+                onClick={resetEscalationSettings}
+                className="w-full px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md"
+              >
+                Reset Defaults
+              </button>
+            </div>
+          </div>
+          
+          {escalationSettings.enabled && (
+            <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+              <div className="text-sm text-blue-800">
+                <strong>Example:</strong> $65/MWh in {escalationSettings.referenceYear} becomes ${(65 * Math.pow(1 + escalationSettings.rate/100, 5)).toFixed(2)}/MWh in {escalationSettings.referenceYear + 5}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Configuration Panel */}
       <div className="bg-white rounded-lg shadow border p-6">
@@ -811,7 +616,6 @@ const PriceCurvesPage = () => {
                 className="w-full p-2 border border-gray-300 rounded-md"
               >
                 {selectedProfile === 'storage' ? (
-                  // For storage, show duration options that match your CSV
                   <>
                     <option value="0.5">0.5 Hour Duration</option>
                     <option value="1">1 Hour Duration</option>
@@ -819,14 +623,12 @@ const PriceCurvesPage = () => {
                     <option value="4">4 Hour Duration</option>
                   </>
                 ) : viewMode === 'profiles' ? (
-                  // For profiles comparison, show ALL option
                   <>
-                    <option value="ALL">ALL (Solar/Wind/Baseload/Green/2HR Storage)</option>
+                    <option value="ALL">ALL (Energy/Green/Storage)</option>
                     <option value="Energy">Energy Only</option>
                     <option value="green">Green Certificates Only</option>
                   </>
                 ) : (
-                  // For regions comparison, show standard options
                   availableTypes.filter(type => type !== 'ALL').map(type => (
                     <option key={type} value={type}>
                       {type === 'green' ? 'Green Certificates' : 'Energy'}
@@ -864,6 +666,12 @@ const PriceCurvesPage = () => {
               <option value="yearly">Yearly</option>
             </select>
           </div>
+                      <div className="text-center">
+              <div className="text-gray-600">Escalation</div>
+              <div className={`font-semibold ${escalationSettings.enabled ? 'text-green-600' : 'text-gray-500'}`}>
+                {escalationSettings.enabled ? `${escalationSettings.rate}% p.a.` : 'Disabled'}
+              </div>
+            </div>
         </div>
       </div>
 
@@ -879,110 +687,7 @@ const PriceCurvesPage = () => {
         </div>
       )}
 
-      {/* Summary Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white rounded-lg shadow border p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Average Price</p>
-              <p className="text-2xl font-bold text-gray-900">${summaryStats.avgPrice.toFixed(2)}</p>
-              <p className="text-sm text-gray-500">per MWh</p>
-            </div>
-            <div className="p-3 bg-blue-100 rounded-full">
-              <DollarSign className="w-6 h-6 text-blue-600" />
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow border p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Min Price</p>
-              <p className="text-2xl font-bold text-gray-900">${summaryStats.minPrice.toFixed(2)}</p>
-              <p className="text-sm text-gray-500">per MWh</p>
-            </div>
-            <div className="p-3 bg-green-100 rounded-full">
-              <TrendingUp className="w-6 h-6 text-green-600" />
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow border p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Max Price</p>
-              <p className="text-2xl font-bold text-gray-900">${summaryStats.maxPrice.toFixed(2)}</p>
-              <p className="text-sm text-gray-500">per MWh</p>
-            </div>
-            <div className="p-3 bg-red-100 rounded-full">
-              <Zap className="w-6 h-6 text-red-600" />
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow border p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Data Points</p>
-              <p className="text-2xl font-bold text-gray-900">{summaryStats.dataPoints}</p>
-              <p className="text-sm text-gray-500">periods</p>
-            </div>
-            <div className="p-3 bg-purple-100 rounded-full">
-              <Calendar className="w-6 h-6 text-purple-600" />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Chart Summary */}
-      {priceData.length > 0 && (
-        <div className="bg-white rounded-lg shadow border p-6">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">Chart Configuration Summary</h2>
-          <div className="grid grid-cols-2 md:grid-cols-6 gap-4 text-sm">
-            <div className="text-center">
-              <div className="text-gray-600">View Mode</div>
-              <div className="font-semibold capitalize">{viewMode}</div>
-            </div>
-            <div className="text-center">
-              <div className="text-gray-600">
-                {viewMode === 'profiles' ? 'Region' : viewMode === 'regions' ? 'Profile' : 'Profile'}
-              </div>
-              <div className="font-semibold">
-                {viewMode === 'profiles' ? selectedRegion : 
-                 viewMode === 'regions' ? selectedProfile.charAt(0).toUpperCase() + selectedProfile.slice(1) : 
-                 selectedProfile.charAt(0).toUpperCase() + selectedProfile.slice(1)}
-              </div>
-            </div>
-            <div className="text-center">
-              <div className="text-gray-600">
-                {viewMode === 'types' ? 'Region' : 'Type/Duration'}
-              </div>
-              <div className="font-semibold">
-                {viewMode === 'types' ? selectedRegion : 
-                 selectedProfile === 'storage' ? `${selectedType} Duration` :
-                 selectedType === 'green' ? 'Green Certificates' : 'Energy'}
-              </div>
-            </div>
-            <div className="text-center">
-              <div className="text-gray-600">Period</div>
-              <div className="font-semibold">
-                {timeRange === 'all' ? '2025-2050' : timeRange}
-              </div>
-            </div>
-            <div className="text-center">
-              <div className="text-gray-600">Aggregation</div>
-              <div className="font-semibold capitalize">{aggregationLevel}</div>
-            </div>
-            <div className="text-center">
-              <div className="text-gray-600">Escalation</div>
-              <div className={`font-semibold ${escalationSettings.enabled ? 'text-green-600' : 'text-gray-500'}`}>
-                {escalationSettings.enabled ? `${escalationSettings.rate}% p.a.` : 'Disabled'}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
+  
       {/* Price Curves Chart */}
       {priceData.length > 0 && (
         <div className="bg-white rounded-lg shadow border p-6">
@@ -1031,68 +736,13 @@ const PriceCurvesPage = () => {
         </div>
       )}
 
-      {/* Price Statistics */}
-      {priceData.length > 0 && (
-        <div className="bg-white rounded-lg shadow border p-6">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">Price Statistics</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {lineConfig.map(({ key, color, name }) => {
-              const prices = priceData
-                .map(d => d[key])
-                .filter(p => typeof p === 'number' && p > 0);
-              
-              if (prices.length === 0) return null;
-              
-              const avg = prices.reduce((a, b) => a + b, 0) / prices.length;
-              const min = Math.min(...prices);
-              const max = Math.max(...prices);
-              const variance = prices.reduce((sum, price) => sum + Math.pow(price - avg, 2), 0) / prices.length;
-              const stdDev = Math.sqrt(variance);
-              
-              return (
-                <div key={key} className="border rounded-lg p-4">
-                  <div className="flex items-center gap-2 mb-3">
-                    <div 
-                      className="w-4 h-4 rounded-full"
-                      style={{ backgroundColor: color }}
-                    ></div>
-                    <h3 className="font-semibold">{name}</h3>
-                  </div>
-                  
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Average:</span>
-                      <span className="font-medium">${avg.toFixed(2)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Min:</span>
-                      <span className="font-medium">${min.toFixed(2)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Max:</span>
-                      <span className="font-medium">${max.toFixed(2)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Std Dev:</span>
-                      <span className="font-medium">${stdDev.toFixed(2)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Range:</span>
-                      <span className="font-medium">${(max - min).toFixed(2)}</span>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
+
 
       {/* Raw Data Table */}
       {priceData.length > 0 && (
         <div className="bg-white rounded-lg shadow border p-6">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold text-gray-800">Raw Price Data</h2>
+            <h2 className="text-xl font-semibold text-gray-800">Price Data</h2>
             <button
               onClick={() => setShowRawData(!showRawData)}
               className="flex items-center gap-2 px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
@@ -1170,35 +820,11 @@ const PriceCurvesPage = () => {
           </div>
         </div>
         <div className="mt-3 text-blue-700 text-sm">
-          Price data is sourced from the merchant price context with configurable escalation. 
-          Storage prices use duration-based spreads. Changes to escalation settings apply immediately to all calculations.
+          Price data integrates with your portfolio backend using configurable escalation settings. 
+          All price calculations use the MerchantPriceProvider context for consistency across revenue analysis.
         </div>
       </div>
 
-      {/* Status Display */}
-      {priceData.length > 0 ? (
-        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <CheckCircle className="w-5 h-5 text-green-500" />
-              <span className="text-green-800 font-medium">
-                Price data loaded successfully - {priceData.length} data points across {lineConfig.length} series
-                {escalationSettings.enabled && ` with ${escalationSettings.rate}% annual escalation`}
-              </span>
-            </div>
-            <div className="text-green-600 text-sm">
-              Last updated: {new Date().toLocaleString()}
-            </div>
-          </div>
-        </div>
-      ) : !loading && !error && (
-        <div className="bg-gray-50 rounded-lg p-8 text-center">
-          <div className="text-4xl mb-4">📈</div>
-          <div className="text-gray-600">
-            Configure your view settings to display price curves
-          </div>
-        </div>
-      )}
     </div>
   );
 };
