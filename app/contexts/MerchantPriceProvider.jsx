@@ -1,8 +1,6 @@
 // app/contexts/MerchantPriceProvider.jsx
-'use client'
-
 // Updated to include escalation settings management
-import { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import Papa from 'papaparse';
 import _ from 'lodash';
 import { DEFAULT_DATA_SOURCES } from '@/lib/default_constants';
