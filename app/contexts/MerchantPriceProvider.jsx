@@ -1,5 +1,8 @@
-// MerchantPriceProvider.jsx
-import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+// app/contexts/MerchantPriceProvider.jsx
+'use client'
+
+// Updated to include escalation settings management
+import { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import Papa from 'papaparse';
 import _ from 'lodash';
 import { DEFAULT_DATA_SOURCES } from '@/lib/default_constants';
@@ -30,6 +33,16 @@ export function MerchantPriceProvider({ children }) {
   const [priceSource, setPriceSource] = useState(DEFAULT_DATA_SOURCES.priceCurveSource);
   const [spreadSource, setSpreadSource] = useState('merchant_yearly_spreads.csv');
   const [spreadData, setSpreadData] = useState({});
+  
+  // NEW: Escalation settings that can be configured
+  const [escalationSettings, setEscalationSettings] = useState({
+    enabled: true,
+    rate: 2.5,          // % per annum
+    referenceYear: 2025,
+    applyToStorage: true,
+    applyToRenewables: true
+  });
+  
   const [priceData, setPriceData] = useState({
     monthly: {
       solar: { Energy: {}, green: {} },
@@ -47,6 +60,14 @@ export function MerchantPriceProvider({ children }) {
       baseload: { Energy: {}, green: {} }
     }
   });
+
+  // Apply escalation to a base price
+  const applyEscalation = useCallback((basePrice, year) => {
+    if (!escalationSettings.enabled || !basePrice) return basePrice;
+    
+    const yearDiff = year - escalationSettings.referenceYear;
+    return basePrice * Math.pow(1 + escalationSettings.rate / 100, yearDiff);
+  }, [escalationSettings]);
 
   const aggregateData = (monthlyData) => {
     const aggregated = {
@@ -234,35 +255,35 @@ export function MerchantPriceProvider({ children }) {
     try {
       console.log(`getMerchantPrice called: profile=${profile}, type=${type}, region=${region}, time=${timeStr}`);
       
+      let basePrice = 0;
+      let targetYear = new Date().getFullYear(); // Default year for escalation
+      
       if (profile === 'storage') {
         // For storage, extract year from timeStr and use type as duration
-        let year;
         if (typeof timeStr === 'number') {
-          year = timeStr.toString();
+          targetYear = timeStr;
         } else if (typeof timeStr === 'string') {
           if (timeStr.includes('/')) {
             // DD/MM/YYYY format
             const [day, month, yearPart] = timeStr.split('/');
-            year = yearPart;
+            targetYear = parseInt(yearPart);
           } else if (timeStr.includes('-Q')) {
             // Quarterly format like "2025-Q1"
-            year = timeStr.split('-')[0];
+            targetYear = parseInt(timeStr.split('-')[0]);
           } else {
             // Assume it's just a year
-            year = timeStr;
+            targetYear = parseInt(timeStr);
           }
         }
         
         // Try to get spread from data, but extend to all years if not available
-        let spread = spreadData[region]?.[type]?.[year];
+        let spread = spreadData[region]?.[type]?.[targetYear];
         
         if (!spread) {
           // If no data for this year, try to find the closest available year
           const availableYears = Object.keys(spreadData[region]?.[type] || {}).map(y => parseInt(y)).sort();
           
           if (availableYears.length > 0) {
-            const targetYear = parseInt(year);
-            
             if (targetYear <= Math.min(...availableYears)) {
               // Use earliest year if target is before data range
               spread = spreadData[region]?.[type]?.[availableYears[0]];
@@ -280,35 +301,64 @@ export function MerchantPriceProvider({ children }) {
         }
         
         // Fallback to default if still no spread found
-        spread = spread ?? 160;
+        basePrice = spread ?? 160;
         
-        console.log(`Storage price lookup: region=${region}, duration=${type}, year=${year}, spread=${spread}`);
-        return spread;
+        // Apply escalation if enabled for storage
+        if (escalationSettings.enabled && escalationSettings.applyToStorage) {
+          basePrice = applyEscalation(basePrice, targetYear);
+        }
+        
+        console.log(`Storage price lookup: region=${region}, duration=${type}, year=${targetYear}, basePrice=${spread ?? 160}, escalatedPrice=${basePrice}`);
+        return basePrice;
       }
       
-      // For non-storage profiles
+      // For non-storage profiles, extract year for escalation
       if (typeof timeStr === 'number' || (!timeStr.includes('/') && !timeStr.includes('-'))) {
-        const yearKey = timeStr.toString();
-        const price = priceData.yearly[profile]?.[type]?.[region]?.[yearKey] || 0;
-        console.log(`Yearly price lookup: ${price}`);
-        return price;
+        targetYear = parseInt(timeStr.toString());
+        basePrice = priceData.yearly[profile]?.[type]?.[region]?.[targetYear] || 0;
+      } else if (timeStr.includes('-Q')) {
+        targetYear = parseInt(timeStr.split('-')[0]);
+        basePrice = priceData.quarterly[profile]?.[type]?.[region]?.[timeStr] || 0;
+      } else if (timeStr.includes('/')) {
+        // Monthly lookup with DD/MM/YYYY format
+        const [day, month, year] = timeStr.split('/');
+        targetYear = parseInt(year);
+        basePrice = priceData.monthly[profile]?.[type]?.[region]?.[timeStr]?.price || 0;
       }
       
-      if (timeStr.includes('-Q')) {
-        const price = priceData.quarterly[profile]?.[type]?.[region]?.[timeStr] || 0;
-        console.log(`Quarterly price lookup: ${price}`);
-        return price;
+      // Apply escalation if enabled for renewables
+      if (escalationSettings.enabled && escalationSettings.applyToRenewables && basePrice > 0) {
+        const escalatedPrice = applyEscalation(basePrice, targetYear);
+        console.log(`Renewable price lookup: basePrice=${basePrice}, year=${targetYear}, escalatedPrice=${escalatedPrice}`);
+        return escalatedPrice;
       }
       
-      // Monthly lookup with DD/MM/YYYY format
-      const price = priceData.monthly[profile]?.[type]?.[region]?.[timeStr]?.price || 0;
-      console.log(`Monthly price lookup: ${price}`);
-      return price;
+      console.log(`Price lookup (no escalation): ${basePrice}`);
+      return basePrice;
     } catch (error) {
       console.warn(`Error getting merchant price for profile=${profile}, type=${type}, region=${region}, time=${timeStr}`, error);
       return profile === 'storage' ? 160 : 0;
     }
-  }, [priceData, spreadData]);
+  }, [priceData, spreadData, escalationSettings, applyEscalation]);
+
+  // NEW: Function to update escalation settings
+  const updateEscalationSettings = useCallback((newSettings) => {
+    setEscalationSettings(prev => ({
+      ...prev,
+      ...newSettings
+    }));
+  }, []);
+
+  // NEW: Function to reset escalation to defaults
+  const resetEscalationSettings = useCallback(() => {
+    setEscalationSettings({
+      enabled: true,
+      rate: 2.5,
+      referenceYear: 2025,
+      applyToStorage: true,
+      applyToRenewables: true
+    });
+  }, []);
 
   const value = {
     merchantPrices: priceData.monthly,
@@ -317,7 +367,13 @@ export function MerchantPriceProvider({ children }) {
     setPriceSource,
     setMerchantPrices,
     spreadSource, 
-    setSpreadSource
+    setSpreadSource,
+    
+    // NEW: Escalation settings
+    escalationSettings,
+    updateEscalationSettings,
+    resetEscalationSettings,
+    applyEscalation
   };
 
   return (

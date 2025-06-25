@@ -1,3 +1,4 @@
+// app/pages/price-curves/page.jsx - Updated with escalation settings
 'use client'
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -16,8 +17,278 @@ import {
   FileText
 } from 'lucide-react';
 
+// Escalation Settings Panel Component (embedded)
+const EscalationSettingsPanel = () => {
+  const { 
+    escalationSettings, 
+    updateEscalationSettings, 
+    resetEscalationSettings 
+  } = useMerchantPrices();
+  
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [localSettings, setLocalSettings] = useState(escalationSettings);
+
+  // Sync with context when escalation settings change
+  useEffect(() => {
+    setLocalSettings(escalationSettings);
+  }, [escalationSettings]);
+
+  // Handle input changes
+  const handleSettingChange = (field, value) => {
+    const newSettings = { ...localSettings, [field]: value };
+    setLocalSettings(newSettings);
+    updateEscalationSettings(newSettings);
+  };
+
+  // Reset to defaults
+  const handleReset = () => {
+    resetEscalationSettings();
+    setLocalSettings({
+      enabled: true,
+      rate: 2.5,
+      referenceYear: 2025,
+      applyToStorage: true,
+      applyToRenewables: true
+    });
+  };
+
+  return (
+    <div className="bg-white rounded-lg shadow border p-6">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-3">
+          <div className="p-2 bg-blue-100 rounded-lg">
+            <TrendingUp className="w-5 h-5 text-blue-600" />
+          </div>
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900">Price Escalation Settings</h3>
+            <p className="text-sm text-gray-600">Configure how prices are escalated over time</p>
+          </div>
+        </div>
+        
+        <div className="flex items-center space-x-2">
+          {/* Status indicator */}
+          <div className={`flex items-center space-x-1 px-2 py-1 rounded-full text-xs font-medium ${
+            escalationSettings.enabled 
+              ? 'bg-green-100 text-green-800' 
+              : 'bg-gray-100 text-gray-800'
+          }`}>
+            {escalationSettings.enabled ? (
+              <CheckCircle className="w-3 h-3" />
+            ) : (
+              <AlertCircle className="w-3 h-3" />
+            )}
+            <span>{escalationSettings.enabled ? 'Enabled' : 'Disabled'}</span>
+          </div>
+
+          <button
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="flex items-center space-x-1 px-3 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
+          >
+            <span>{isExpanded ? 'Hide' : 'Configure'}</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Quick summary when collapsed */}
+      {!isExpanded && (
+        <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
+            <div className="text-center">
+              <div className="text-gray-600">Status</div>
+              <div className="font-semibold text-blue-900">
+                {escalationSettings.enabled ? 'Active' : 'Disabled'}
+              </div>
+            </div>
+            <div className="text-center">
+              <div className="text-gray-600">Rate</div>
+              <div className="font-semibold text-blue-900">
+                {escalationSettings.rate}% p.a.
+              </div>
+            </div>
+            <div className="text-center">
+              <div className="text-gray-600">Reference Year</div>
+              <div className="font-semibold text-blue-900">
+                {escalationSettings.referenceYear}
+              </div>
+            </div>
+            <div className="text-center">
+              <div className="text-gray-600">Applies To</div>
+              <div className="font-semibold text-blue-900">
+                {escalationSettings.applyToStorage && escalationSettings.applyToRenewables ? 'All' :
+                 escalationSettings.applyToRenewables ? 'Renewables' :
+                 escalationSettings.applyToStorage ? 'Storage' : 'None'}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Expanded configuration */}
+      {isExpanded && (
+        <div className="mt-6 space-y-6">
+          {/* Main Settings */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Enable Escalation
+              </label>
+              <div className="flex items-center space-x-3">
+                <button
+                  onClick={() => handleSettingChange('enabled', !localSettings.enabled)}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                    localSettings.enabled ? 'bg-green-600' : 'bg-gray-300'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      localSettings.enabled ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+                <span className="text-sm text-gray-600">
+                  {localSettings.enabled ? 'Escalation applied' : 'No escalation'}
+                </span>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Annual Escalation Rate (%)
+              </label>
+              <input
+                type="number"
+                step="0.1"
+                min="0"
+                max="10"
+                value={localSettings.rate}
+                onChange={(e) => handleSettingChange('rate', parseFloat(e.target.value))}
+                disabled={!localSettings.enabled}
+                className="w-full p-2 border border-gray-300 rounded-md disabled:bg-gray-100 disabled:text-gray-500"
+                placeholder="2.5"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Reference Year
+              </label>
+              <input
+                type="number"
+                min="2020"
+                max="2030"
+                value={localSettings.referenceYear}
+                onChange={(e) => handleSettingChange('referenceYear', parseInt(e.target.value))}
+                disabled={!localSettings.enabled}
+                className="w-full p-2 border border-gray-300 rounded-md disabled:bg-gray-100 disabled:text-gray-500"
+                placeholder="2025"
+              />
+            </div>
+          </div>
+
+          {/* Application Settings */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-3">
+              Apply Escalation To:
+            </label>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="flex items-center space-x-3">
+                <input
+                  type="checkbox"
+                  id="applyToRenewables"
+                  checked={localSettings.applyToRenewables}
+                  onChange={(e) => handleSettingChange('applyToRenewables', e.target.checked)}
+                  disabled={!localSettings.enabled}
+                  className="h-4 w-4 text-green-600 border-gray-300 rounded disabled:opacity-50"
+                />
+                <label htmlFor="applyToRenewables" className="text-sm text-gray-700">
+                  Renewable Assets (Solar, Wind)
+                </label>
+              </div>
+
+              <div className="flex items-center space-x-3">
+                <input
+                  type="checkbox"
+                  id="applyToStorage"
+                  checked={localSettings.applyToStorage}
+                  onChange={(e) => handleSettingChange('applyToStorage', e.target.checked)}
+                  disabled={!localSettings.enabled}
+                  className="h-4 w-4 text-green-600 border-gray-300 rounded disabled:opacity-50"
+                />
+                <label htmlFor="applyToStorage" className="text-sm text-gray-700">
+                  Storage Assets
+                </label>
+              </div>
+            </div>
+          </div>
+
+          {/* Example Calculation */}
+          {localSettings.enabled && (
+            <div className="p-4 bg-gray-50 rounded-lg">
+              <h4 className="text-sm font-medium text-gray-900 mb-3">Example Calculation</h4>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                <div>
+                  <div className="text-gray-600">Base Price (2025)</div>
+                  <div className="font-semibold">$65.00/MWh</div>
+                </div>
+                <div>
+                  <div className="text-gray-600">Year 5 (2030)</div>
+                  <div className="font-semibold text-blue-600">
+                    ${(65 * Math.pow(1 + localSettings.rate/100, 5)).toFixed(2)}/MWh
+                  </div>
+                </div>
+                <div>
+                  <div className="text-gray-600">Year 10 (2035)</div>
+                  <div className="font-semibold text-green-600">
+                    ${(65 * Math.pow(1 + localSettings.rate/100, 10)).toFixed(2)}/MWh
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Information Panel */}
+          <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="flex items-start space-x-3">
+              <div className="text-sm text-blue-800">
+                <h4 className="font-medium mb-2">How Escalation Works</h4>
+                <ul className="space-y-1 text-blue-700">
+                  <li>• Base prices from your price curves are escalated using the formula: Price × (1 + rate/100)^(year - reference_year)</li>
+                  <li>• This affects both renewable energy/green prices and storage price spreads</li>
+                  <li>• Revenue calculations automatically use escalated prices for future years</li>
+                  <li>• Contract indexation is separate and applied on top of escalated merchant prices</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex items-center justify-between pt-4 border-t border-gray-200">
+            <div className="text-sm text-gray-600">
+              Changes are applied immediately to all price calculations
+            </div>
+            <button
+              onClick={handleReset}
+              className="flex items-center space-x-2 px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md transition-colors"
+            >
+              <span>Reset to Defaults</span>
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 const PriceCurvesPage = () => {
-  const { getMerchantPrice, priceSource, setPriceSource, setMerchantPrices, spreadSource, setSpreadSource } = useMerchantPrices();
+  const { 
+    getMerchantPrice, 
+    priceSource, 
+    setPriceSource, 
+    setMerchantPrices, 
+    spreadSource, 
+    setSpreadSource,
+    escalationSettings 
+  } = useMerchantPrices();
   
   // State management
   const [priceData, setPriceData] = useState([]);
@@ -126,6 +397,7 @@ const PriceCurvesPage = () => {
       const chartData = [];
       
       console.log(`Generating price data for ${timeIntervals.length} time intervals from ${timeIntervals[0]} to ${timeIntervals[timeIntervals.length - 1]}`);
+      console.log('Using escalation settings:', escalationSettings);
       
       timeIntervals.forEach((timeInterval, index) => {
         const dataPoint = { 
@@ -281,10 +553,10 @@ const PriceCurvesPage = () => {
     }
   };
 
-  // Load data when parameters change
+  // Load data when parameters change OR when escalation settings change
   useEffect(() => {
     fetchPriceData();
-  }, [viewMode, selectedRegion, selectedProfile, selectedType, timeRange, aggregationLevel, getMerchantPrice]);
+  }, [viewMode, selectedRegion, selectedProfile, selectedType, timeRange, aggregationLevel, getMerchantPrice, escalationSettings]);
 
   // Calculate summary statistics
   const summaryStats = useMemo(() => {
@@ -478,6 +750,9 @@ const PriceCurvesPage = () => {
         </div>
       </div>
 
+      {/* NEW: Escalation Settings Panel */}
+      <EscalationSettingsPanel />
+
       {/* Configuration Panel */}
       <div className="bg-white rounded-lg shadow border p-6">
         <h3 className="text-lg font-semibold mb-4">Chart Configuration</h3>
@@ -663,7 +938,7 @@ const PriceCurvesPage = () => {
       {priceData.length > 0 && (
         <div className="bg-white rounded-lg shadow border p-6">
           <h2 className="text-xl font-semibold text-gray-800 mb-4">Chart Configuration Summary</h2>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
+          <div className="grid grid-cols-2 md:grid-cols-6 gap-4 text-sm">
             <div className="text-center">
               <div className="text-gray-600">View Mode</div>
               <div className="font-semibold capitalize">{viewMode}</div>
@@ -698,6 +973,12 @@ const PriceCurvesPage = () => {
               <div className="text-gray-600">Aggregation</div>
               <div className="font-semibold capitalize">{aggregationLevel}</div>
             </div>
+            <div className="text-center">
+              <div className="text-gray-600">Escalation</div>
+              <div className={`font-semibold ${escalationSettings.enabled ? 'text-green-600' : 'text-gray-500'}`}>
+                {escalationSettings.enabled ? `${escalationSettings.rate}% p.a.` : 'Disabled'}
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -707,6 +988,11 @@ const PriceCurvesPage = () => {
         <div className="bg-white rounded-lg shadow border p-6">
           <h2 className="text-xl font-semibold text-gray-800 mb-4">
             Price Curves - {viewMode.charAt(0).toUpperCase() + viewMode.slice(1)} Comparison
+            {escalationSettings.enabled && (
+              <span className="text-sm font-normal text-green-600 ml-2">
+                (Including {escalationSettings.rate}% annual escalation)
+              </span>
+            )}
           </h2>
           <div className="h-96">
             <ResponsiveContainer width="100%" height="100%">
@@ -856,7 +1142,7 @@ const PriceCurvesPage = () => {
           <Database className="w-5 h-5 mr-2" />
           Data Source Information
         </h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
           <div>
             <div className="text-blue-700 font-medium">Current Source:</div>
             <div className="text-blue-600">{priceSource}</div>
@@ -873,10 +1159,19 @@ const PriceCurvesPage = () => {
                `${availableTypes.length} contract types`}
             </div>
           </div>
+          <div>
+            <div className="text-blue-700 font-medium">Escalation:</div>
+            <div className="text-blue-600">
+              {escalationSettings.enabled ? 
+                `${escalationSettings.rate}% p.a. from ${escalationSettings.referenceYear}` : 
+                'Disabled'
+              }
+            </div>
+          </div>
         </div>
         <div className="mt-3 text-blue-700 text-sm">
-          Price data is sourced from the merchant price context which aggregates multiple data sources including 
-          default CSV files and imported data. Use the import feature to upload your own price curves.
+          Price data is sourced from the merchant price context with configurable escalation. 
+          Storage prices use duration-based spreads. Changes to escalation settings apply immediately to all calculations.
         </div>
       </div>
 
@@ -888,6 +1183,7 @@ const PriceCurvesPage = () => {
               <CheckCircle className="w-5 h-5 text-green-500" />
               <span className="text-green-800 font-medium">
                 Price data loaded successfully - {priceData.length} data points across {lineConfig.length} series
+                {escalationSettings.enabled && ` with ${escalationSettings.rate}% annual escalation`}
               </span>
             </div>
             <div className="text-green-600 text-sm">
