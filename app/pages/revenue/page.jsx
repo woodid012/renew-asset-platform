@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useUser } from '@/app/contexts/UserContext';
 import { useMerchantPrices } from '@/app/contexts/MerchantPriceProvider';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar, AreaChart, Area } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { 
   TrendingUp, 
   DollarSign,
@@ -37,12 +37,13 @@ export default function IntegratedRevenuePage() {
   const [portfolioName, setPortfolioName] = useState('Portfolio');
   const [loading, setLoading] = useState(true);
   
-  // Analysis configuration - simplified
-  const [revenueFilter, setRevenueFilter] = useState('all'); // all, energy, green
+  // Analysis configuration
+  const [revenueFilter, setRevenueFilter] = useState('all');
   const [selectedRegion, setSelectedRegion] = useState('ALL');
   const [selectedYear, setSelectedYear] = useState('2025');
-  const [viewMode, setViewMode] = useState('annual'); // annual, quarterly
+  const [viewMode, setViewMode] = useState('annual');
   const [analysisYears, setAnalysisYears] = useState(30);
+  const [assetBreakdownView, setAssetBreakdownView] = useState('portfolio');
   
   // Results
   const [revenueProjections, setRevenueProjections] = useState([]);
@@ -59,13 +60,6 @@ export default function IntegratedRevenuePage() {
   // Auto-recalculate when parameters change
   useEffect(() => {
     if (Object.keys(assets).length > 0) {
-      console.log('Auto-calculating revenue projections with:', {
-        assetsCount: Object.keys(assets).length,
-        revenueFilter,
-        selectedRegion,
-        analysisYears,
-        priceSource
-      });
       calculateRevenueProjections();
       validateAssets();
     }
@@ -76,22 +70,13 @@ export default function IntegratedRevenuePage() {
     
     setLoading(true);
     try {
-      console.log(`Loading portfolio: userId=${currentUser.id}, portfolioId=${currentPortfolio.portfolioId}`);
-      
       const response = await fetch(`/api/portfolio?userId=${currentUser.id}&portfolioId=${currentPortfolio.portfolioId}`);
       
       if (response.ok) {
         const portfolioData = await response.json();
-        console.log('Portfolio data loaded:', {
-          assetsCount: Object.keys(portfolioData.assets || {}).length,
-          portfolioName: portfolioData.portfolioName,
-          priceSource
-        });
-        
         setAssets(portfolioData.assets || {});
         setConstants({
           ...portfolioData.constants,
-          // Add default constants if missing
           HOURS_IN_YEAR: 8760,
           volumeVariation: portfolioData.constants?.volumeVariation || 20,
           greenPriceVariation: portfolioData.constants?.greenPriceVariation || 20,
@@ -100,9 +85,7 @@ export default function IntegratedRevenuePage() {
           referenceYear: 2025
         });
         setPortfolioName(portfolioData.portfolioName || 'Portfolio');
-        
       } else if (response.status === 404) {
-        console.log('Portfolio not found, starting fresh');
         setAssets({});
         setConstants({});
       }
@@ -119,7 +102,6 @@ export default function IntegratedRevenuePage() {
     const startYear = parseInt(selectedYear);
     let timeIntervals;
     
-    // Generate time intervals based on view mode
     if (viewMode === 'quarterly') {
       timeIntervals = [];
       for (let year = startYear; year < startYear + analysisYears; year++) {
@@ -128,48 +110,30 @@ export default function IntegratedRevenuePage() {
         }
       }
     } else {
-      // Annual view
       timeIntervals = Array.from({ length: analysisYears }, (_, i) => startYear + i);
     }
     
-    // Filter assets by selected region
     const filteredAssets = selectedRegion === 'ALL' 
       ? assets 
       : Object.fromEntries(
           Object.entries(assets).filter(([key, asset]) => asset.state === selectedRegion)
         );
     
-    console.log(`Generating portfolio data for ${timeIntervals.length} ${viewMode} periods`);
-    console.log('Using price source:', priceSource);
-    console.log('Region filter:', selectedRegion);
-    console.log('Assets after region filter:', Object.keys(filteredAssets).length, 'of', Object.keys(assets).length);
-    
-    // Generate portfolio data using the filtered assets
     const portfolioData = generatePortfolioData(filteredAssets, timeIntervals, constants, getMerchantPrice);
     
-    console.log('Generated portfolio data:', portfolioData.slice(0, 2));
-    
-    // Process for visualization
     const visibleAssets = Object.fromEntries(
       Object.values(filteredAssets).map(asset => [asset.name, true])
     );
     
     const processedData = processPortfolioData(portfolioData, filteredAssets, visibleAssets);
-    
-    console.log('Processed data sample:', processedData.slice(0, 2));
-    
-    // Don't apply revenue filter to the data itself - let the chart handle display
     setRevenueProjections(processedData);
     
-    // Calculate portfolio summary using filtered assets (use original data for summary)
     const summary = calculatePortfolioSummary(portfolioData, filteredAssets);
-    console.log('Portfolio summary:', summary);
     setPortfolioSummary(summary);
   };
 
   const validateAssets = () => {
     const validations = {};
-    // Filter assets by selected region for validation
     const assetsToValidate = selectedRegion === 'ALL' 
       ? Object.values(assets)
       : Object.values(assets).filter(asset => asset.state === selectedRegion);
@@ -189,60 +153,74 @@ export default function IntegratedRevenuePage() {
     }
   };
 
-  // Helper function to get asset colors
-  const getAssetColor = (index) => {
-    const colors = ['#4CAF50', '#2196F3', '#FF9800', '#9C27B0', '#F44336', '#00BCD4', '#795548', '#607D8B'];
-    return colors[index % colors.length];
-  };
-
-  // Helper function to prepare data for asset breakdown chart
+  // Prepare data for asset breakdown table
   const prepareAssetBreakdownData = () => {
     if (revenueProjections.length === 0) return [];
     
-    // Filter assets by selected region
     const filteredAssets = selectedRegion === 'ALL' 
       ? assets 
       : Object.fromEntries(
           Object.entries(assets).filter(([key, asset]) => asset.state === selectedRegion)
         );
     
-    // Take only first 10 years for readability
-    const dataToShow = revenueProjections.slice(0, Math.min(10, revenueProjections.length));
-    
-    return dataToShow.map(period => {
-      const chartData = {
-        year: period.timeInterval
-      };
+    if (assetBreakdownView === 'portfolio') {
+      return revenueProjections.map(period => {
+        const rowData = { year: period.timeInterval };
+        
+        Object.values(filteredAssets).forEach(asset => {
+          let assetRevenue = 0;
+          switch (revenueFilter) {
+            case 'energy':
+              assetRevenue = (period[`${asset.name} Contracted Energy`] || 0) + 
+                            (period[`${asset.name} Merchant Energy`] || 0);
+              break;
+            case 'green':
+              assetRevenue = (period[`${asset.name} Contracted Green`] || 0) + 
+                            (period[`${asset.name} Merchant Green`] || 0);
+              break;
+            default:
+              assetRevenue = (period[`${asset.name} Contracted Green`] || 0) + 
+                            (period[`${asset.name} Contracted Energy`] || 0) + 
+                            (period[`${asset.name} Merchant Green`] || 0) + 
+                            (period[`${asset.name} Merchant Energy`] || 0);
+              break;
+          }
+          rowData[asset.name] = assetRevenue;
+        });
+        
+        return rowData;
+      });
+    } else {
+      // Individual asset view
+      const selectedAsset = Object.values(filteredAssets).find(a => a.name === assetBreakdownView);
+      if (!selectedAsset) return [];
       
-      // Add each filtered asset's revenue based on current filter
-      Object.values(filteredAssets).forEach(asset => {
-        let assetRevenue = 0;
+      return revenueProjections.map(period => {
+        const rowData = { year: period.timeInterval };
         
         switch (revenueFilter) {
           case 'energy':
-            assetRevenue = (period[`${asset.name} Contracted Energy`] || 0) + 
-                          (period[`${asset.name} Merchant Energy`] || 0);
+            rowData['Contracted'] = period[`${selectedAsset.name} Contracted Energy`] || 0;
+            rowData['Merchant'] = period[`${selectedAsset.name} Merchant Energy`] || 0;
             break;
           case 'green':
-            assetRevenue = (period[`${asset.name} Contracted Green`] || 0) + 
-                          (period[`${asset.name} Merchant Green`] || 0);
+            rowData['Contracted'] = period[`${selectedAsset.name} Contracted Green`] || 0;
+            rowData['Merchant'] = period[`${selectedAsset.name} Merchant Green`] || 0;
             break;
           default:
-            assetRevenue = (period[`${asset.name} Contracted Green`] || 0) + 
-                          (period[`${asset.name} Contracted Energy`] || 0) + 
-                          (period[`${asset.name} Merchant Green`] || 0) + 
-                          (period[`${asset.name} Merchant Energy`] || 0);
+            rowData['Contracted Green'] = period[`${selectedAsset.name} Contracted Green`] || 0;
+            rowData['Contracted Energy'] = period[`${selectedAsset.name} Contracted Energy`] || 0;
+            rowData['Merchant Green'] = period[`${selectedAsset.name} Merchant Green`] || 0;
+            rowData['Merchant Energy'] = period[`${selectedAsset.name} Merchant Energy`] || 0;
             break;
         }
         
-        chartData[asset.name] = assetRevenue;
+        return rowData;
       });
-      
-      return chartData;
-    });
+    }
   };
 
-  // Calculate max revenue for fixed Y-axis - handle filtered display
+  // Calculate max revenue for fixed Y-axis
   const maxRevenue = useMemo(() => {
     if (revenueProjections.length === 0) return 100;
     
@@ -256,10 +234,26 @@ export default function IntegratedRevenuePage() {
           return period.total || 0;
       }
     }));
-    return Math.ceil(maxValue * 1.1); // Add 10% padding
+    return Math.ceil(maxValue * 1.1);
   }, [revenueProjections, revenueFilter]);
 
-  // Show loading state if no user/portfolio selected
+  // Get available assets for breakdown dropdown
+  const getAvailableAssetsForBreakdown = () => {
+    const filteredAssets = selectedRegion === 'ALL' 
+      ? assets 
+      : Object.fromEntries(
+          Object.entries(assets).filter(([key, asset]) => asset.state === selectedRegion)
+        );
+    
+    return [
+      { value: 'portfolio', label: 'Portfolio (All Assets)' },
+      ...Object.values(filteredAssets).map(asset => ({
+        value: asset.name,
+        label: `${asset.name} (${asset.type}, ${asset.capacity}MW)`
+      }))
+    ];
+  };
+
   if (!currentUser || !currentPortfolio) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -284,6 +278,7 @@ export default function IntegratedRevenuePage() {
   }
 
   const assetBreakdownData = prepareAssetBreakdownData();
+  const availableAssetsForBreakdown = getAvailableAssetsForBreakdown();
 
   return (
     <div className="p-6 space-y-6">
@@ -302,7 +297,7 @@ export default function IntegratedRevenuePage() {
         </div>
       </div>
 
-      {/* Configuration Panel - Simplified */}
+      {/* Configuration Panel */}
       <div className="bg-white rounded-lg shadow border p-6">
         <h3 className="text-lg font-semibold mb-4">Analysis Configuration</h3>
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
@@ -442,7 +437,7 @@ export default function IntegratedRevenuePage() {
         </div>
       </div>
 
-      {/* Revenue Projections Chart with Fixed Y-Axis */}
+      {/* Revenue Projections Chart */}
       {revenueProjections.length > 0 && (
         <div className="bg-white rounded-lg shadow border p-6">
           <h3 className="text-lg font-semibold mb-4">
@@ -511,261 +506,139 @@ export default function IntegratedRevenuePage() {
         </div>
       )}
 
-      {/* Revenue Type Filter Explanation */}
-      <div className="bg-white rounded-lg shadow border p-6">
-        <h3 className="text-lg font-semibold mb-4">Revenue Filter Options</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {[
-            { key: 'all', name: 'All Revenue', description: 'Shows both energy and green revenue streams', color: 'border-green-500 bg-green-50' },
-            { key: 'energy', name: 'Energy Only', description: 'Shows only electricity energy revenue', color: 'border-blue-500 bg-blue-50' },
-            { key: 'green', name: 'Green Only', description: 'Shows only green certificate revenue', color: 'border-yellow-500 bg-yellow-50' }
-          ].map(filter => {
-            const isSelected = revenueFilter === filter.key;
-            
-            return (
-              <div 
-                key={filter.key} 
-                className={`p-4 border rounded-lg cursor-pointer transition-colors ${
-                  isSelected ? filter.color : 'border-gray-200 hover:border-gray-300'
-                }`}
-                onClick={() => setRevenueFilter(filter.key)}
-              >
-                <h4 className="font-medium text-gray-900 mb-2">{filter.name}</h4>
-                <p className="text-sm text-gray-600 mb-2">{filter.description}</p>
-                {isSelected && (
-                  <div className="flex items-center text-green-600 text-sm">
-                    <CheckCircle className="w-4 h-4 mr-1" />
-                    Selected
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Asset Revenue Breakdown */}
+      {/* Asset Revenue Breakdown Table */}
       {(() => {
         const filteredAssets = selectedRegion === 'ALL' 
           ? assets 
           : Object.fromEntries(
               Object.entries(assets).filter(([key, asset]) => asset.state === selectedRegion)
             );
-        return Object.keys(filteredAssets).length > 1 && assetBreakdownData.length > 0;
+        return Object.keys(filteredAssets).length > 0 && assetBreakdownData.length > 0;
       })() && (
         <div className="bg-white rounded-lg shadow border p-6">
-          <h3 className="text-lg font-semibold mb-4">
-            Asset Revenue Breakdown (First 10 Years) - {
-              revenueFilter === 'all' ? 'All Revenue' :
-              revenueFilter === 'energy' ? 'Energy Only' :
-              'Green Only'
-            }
-            {selectedRegion !== 'ALL' && <span className="text-sm font-normal text-gray-500"> - {selectedRegion} Region</span>}
-          </h3>
-          <ResponsiveContainer width="100%" height={400}>
-            <BarChart data={assetBreakdownData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="year" />
-              <YAxis tickFormatter={(value) => `$${value}M`} />
-              <Tooltip formatter={(value) => [`${value.toFixed(2)}M`, '']} />
-              <Legend />
-              {(() => {
-                const filteredAssets = selectedRegion === 'ALL' 
-                  ? assets 
-                  : Object.fromEntries(
-                      Object.entries(assets).filter(([key, asset]) => asset.state === selectedRegion)
-                    );
-                return Object.values(filteredAssets).map((asset, index) => (
-                  <Bar
-                    key={asset.name}
-                    dataKey={asset.name}
-                    stackId="assets"
-                    fill={getAssetColor(index)}
-                    name={asset.name}
-                  />
-                ));
-              })()}
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      )}
-
-      {/* Asset Details Table */}
-      <div className="bg-white rounded-lg shadow border p-6">
-        <h3 className="text-lg font-semibold mb-4">
-          Asset Portfolio Analysis
-          {selectedRegion !== 'ALL' && <span className="text-sm font-normal text-gray-500"> - {selectedRegion} Region</span>}
-        </h3>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b">
-                <th className="text-left py-2">Asset</th>
-                <th className="text-right py-2">Type</th>
-                <th className="text-right py-2">Region</th>
-                <th className="text-right py-2">Capacity (MW)</th>
-                <th className="text-right py-2">Contracts</th>
-                <th className="text-right py-2">Avg Revenue ($M)</th>
-                <th className="text-right py-2">Contracted %</th>
-                <th className="text-right py-2">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {Object.values(assets)
-                .filter(asset => selectedRegion === 'ALL' || asset.state === selectedRegion)
-                .map(asset => {
-                const validation = assetValidations[asset.name];
-                const assetRevenue = revenueProjections.length > 0 ? 
-                  revenueProjections.reduce((sum, proj) => {
-                    let total = 0;
-                    switch (revenueFilter) {
-                      case 'energy':
-                        total = (proj[`${asset.name} Contracted Energy`] || 0) + 
-                               (proj[`${asset.name} Merchant Energy`] || 0);
-                        break;
-                      case 'green':
-                        total = (proj[`${asset.name} Contracted Green`] || 0) + 
-                               (proj[`${asset.name} Merchant Green`] || 0);
-                        break;
-                      default:
-                        total = (proj[`${asset.name} Contracted Green`] || 0) + 
-                               (proj[`${asset.name} Contracted Energy`] || 0) + 
-                               (proj[`${asset.name} Merchant Green`] || 0) + 
-                               (proj[`${asset.name} Merchant Energy`] || 0);
-                        break;
-                    }
-                    return sum + total;
-                  }, 0) / revenueProjections.length : 0;
-                
-                const contractedRev = revenueProjections.length > 0 ? 
-                  revenueProjections.reduce((sum, proj) => {
-                    let contracted = 0;
-                    switch (revenueFilter) {
-                      case 'energy':
-                        contracted = (proj[`${asset.name} Contracted Energy`] || 0);
-                        break;
-                      case 'green':
-                        contracted = (proj[`${asset.name} Contracted Green`] || 0);
-                        break;
-                      default:
-                        contracted = (proj[`${asset.name} Contracted Green`] || 0) + 
-                                   (proj[`${asset.name} Contracted Energy`] || 0);
-                        break;
-                    }
-                    return sum + contracted;
-                  }, 0) / revenueProjections.length : 0;
-                
-                const contractedPercent = assetRevenue > 0 ? (contractedRev / assetRevenue) * 100 : 0;
-                
-                return (
-                  <tr key={asset.name} className="border-b">
-                    <td className="py-2">
-                      <div className="flex items-center space-x-2">
-                        {getAssetIcon(asset.type)}
-                        <span className="font-medium">{asset.name}</span>
-                      </div>
-                    </td>
-                    <td className="text-right py-2 capitalize">{asset.type}</td>
-                    <td className="text-right py-2">
-                      <span className={`px-2 py-1 text-xs rounded-full ${
-                        selectedRegion !== 'ALL' && asset.state === selectedRegion 
-                          ? 'bg-green-100 text-green-800' 
-                          : 'bg-gray-100 text-gray-800'
-                      }`}>
-                        {asset.state || 'N/A'}
-                      </span>
-                    </td>
-                    <td className="text-right py-2">{asset.capacity}</td>
-                    <td className="text-right py-2">{asset.contracts?.length || 0}</td>
-                    <td className="text-right py-2">${assetRevenue.toFixed(2)}</td>
-                    <td className="text-right py-2">{contractedPercent.toFixed(0)}%</td>
-                    <td className="text-right py-2">
-                      <div className="flex items-center justify-end space-x-1">
-                        {validation?.isValid ? (
-                          <CheckCircle className="w-4 h-4 text-green-500" />
-                        ) : (
-                          <AlertCircle className="w-4 h-4 text-red-500" />
-                        )}
-                        <span className={validation?.isValid ? 'text-green-600' : 'text-red-600'}>
-                          {validation?.isValid ? 'Valid' : 'Issues'}
-                        </span>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Validation Summary */}
-      {Object.values(assetValidations).some(v => !v?.isValid || v?.warnings?.length > 0) && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
-          <h3 className="text-lg font-semibold mb-4 text-yellow-800">Asset Validation Summary</h3>
-          <div className="space-y-3">
-            {Object.entries(assetValidations).map(([assetName, validation]) => {
-              if (!validation || (validation.isValid && validation.warnings.length === 0)) return null;
-              
-              return (
-                <div key={assetName} className="border-l-4 border-yellow-400 pl-4">
-                  <h4 className="font-medium text-yellow-900">{assetName}</h4>
-                  {validation.errors?.map((error, i) => (
-                    <div key={i} className="text-red-600 text-sm flex items-center space-x-1">
-                      <AlertCircle className="w-3 h-3" />
-                      <span>{error}</span>
-                    </div>
-                  ))}
-                  {validation.warnings?.map((warning, i) => (
-                    <div key={i} className="text-yellow-700 text-sm flex items-center space-x-1">
-                      <AlertCircle className="w-3 h-3" />
-                      <span>{warning}</span>
-                    </div>
-                  ))}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Empty State */}
-      {(() => {
-        const filteredAssetCount = selectedRegion === 'ALL' 
-          ? Object.keys(assets).length
-          : Object.values(assets).filter(asset => asset.state === selectedRegion).length;
-        return filteredAssetCount === 0;
-      })() && (
-        <div className="bg-white rounded-lg shadow border p-8">
-          <div className="text-center">
-            <BarChart3 className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
-              {selectedRegion === 'ALL' 
-                ? 'No Assets to Analyze' 
-                : `No Assets in ${selectedRegion}`
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold">
+              {assetBreakdownView === 'portfolio' 
+                ? `Asset Revenue Breakdown (${analysisYears} Year Analysis)` 
+                : `${assetBreakdownView} Revenue Analysis`
+              } - {
+                revenueFilter === 'all' ? 'All Revenue' :
+                revenueFilter === 'energy' ? 'Energy Only' :
+                'Green Only'
               }
+              {selectedRegion !== 'ALL' && <span className="text-sm font-normal text-gray-500"> - {selectedRegion} Region</span>}
             </h3>
-            <p className="text-gray-600 mb-4">
-              {selectedRegion === 'ALL' 
-                ? 'Add assets to your portfolio to perform revenue analysis'
-                : `No assets found in the ${selectedRegion} region. Try selecting "All Regions" or add assets in this region.`
-              }
-            </p>
-            {selectedRegion === 'ALL' ? (
-              <a
-                href="/pages/assets"
-                className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+            
+            {/* Asset View Dropdown */}
+            <div className="flex items-center space-x-2">
+              <label className="text-sm font-medium text-gray-700">Asset View:</label>
+              <select
+                value={assetBreakdownView}
+                onChange={(e) => setAssetBreakdownView(e.target.value)}
+                className="p-2 border border-gray-300 rounded-md text-sm min-w-[200px]"
               >
-                <span>Add Assets</span>
-              </a>
-            ) : (
-              <button
-                onClick={() => setSelectedRegion('ALL')}
-                className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-              >
-                <span>Show All Regions</span>
-              </button>
-            )}
+                {availableAssetsForBreakdown.map(option => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+          
+          {/* Table */}
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-200">
+                  <th className="text-left py-3 px-2 font-medium text-gray-900">Year</th>
+                  {assetBreakdownView === 'portfolio' ? (
+                    (() => {
+                      const filteredAssets = selectedRegion === 'ALL' 
+                        ? assets 
+                        : Object.fromEntries(
+                            Object.entries(assets).filter(([key, asset]) => asset.state === selectedRegion)
+                          );
+                      return Object.values(filteredAssets).map(asset => (
+                        <th key={asset.name} className="text-right py-3 px-2 font-medium text-gray-900">
+                          {asset.name} ($M)
+                        </th>
+                      ));
+                    })()
+                  ) : (
+                    revenueFilter === 'all' ? (
+                      <>
+                        <th className="text-right py-3 px-2 font-medium text-gray-900">Contracted Green ($M)</th>
+                        <th className="text-right py-3 px-2 font-medium text-gray-900">Contracted Energy ($M)</th>
+                        <th className="text-right py-3 px-2 font-medium text-gray-900">Merchant Green ($M)</th>
+                        <th className="text-right py-3 px-2 font-medium text-gray-900">Merchant Energy ($M)</th>
+                        <th className="text-right py-3 px-2 font-medium text-gray-900 bg-blue-50">Total ($M)</th>
+                      </>
+                    ) : (
+                      <>
+                        <th className="text-right py-3 px-2 font-medium text-gray-900">Contracted ($M)</th>
+                        <th className="text-right py-3 px-2 font-medium text-gray-900">Merchant ($M)</th>
+                        <th className="text-right py-3 px-2 font-medium text-gray-900 bg-blue-50">Total ($M)</th>
+                      </>
+                    )
+                  )}
+                </tr>
+              </thead>
+              <tbody>
+                {assetBreakdownData.map((row, index) => (
+                  <tr key={row.year} className={`border-b border-gray-100 ${index % 2 === 0 ? 'bg-gray-50' : 'bg-white'}`}>
+                    <td className="py-3 px-2 font-medium text-gray-900">{row.year}</td>
+                    {assetBreakdownView === 'portfolio' ? (
+                      (() => {
+                        const filteredAssets = selectedRegion === 'ALL' 
+                          ? assets 
+                          : Object.fromEntries(
+                              Object.entries(assets).filter(([key, asset]) => asset.state === selectedRegion)
+                            );
+                        return Object.values(filteredAssets).map(asset => (
+                          <td key={asset.name} className="text-right py-3 px-2 text-gray-700">
+                            {(row[asset.name] || 0).toFixed(2)}
+                          </td>
+                        ));
+                      })()
+                    ) : (
+                      revenueFilter === 'all' ? (
+                        <>
+                          <td className="text-right py-3 px-2 text-gray-700">
+                            {(row['Contracted Green'] || 0).toFixed(2)}
+                          </td>
+                          <td className="text-right py-3 px-2 text-gray-700">
+                            {(row['Contracted Energy'] || 0).toFixed(2)}
+                          </td>
+                          <td className="text-right py-3 px-2 text-gray-700">
+                            {(row['Merchant Green'] || 0).toFixed(2)}
+                          </td>
+                          <td className="text-right py-3 px-2 text-gray-700">
+                            {(row['Merchant Energy'] || 0).toFixed(2)}
+                          </td>
+                          <td className="text-right py-3 px-2 font-medium text-gray-900 bg-blue-50">
+                            {((row['Contracted Green'] || 0) + (row['Contracted Energy'] || 0) + 
+                              (row['Merchant Green'] || 0) + (row['Merchant Energy'] || 0)).toFixed(2)}
+                          </td>
+                        </>
+                      ) : (
+                        <>
+                          <td className="text-right py-3 px-2 text-gray-700">
+                            {(row['Contracted'] || 0).toFixed(2)}
+                          </td>
+                          <td className="text-right py-3 px-2 text-gray-700">
+                            {(row['Merchant'] || 0).toFixed(2)}
+                          </td>
+                          <td className="text-right py-3 px-2 font-medium text-gray-900 bg-blue-50">
+                            {((row['Contracted'] || 0) + (row['Merchant'] || 0)).toFixed(2)}
+                          </td>
+                        </>
+                      )
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       )}
@@ -784,11 +657,10 @@ export default function IntegratedRevenuePage() {
               revenueFilter === 'all' ? 'All Revenue' :
               revenueFilter === 'energy' ? 'Energy Only' :
               'Green Only'
-            } • Region: {selectedRegion} • Period: {analysisYears} years • Updated: {new Date().toLocaleTimeString()}
+            } • Region: {selectedRegion} • View: {
+              assetBreakdownView === 'portfolio' ? 'Portfolio' : assetBreakdownView
+            } • Period: {analysisYears} years
           </div>
-        </div>
-        <div className="mt-2 text-sm text-green-700">
-          Live calculations include contract escalation, asset degradation, merchant price forecasts ({priceSource}), and revenue type filtering with fixed Y-axis scaling.
         </div>
       </div>
     </div>
