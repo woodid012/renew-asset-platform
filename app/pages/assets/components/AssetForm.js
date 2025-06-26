@@ -346,7 +346,7 @@ const AssetForm = ({
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Buyer's Percentage (%)</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Buyer&apos;s Percentage (%)</label>
                         <input
                           type="number"
                           value={safeValue(contract.buyersPercentage)}

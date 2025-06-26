@@ -678,7 +678,9 @@ const PriceCurvesTab = () => {
                     <th className="px-3 py-2 text-left">Time Period</th>
                     {lineConfig.map(({ key, name }) => (
                       <th key={key} className="px-3 py-2 text-left">
-                        {name} ($/MWh)
+                        <th key={key} className="px-3 py-2 text-left">
+                    {name} ($/MWh)
+                  </th>
                       </th>
                     ))}
                   </tr>
@@ -690,7 +692,7 @@ const PriceCurvesTab = () => {
                       {lineConfig.map(({ key }) => (
                         <td key={key} className="px-3 py-2">
                           {typeof row[key] === 'number' 
-                            ? `${row[key].toFixed(2)}`
+                            ? row[key].toFixed(2)
                             : '-'
                           }
                         </td>
@@ -728,9 +730,9 @@ const PriceCurvesTab = () => {
       ) : !loading && !error && (
         <div className="bg-gray-50 rounded-lg p-8 text-center">
           <div className="text-4xl mb-4">📈</div>
-          <div className="text-gray-600">
-            Configure your view settings and click "Refresh Data" to load price curves
-          </div>
+            <div className="text-gray-600">
+              Configure your view settings and click &quot;Refresh Data&quot; to load price curves
+            </div>
         </div>
       )}
     </div>

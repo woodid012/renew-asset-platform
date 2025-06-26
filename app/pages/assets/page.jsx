@@ -585,7 +585,7 @@ const EnhancedAssetManagement = () => {
         </div>
         {hasUnsavedChanges && (
           <div className="mt-2 text-sm text-orange-700">
-            Changes are kept locally until you save. Use the "Save Changes" button to persist your updates to the database.
+            Changes are kept locally until you save. Use the &quot;Save Changes&quot; button to persist your updates to the database.
           </div>
         )}
       </div>

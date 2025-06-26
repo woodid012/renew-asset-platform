@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useUser } from '../../contexts/UserContext';
 import { useMerchantPrices } from '../../contexts/MerchantPriceProvider';
 import { useSaveContext } from '../../layout';
@@ -57,29 +57,7 @@ export default function AssetDetailPage() {
     return assetLife;
   }, [selectedAsset, assets]);
 
-  // Load portfolio data
-  useEffect(() => {
-    if (currentUser && currentPortfolio) {
-      loadPortfolioData();
-    }
-  }, [currentUser, currentPortfolio]);
-
-  // Set first asset as selected
-  useEffect(() => {
-    if (Object.keys(assets).length > 0 && !selectedAsset) {
-      const firstAsset = Object.values(assets)[0];
-      setSelectedAsset(firstAsset?.name);
-    }
-  }, [assets, selectedAsset]);
-
-  // Load enhanced results when asset is selected
-  useEffect(() => {
-    if (selectedAsset && currentUser && currentPortfolio) {
-      loadEnhancedBackendResults();
-    }
-  }, [selectedAsset, currentUser, currentPortfolio]);
-
-  const loadPortfolioData = async () => {
+  const loadPortfolioData = useCallback(async () => {
     if (!currentUser || !currentPortfolio) return;
     
     setLoading(true);
@@ -109,10 +87,9 @@ export default function AssetDetailPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentUser, currentPortfolio]);
 
-  // UPDATED: Use enhanced backend for all calculations
-  const loadEnhancedBackendResults = async () => {
+  const loadEnhancedBackendResults = useCallback(async () => {
     if (!currentUser || !currentPortfolio || !selectedAsset) return;
     
     setTimelineLoading(true);
@@ -200,7 +177,29 @@ export default function AssetDetailPage() {
     } finally {
       setTimelineLoading(false);
     }
-  };
+  }, [currentUser, currentPortfolio, selectedAsset, operationsPeriod, selectedRevenueCase]);
+
+  // Load portfolio data
+  useEffect(() => {
+    if (currentUser && currentPortfolio) {
+      loadPortfolioData();
+    }
+  }, [currentUser, currentPortfolio, loadPortfolioData]);
+
+  // Set first asset as selected
+  useEffect(() => {
+    if (Object.keys(assets).length > 0 && !selectedAsset) {
+      const firstAsset = Object.values(assets)[0];
+      setSelectedAsset(firstAsset?.name);
+    }
+  }, [assets, selectedAsset]);
+
+  // Load enhanced results when asset is selected
+  useEffect(() => {
+    if (selectedAsset && currentUser && currentPortfolio) {
+      loadEnhancedBackendResults();
+    }
+  }, [selectedAsset, currentUser, currentPortfolio, loadEnhancedBackendResults]);
 
   // Summary metrics from enhanced backend
   const summaryMetrics = useMemo(() => {
@@ -402,9 +401,9 @@ export default function AssetDetailPage() {
 
   const formatCurrency = (value) => {
     if (Math.abs(value) >= 1) {
-      return `$${value.toFixed(1)}M`;
+      return `${value.toFixed(1)}M`;
     } else {
-      return `$${(value * 1000).toFixed(0)}K`;
+      return `${(value * 1000).toFixed(0)}K`;
     }
   };
 

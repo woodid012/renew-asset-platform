@@ -301,7 +301,7 @@ export default function MainPage() {
         <div className="text-center">
           <Building2 className="w-12 h-12 text-gray-400 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-gray-900 mb-2">No Assets Found</h3>
-          <p className="text-gray-600">This portfolio doesn't have any assets configured yet.</p>
+          <p className="text-gray-600">This portfolio doesn&apos;t have any assets configured yet.</p>
           <p className="text-sm text-gray-500 mt-2">Add assets to see dashboard analytics</p>
         </div>
       </div>

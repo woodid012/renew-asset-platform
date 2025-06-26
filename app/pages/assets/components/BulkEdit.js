@@ -779,7 +779,7 @@ const BulkEdit = ({
               ) : (
                 <div className="p-8 text-center text-gray-500">
                   <p>No contracts defined for this asset</p>
-                  <p className="text-xs">Click "Add Contract" to create one</p>
+                  <p className="text-xs">Click &quot;Add Contract&quot; to create one</p>
                 </div>
               )}
             </div>

@@ -825,7 +825,7 @@ export default function SettingsPage() {
             </div>
             
             <p className="text-gray-600 mb-6">
-              Are you sure you want to delete portfolio "{portfolios.find(p => p.portfolioId === deletingPortfolio)?.portfolioName}"? 
+              Are you sure you want to delete portfolio &quot;{portfolios.find(p => p.portfolioId === deletingPortfolio)?.portfolioName}&quot;? 
               This action cannot be undone and will permanently delete all assets and configurations.
             </p>
             
