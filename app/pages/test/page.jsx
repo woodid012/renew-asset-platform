@@ -15,40 +15,43 @@ import {
   Sun,
   Wind,
   Battery,
-  Zap,
-  TrendingUp,
-  BarChart3,
-  Settings,
-  Loader2
+  Zap
 } from 'lucide-react';
 import Link from 'next/link';
 
-export default function EnhancedAssetDetailPage() {
+// Import calculations
+import { 
+  calculateProjectMetrics, 
+  calculateIRR,
+  initializeProjectValues
+} from '@/app/components/ProjectFinance_Calcs';
+
+export default function AssetDetailPage() {
   const { currentUser, currentPortfolio } = useUser();
-  const { escalationSettings, getMerchantPrice } = useMerchantPrices();
+  const { getMerchantPrice } = useMerchantPrices();
   const { setHasUnsavedChanges } = useSaveContext();
   
   // State management
   const [assets, setAssets] = useState({});
+  const [constants, setConstants] = useState({});
   const [portfolioName, setPortfolioName] = useState('Portfolio');
   const [loading, setLoading] = useState(true);
-  const [calculating, setCalculating] = useState(false);
   const [selectedAsset, setSelectedAsset] = useState('');
+  const [projectMetrics, setProjectMetrics] = useState({});
   
-  // Enhanced analysis results
-  const [enhancedResults, setEnhancedResults] = useState(null);
-  const [portfolioAnalysis, setPortfolioAnalysis] = useState(null);
-  const [errorState, setErrorState] = useState(null);
+  // State for monthly timeline data
+  const [monthlyTimeline, setMonthlyTimeline] = useState([]);
+  const [timelineLoading, setTimelineLoading] = useState(false);
   
   // Configuration
-  const [analysisConfig, setAnalysisConfig] = useState({
-    intervalType: 'annual',
-    startYear: new Date().getFullYear(),
-    periods: 30,
-    includeProjectFinance: true,
-    includeSensitivity: true,
-    scenario: 'base'
-  });
+  const [analysisYears, setAnalysisYears] = useState(30);
+  const [selectedRevenueCase] = useState('base');
+  const [includeTerminalValue] = useState(true);
+  const [solveGearing] = useState(true);
+  
+  // New configuration options
+  const [debtPaymentFrequency, setDebtPaymentFrequency] = useState('quarterly'); // monthly/quarterly
+  const [summaryPeriod, setSummaryPeriod] = useState('annual'); // annual/quarterly
 
   // Load portfolio data
   useEffect(() => {
@@ -65,89 +68,66 @@ export default function EnhancedAssetDetailPage() {
     }
   }, [assets, selectedAsset]);
 
-  // Calculate enhanced analysis when data changes
+  // Calculate metrics when data changes
   useEffect(() => {
-    if (Object.keys(assets).length > 0 && selectedAsset) {
-      calculateEnhancedAnalysis();
+    if (Object.keys(assets).length > 0 && constants.assetCosts) {
+      calculateMetrics();
     }
-  }, [selectedAsset, analysisConfig, escalationSettings]);
+  }, [assets, constants, selectedRevenueCase, analysisYears, includeTerminalValue, solveGearing]);
 
-  // Debug logging
+  // Load monthly timeline when asset is selected
   useEffect(() => {
-    console.log('Enhanced Results:', enhancedResults);
-    console.log('Portfolio Analysis:', portfolioAnalysis);
-    console.log('Selected Asset:', selectedAsset);
-    console.log('Escalation Settings:', escalationSettings);
-    console.log('Merchant Price Function Available:', !!getMerchantPrice);
-    
-    // Test merchant price function
-    if (selectedAsset && assets[selectedAsset]) {
-      const asset = Object.values(assets).find(a => a.name === selectedAsset);
-      if (asset && getMerchantPrice) {
-        const testYear = new Date().getFullYear();
-        const testGreenPrice = getMerchantPrice(asset.type, 'green', asset.state, testYear);
-        const testEnergyPrice = getMerchantPrice(asset.type, 'Energy', asset.state, testYear);
-        console.log(`Test Merchant Prices for ${asset.name} (${asset.type}, ${asset.state}) in ${testYear}:`, {
-          green: testGreenPrice,
-          energy: testEnergyPrice
-        });
-      }
+    if (selectedAsset && currentUser && currentPortfolio) {
+      loadMonthlyTimeline();
     }
-  }, [enhancedResults, portfolioAnalysis, selectedAsset, escalationSettings, getMerchantPrice, assets]);
+  }, [selectedAsset, currentUser, currentPortfolio]);
 
   const loadPortfolioData = async () => {
     if (!currentUser || !currentPortfolio) return;
     
     setLoading(true);
-    setErrorState(null);
-    
     try {
       const response = await fetch(`/api/portfolio?userId=${currentUser.id}&portfolioId=${currentPortfolio.portfolioId}`);
       
       if (response.ok) {
         const portfolioData = await response.json();
         setAssets(portfolioData.assets || {});
-        setPortfolioName(portfolioData.portfolioName || 'Portfolio');
         
-        // Update analysis config start year based on portfolio
-        if (portfolioData.assets && Object.keys(portfolioData.assets).length > 0) {
-          const earliestYear = Math.min(
-            ...Object.values(portfolioData.assets).map(asset => 
-              new Date(asset.assetStartDate).getFullYear()
-            )
-          );
-          setAnalysisConfig(prev => ({
-            ...prev,
-            startYear: Math.max(earliestYear, new Date().getFullYear())
-          }));
+        const updatedConstants = {
+          ...portfolioData.constants,
+          HOURS_IN_YEAR: 8760,
+          volumeVariation: portfolioData.constants?.volumeVariation || 20,
+          greenPriceVariation: portfolioData.constants?.greenPriceVariation || 20,
+          EnergyPriceVariation: portfolioData.constants?.EnergyPriceVariation || 20,
+          escalation: 2.5,
+          referenceYear: 2025
+        };
+
+        if (!updatedConstants.assetCosts && Object.keys(portfolioData.assets || {}).length > 0) {
+          updatedConstants.assetCosts = initializeProjectValues(portfolioData.assets || {});
+          setHasUnsavedChanges(true);
         }
+
+        setConstants(updatedConstants);
+        setPortfolioName(portfolioData.portfolioName || 'Portfolio');
         
       } else if (response.status === 404) {
         setAssets({});
-        setErrorState('Portfolio not found');
-      } else {
-        throw new Error(`HTTP ${response.status}`);
+        setConstants({});
       }
     } catch (error) {
       console.error('Error loading portfolio:', error);
-      setErrorState('Failed to load portfolio data');
     } finally {
       setLoading(false);
     }
   };
 
-  const calculateEnhancedAnalysis = async () => {
-    if (!selectedAsset || !currentUser || !currentPortfolio) return;
+  const loadMonthlyTimeline = async () => {
+    if (!currentUser || !currentPortfolio || !selectedAsset) return;
     
-    setCalculating(true);
-    setErrorState(null);
-    
+    setTimelineLoading(true);
     try {
-      console.log('Starting enhanced portfolio analysis...');
-      console.log('Current escalation settings:', escalationSettings);
-      
-      // Call the enhanced portfolio analysis API
-      const analysisResponse = await fetch('/api/portfolio-analysis', {
+      const response = await fetch('/api/portfolio-analysis', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -156,201 +136,310 @@ export default function EnhancedAssetDetailPage() {
           userId: currentUser.id,
           portfolioId: currentPortfolio.portfolioId,
           analysisConfig: {
-            ...analysisConfig,
-            // Add escalation settings to the analysis
-            escalationSettings: escalationSettings,
-            // Also pass merchant price test data for debugging
-            debugMode: true
+            intervalType: 'monthly',
+            periods: analysisYears,
+            includeConstructionPhase: true,
+            constructionStartOffset: 24,
+            scenario: selectedRevenueCase,
+            includeProjectFinance: true
           }
-        }),
+        })
       });
-
-      if (!analysisResponse.ok) {
-        const errorData = await analysisResponse.json();
-        throw new Error(errorData.error || 'Analysis failed');
+      
+      if (response.ok) {
+        const data = await response.json();
+        
+        // Filter timeline to selected asset only and add phase information
+        const assetTimeline = data.monthlyTimeSeries
+          .map(period => {
+            const assetData = period.assets[selectedAsset];
+            if (!assetData) return null;
+            
+            return {
+              month: period.timeDimension.interval,
+              year: period.timeDimension.year,
+              monthName: period.timeDimension.periodLabel || `${period.timeDimension.month}/${period.timeDimension.year}`,
+              phase: assetData.phaseInfo?.phase || 'unknown',
+              
+              // Construction data
+              monthlyInvestment: assetData.construction?.monthlyInvestment || 0,
+              monthlyEquityInvestment: assetData.construction?.monthlyEquityInvestment || 0,
+              monthlyDebtDrawdown: assetData.construction?.monthlyDebtDrawdown || 0,
+              cumulativeInvestment: assetData.construction?.cumulativeInvestment || 0,
+              constructionProgress: assetData.phaseInfo?.constructionProgress || 0,
+              
+              // Operations data
+              totalRevenue: assetData.revenue?.totalRevenue || 0,
+              contractedRevenue: (assetData.revenue?.contractedGreenRevenue || 0) + (assetData.revenue?.contractedEnergyRevenue || 0),
+              merchantRevenue: (assetData.revenue?.merchantGreenRevenue || 0) + (assetData.revenue?.merchantEnergyRevenue || 0),
+              volume: assetData.volume?.adjustedVolume || 0,
+              
+              // Net cash flow (positive for revenue, negative for investment)
+              netCashFlow: (assetData.revenue?.totalRevenue || 0) - (assetData.construction?.monthlyInvestment || 0)
+            };
+          })
+          .filter(period => period !== null);
+        
+        setMonthlyTimeline(assetTimeline);
+        console.log(`Loaded ${assetTimeline.length} months of timeline for ${selectedAsset}`);
       }
-
-      const analysisResults = await analysisResponse.json();
-      console.log('Enhanced analysis completed:', analysisResults);
-      
-      // Debug the time series data structure
-      if (analysisResults.timeSeries && analysisResults.timeSeries.length > 0) {
-        console.log('Sample time series data:', analysisResults.timeSeries[0]);
-        console.log('Sample asset data:', analysisResults.timeSeries[0]?.assets?.[selectedAsset]);
-      }
-      
-      setPortfolioAnalysis(analysisResults);
-      
-      // Extract asset-specific results from the correct structure
-      if (analysisResults.projectFinance?.assetFinance?.[selectedAsset]) {
-        const assetFinanceData = analysisResults.projectFinance.assetFinance[selectedAsset];
-        setEnhancedResults(assetFinanceData);
-        console.log('Set enhanced results for', selectedAsset, ':', assetFinanceData);
-      } else {
-        console.log('No project finance data found for asset:', selectedAsset);
-        console.log('Available assets:', Object.keys(analysisResults.projectFinance?.assetFinance || {}));
-        setEnhancedResults(null);
-      }
-      
     } catch (error) {
-      console.error('Enhanced analysis error:', error);
-      setErrorState(`Analysis failed: ${error.message}`);
+      console.error('Error loading monthly timeline:', error);
     } finally {
-      setCalculating(false);
+      setTimelineLoading(false);
     }
   };
 
-  // Asset summary metrics using enhanced results
-  const assetSummaryMetrics = useMemo(() => {
-    if (!selectedAsset || !enhancedResults || !assets) return null;
+  const calculateMetrics = () => {
+    try {
+      if (!constants.assetCosts && Object.keys(assets).length > 0) {
+        const updatedConstants = {
+          ...constants,
+          assetCosts: initializeProjectValues(assets)
+        };
+        setConstants(updatedConstants);
+        setHasUnsavedChanges(true);
+        return;
+      }
+      
+      if (Object.keys(assets).length === 0 || !constants.assetCosts) return;
+      
+      const metrics = calculateProjectMetrics(
+        assets,
+        constants.assetCosts,
+        constants,
+        getMerchantPrice,
+        selectedRevenueCase,
+        solveGearing,
+        includeTerminalValue
+      );
+      
+      setProjectMetrics(metrics);
+      
+    } catch (error) {
+      console.error('Error calculating project metrics:', error);
+      setProjectMetrics({});
+    }
+  };
 
-    const asset = Object.values(assets).find(a => a.name === selectedAsset);
-    if (!asset) return null;
+  // Summary metrics
+  const summaryMetrics = useMemo(() => {
+    if (!selectedAsset || !projectMetrics[selectedAsset]) return null;
 
-    const results = enhancedResults;
-    console.log('Building summary metrics from results:', results);
-    
+    const assetEntry = Object.entries(assets).find(([key, asset]) => asset.name === selectedAsset);
+    if (!assetEntry) return null;
+
+    const [assetKey, asset] = assetEntry;
+    const assetData = projectMetrics[selectedAsset];
+    const assetCosts = constants.assetCosts?.[selectedAsset] || {};
+
     return {
-      // Basic asset info
       assetName: asset.name,
       assetType: asset.type,
       capacity: parseFloat(asset.capacity) || 0,
       state: asset.state || 'N/A',
       assetStartDate: asset.assetStartDate,
       
-      // Enhanced financial metrics - fix the data access paths
-      totalCapex: results.capitalStructure?.totalCapex || results.capex || 0,
-      calculatedGearing: results.capitalStructure?.calculatedGearing || results.calculatedGearing || 0,
-      equityAmount: results.capitalStructure?.equityAmount || 
-                   ((results.capitalStructure?.totalCapex || results.capex || 0) * 
-                    (1 - (results.capitalStructure?.calculatedGearing || results.calculatedGearing || 0))),
-      debtAmount: results.capitalStructure?.debtAmount || results.debtAmount || 0,
+      totalCapex: assetData.capex || 0,
+      calculatedGearing: assetData.calculatedGearing || 0,
+      equityAmount: assetData.capex ? assetData.capex * (1 - assetData.calculatedGearing) : 0,
+      debtAmount: assetData.debtAmount || 0,
+      minDSCR: assetData.minDSCR,
+      terminalValue: assetData.terminalValue || 0,
       
-      // Enhanced debt metrics - fix the data access paths
-      minDSCR: results.debtAnalysis?.minDSCR || results.minDSCR || null,
-      avgDebtService: results.debtAnalysis?.averageDebtService || results.avgDebtService || 0,
-      debtStructure: results.debtAnalysis?.structure || results.debtStructure || 'sculpting',
-      tenorYears: results.debtAnalysis?.tenorYears || results.tenorYears || 20,
-      interestRate: results.debtAnalysis?.interestRate || (results.interestRate * 100) || 6.0,
+      equityIRR: assetData.equityCashFlows ? calculateIRR(assetData.equityCashFlows) * 100 : null,
       
-      // Enhanced equity metrics - fix the data access paths
-      equityIRR: results.returns?.equityIRR || results.equityIRR || null,
-      equityNPV: results.returns?.equityNPV || results.equityNPV || 0,
-      projectIRR: results.returns?.projectIRR || results.projectIRR || null,
-      paybackPeriod: results.returns?.paybackPeriod || results.paybackPeriod || null,
+      constructionDuration: assetCosts.constructionDuration || 12,
+      interestRate: (assetCosts.interestRate || 0.06) * 100,
+      tenorYears: assetCosts.tenorYears || 20,
+      equityTimingUpfront: assetData.equityTimingUpfront,
       
-      // Enhanced operating metrics - fix the data access paths
-      totalRevenue: results.operatingMetrics?.totalRevenue || 
-                   (results.cashFlowAnalysis ? results.cashFlowAnalysis.reduce((sum, cf) => sum + (cf.revenue || 0), 0) : 0),
-      totalOpex: results.operatingMetrics?.totalOpex || 
-                (results.cashFlowAnalysis ? results.cashFlowAnalysis.reduce((sum, cf) => sum + Math.abs(cf.opex || 0), 0) : 0),
-      averageEBITDA: results.operatingMetrics?.averageEBITDA || 
-                    (results.cashFlowAnalysis ? 
-                     results.cashFlowAnalysis.reduce((sum, cf) => sum + (cf.operatingCashFlow || 0), 0) / results.cashFlowAnalysis.length : 0),
-      terminalValue: results.operatingMetrics?.terminalValue || results.terminalValue || 0,
-      
-      // Enhanced construction metrics - fix the data access paths
-      equityTimingUpfront: results.equityAnalysis?.timingStructure === 'upfront' || results.equityTimingUpfront !== false,
-      constructionDuration: results.equityAnalysis?.constructionDuration || results.constructionDuration || 12,
-      
-      // Contract info
       contractCount: asset.contracts?.length || 0,
-      hasContracts: (asset.contracts?.length || 0) > 0
+      hasContracts: (asset.contracts?.length || 0) > 0,
+      
+      totalRevenue: assetData.cashFlows ? assetData.cashFlows.reduce((sum, cf) => sum + cf.revenue, 0) : 0,
+      totalOpex: assetData.cashFlows ? Math.abs(assetData.cashFlows.reduce((sum, cf) => sum + cf.opex, 0)) : 0,
+      totalEquityCashFlow: assetData.cashFlows ? assetData.cashFlows.reduce((sum, cf) => sum + cf.equityCashFlow, 0) : 0
     };
-  }, [selectedAsset, enhancedResults, assets]);
+  }, [selectedAsset, projectMetrics, assets, constants]);
 
-  // Helper functions for time period display and volume calculation
-  const generateTimePeriodLabel = (year, intervalType, index) => {
-    switch (intervalType) {
-      case 'quarterly':
-        const quarter = (index % 4) + 1;
-        return `${year}-Q${quarter}`;
-      case 'monthly':
-        const month = (index % 12) + 1;
-        return `${year}-${month.toString().padStart(2, '0')}`;
-      default:
-        return year.toString();
+  // Helper function to get OPEX from project metrics or calculate
+  const getMonthlyOpex = (month, assetName) => {
+    if (!projectMetrics[assetName]?.cashFlows) {
+      // Fallback: 15% of revenue assumption
+      return (month.totalRevenue || 0) * 0.15;
     }
+    
+    const year = month.year;
+    const assetStartYear = new Date(Object.values(assets).find(a => a.name === assetName)?.assetStartDate).getFullYear();
+    const operationalYear = year - assetStartYear;
+    
+    if (operationalYear < 0 || operationalYear >= projectMetrics[assetName].cashFlows.length) {
+      return (month.totalRevenue || 0) * 0.15; // Fallback
+    }
+    
+    const annualOpex = Math.abs(projectMetrics[assetName].cashFlows[operationalYear]?.opex || 0);
+    return annualOpex / 12; // Monthly OPEX
   };
 
-  const calculateVolumeForPeriod = (year, index) => {
-    // FIXED: Try to get volume from enhanced portfolio analysis time series
-    if (portfolioAnalysis?.timeSeries) {
-      const timePeriod = portfolioAnalysis.timeSeries.find(ts => ts.timeDimension?.year === year);
-      if (timePeriod?.assets?.[selectedAsset]) {
-        const assetData = timePeriod.assets[selectedAsset];
+  // Helper function to calculate DSCR based on trailing period
+  const calculateDSCR = (monthlyData, currentIndex, assetName) => {
+    if (!monthlyData || currentIndex < 0) return 0;
+    
+    const lookbackMonths = debtPaymentFrequency === 'quarterly' ? 3 : 1;
+    const startIndex = Math.max(0, currentIndex - lookbackMonths + 1);
+    const endIndex = currentIndex;
+    
+    let totalOperatingCF = 0;
+    let totalDebtService = 0;
+    
+    for (let i = startIndex; i <= endIndex; i++) {
+      const month = monthlyData[i];
+      if (month && month.phase === 'operations') {
+        const monthlyOpex = getMonthlyOpex(month, assetName);
+        const operatingCF = (month.totalRevenue || 0) - monthlyOpex;
+        totalOperatingCF += operatingCF;
         
-        // Check multiple possible volume field locations from enhanced structure
-        const volume = assetData.volume?.adjustedVolume || 
-                      assetData.legacy?.annualGeneration ||
-                      assetData.volume?.baseAnnualGeneration ||
-                      assetData.volume?.basePeriodGeneration ||
-                      0;
-                      
-        console.log(`Volume lookup for ${selectedAsset} year ${year}:`, {
-          adjustedVolume: assetData.volume?.adjustedVolume,
-          annualGeneration: assetData.legacy?.annualGeneration,
-          baseAnnualGeneration: assetData.volume?.baseAnnualGeneration,
-          finalVolume: volume
-        });
-        
-        if (volume > 0) {
-          return volume; // Already in MWh from backend
+        // Only count debt service in payment months
+        if (debtPaymentFrequency === 'quarterly') {
+          const monthNum = parseInt(month.month.split('-')[1]);
+          if (monthNum % 3 === 0) { // Payment month
+            totalDebtService += calculateQuarterlyDebtService(month, assetName);
+          }
+        } else {
+          totalDebtService += calculateMonthlyDebtService(month, assetName);
         }
       }
     }
     
-    // FIXED: Enhanced fallback calculation using asset quarterly capacity factors
-    const asset = Object.values(assets).find(a => a.name === selectedAsset);
-    if (asset) {
-      const capacity = parseFloat(asset.capacity) || 0;
-      const HOURS_IN_YEAR = 8760;
-      const degradation = parseFloat(asset.annualDegradation) || 0.5;
-      const degradationFactor = Math.pow(1 - degradation/100, index);
-      const volumeLossAdjustment = parseFloat(asset.volumeLossAdjustment) || 95;
+    return totalDebtService > 0 ? totalOperatingCF / totalDebtService : 0;
+  };
+  const aggregateMonthlyData = (monthlyData, aggregationType) => {
+    if (!monthlyData || monthlyData.length === 0) return [];
+    
+    const aggregated = {};
+    
+    monthlyData.forEach(month => {
+      let periodKey;
       
-      // FIXED: Use enhanced capacity factor logic
-      let capacityFactor = 0.25; // Default
-      
-      // Try to get quarterly capacity factors and average them
-      const quarters = ['q1', 'q2', 'q3', 'q4'];
-      const availableFactors = quarters
-        .map(q => asset[`qtrCapacityFactor_${q}`])
-        .filter(factor => factor !== undefined && factor !== '' && factor !== null)
-        .map(factor => parseFloat(factor) / 100);
-      
-      if (availableFactors.length > 0) {
-        capacityFactor = availableFactors.reduce((sum, f) => sum + f, 0) / availableFactors.length;
-      } else {
-        // Enhanced default capacity factors by technology and region
-        const defaultFactors = {
-          solar: { NSW: 0.28, VIC: 0.25, QLD: 0.29, SA: 0.27, WA: 0.26, TAS: 0.23 },
-          wind: { NSW: 0.35, VIC: 0.38, QLD: 0.32, SA: 0.40, WA: 0.37, TAS: 0.42 }
-        };
-        capacityFactor = defaultFactors[asset.type]?.[asset.state] || 
-                        (asset.type === 'solar' ? 0.25 : 0.35);
+      switch (aggregationType) {
+        case 'quarterly':
+          const quarter = Math.ceil(month.month.split('-')[1] / 3);
+          periodKey = `${month.year}-Q${quarter}`;
+          break;
+        case 'annual':
+        default:
+          periodKey = month.year.toString();
+          break;
       }
       
-      // FIXED: Proper volume calculation in MWh (no division by 1000)
-      const baseVolume = capacity * HOURS_IN_YEAR * capacityFactor; // MWh
-      const finalVolume = baseVolume * degradationFactor * (volumeLossAdjustment / 100);
+      if (!aggregated[periodKey]) {
+        aggregated[periodKey] = {
+          period: periodKey,
+          year: month.year,
+          quarter: aggregationType === 'quarterly' ? Math.ceil(month.month.split('-')[1] / 3) : null,
+          monthlyInvestment: 0,
+          monthlyEquityInvestment: 0,
+          monthlyDebtDrawdown: 0,
+          totalRevenue: 0,
+          contractedRevenue: 0,
+          merchantRevenue: 0,
+          volume: 0,
+          opex: 0,
+          operatingCashFlow: 0,
+          debtService: 0,
+          equityCashFlow: 0,
+          terminalValue: 0,
+          netEquityCashFlow: 0,
+          hasConstruction: false,
+          hasOperations: false,
+          monthCount: 0
+        };
+      }
       
-      console.log(`Fallback volume calculation for ${selectedAsset}:`, {
-        capacity,
-        capacityFactor: (capacityFactor * 100).toFixed(1) + '%',
-        baseVolume: baseVolume.toFixed(0),
-        degradationFactor: degradationFactor.toFixed(4),
-        volumeLossAdjustment: volumeLossAdjustment + '%',
-        finalVolume: finalVolume.toFixed(0)
-      });
+      const period = aggregated[periodKey];
+      period.monthlyInvestment += month.monthlyInvestment || 0;
+      period.monthlyEquityInvestment += month.monthlyEquityInvestment || 0;
+      period.monthlyDebtDrawdown += month.monthlyDebtDrawdown || 0;
+      period.totalRevenue += month.totalRevenue || 0;
+      period.contractedRevenue += month.contractedRevenue || 0;
+      period.merchantRevenue += month.merchantRevenue || 0;
+      period.volume += month.volume || 0;
       
-      return finalVolume;
-    }
+      // Add OPEX (assume 15% of revenue for now, or get from project metrics)
+      const monthlyOpex = (month.totalRevenue || 0) * 0.15;
+      period.opex += monthlyOpex;
+      period.operatingCashFlow += (month.totalRevenue || 0) - monthlyOpex;
+      
+      // Add debt service (quarterly payments)
+      if (debtPaymentFrequency === 'quarterly') {
+        const monthInQuarter = parseInt(month.month.split('-')[1]) % 3;
+        if (monthInQuarter === 0) { // Last month of quarter
+          // Calculate quarterly debt service payment
+          const quarterlyDebtService = calculateQuarterlyDebtService(month, selectedAsset);
+          period.debtService += quarterlyDebtService;
+        }
+      } else {
+        // Monthly debt service
+        const monthlyDebtService = calculateMonthlyDebtService(month, selectedAsset);
+        period.debtService += monthlyDebtService;
+      }
+      
+      period.equityCashFlow += period.operatingCashFlow - period.debtService;
+      
+      // Terminal value only in final period
+      if (month.phase === 'operations' && summaryMetrics?.terminalValue) {
+        const isLastPeriod = monthlyData.indexOf(month) === monthlyData.length - 1;
+        if (isLastPeriod) {
+          period.terminalValue = summaryMetrics.terminalValue;
+        }
+      }
+      
+      period.netEquityCashFlow = period.equityCashFlow + period.terminalValue - Math.abs(period.monthlyEquityInvestment);
+      
+      if (month.phase === 'construction') period.hasConstruction = true;
+      if (month.phase === 'operations') period.hasOperations = true;
+      period.monthCount++;
+    });
     
-    return 0;
+    return Object.values(aggregated).sort((a, b) => {
+      if (a.year !== b.year) return a.year - b.year;
+      return (a.quarter || 0) - (b.quarter || 0);
+    });
   };
 
-  // Utility functions
+  // Calculate debt service payments
+  const calculateQuarterlyDebtService = (month, assetName) => {
+    if (!projectMetrics[assetName]?.cashFlows) return 0;
+    
+    const year = month.year;
+    const assetStartYear = new Date(Object.values(assets).find(a => a.name === assetName)?.assetStartDate).getFullYear();
+    const operationalYear = year - assetStartYear;
+    
+    if (operationalYear < 0 || operationalYear >= projectMetrics[assetName].cashFlows.length) return 0;
+    
+    const annualDebtService = projectMetrics[assetName].cashFlows[operationalYear]?.debtService || 0;
+    return Math.abs(annualDebtService) / 4; // Quarterly payment
+  };
+
+  const calculateMonthlyDebtService = (month, assetName) => {
+    if (!projectMetrics[assetName]?.cashFlows) return 0;
+    
+    const year = month.year;
+    const assetStartYear = new Date(Object.values(assets).find(a => a.name === assetName)?.assetStartDate).getFullYear();
+    const operationalYear = year - assetStartYear;
+    
+    if (operationalYear < 0 || operationalYear >= projectMetrics[assetName].cashFlows.length) return 0;
+    
+    const annualDebtService = projectMetrics[assetName].cashFlows[operationalYear]?.debtService || 0;
+    return Math.abs(annualDebtService) / 12; // Monthly payment
+  };
+
+  // Get aggregated data for summary view
+  const aggregatedData = useMemo(() => {
+    if (monthlyTimeline.length === 0) return [];
+    return aggregateMonthlyData(monthlyTimeline, summaryPeriod);
+  }, [monthlyTimeline, summaryPeriod, debtPaymentFrequency, projectMetrics, selectedAsset]);
   const formatCurrency = (value) => {
     if (Math.abs(value) >= 1) {
       return `$${value.toFixed(1)}M`;
@@ -370,76 +459,38 @@ export default function EnhancedAssetDetailPage() {
     }
   };
 
-  const exportEnhancedData = () => {
-    if (!selectedAsset || !enhancedResults) return;
+  const exportData = () => {
+    if (!selectedAsset || !projectMetrics[selectedAsset]?.cashFlows) return;
 
     const csvData = [
-      ['Phase', 'Time Period', 'Year Index', 'Volume (GWh)', 'Revenue ($M)', 'Contracted ($M)', 'Merchant ($M)', 'OPEX ($M)', 'Operating CF ($M)', 
-       'Debt Service ($M)', 'DSCR', 'Equity CF ($M)', 'Terminal Value ($M)', 'Net CF ($M)']
+      ['Year', 'Revenue', 'Contracted', 'Merchant', 'OPEX', 'Operating CF', 'Debt Service', 'DSCR', 'Equity CF', 'Terminal']
     ];
 
-    // Add construction phase cash flows
-    if (assetSummaryMetrics?.equityTimingUpfront) {
-      const constructionYear = enhancedResults.cashFlowAnalysis?.[0]?.year - 1 || 'Y0';
-      const equityInvestment = assetSummaryMetrics.equityAmount;
-      csvData.push([
-        'Investment',
-        constructionYear,
-        -1,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        '',
-        -equityInvestment,
-        0,
-        -equityInvestment
-      ]);
-    }
+    const assetData = projectMetrics[selectedAsset];
+    const asset = Object.values(assets).find(a => a.name === selectedAsset);
+    const startYear = asset ? new Date(asset.assetStartDate).getFullYear() : 2025;
 
-    // Add operational cash flows
-    if (enhancedResults.cashFlowAnalysis) {
-      enhancedResults.cashFlowAnalysis.forEach((cf, index) => {
-        const netCashFlow = cf.equityCashFlow + (cf.terminalValue || 0);
-        // Calculate volume from the portfolio analysis if available
-        const volume = calculateVolumeForPeriod(cf.year, index) / 1000; // Convert MWh to GWh
-        
-        // Get contracted and merchant revenue from portfolio analysis
-        const timePeriod = portfolioAnalysis?.timeSeries?.find(ts => ts.timeDimension?.year === cf.year);
-        const assetData = timePeriod?.assets?.[selectedAsset];
-        const contractedRevenue = (assetData?.revenue?.contractedGreenRevenue || 0) + 
-                                 (assetData?.revenue?.contractedEnergyRevenue || 0);
-        const merchantRevenue = (assetData?.revenue?.merchantGreenRevenue || 0) + 
-                               (assetData?.revenue?.merchantEnergyRevenue || 0);
-        
-        csvData.push([
-          'Operations',
-          generateTimePeriodLabel(cf.year, analysisConfig.intervalType, index),
-          cf.yearIndex,
-          volume.toFixed(1),
-          cf.revenue.toFixed(2),
-          contractedRevenue.toFixed(2),
-          merchantRevenue.toFixed(2),
-          Math.abs(cf.opex).toFixed(2),
-          cf.operatingCashFlow.toFixed(2),
-          Math.abs(cf.debtService || 0).toFixed(2),
-          cf.dscr ? cf.dscr.toFixed(2) : '',
-          cf.equityCashFlow.toFixed(2),
-          (cf.terminalValue || 0).toFixed(2),
-          netCashFlow.toFixed(2)
-        ]);
-      });
-    }
+    assetData.cashFlows.forEach((cf, index) => {
+      csvData.push([
+        startYear + index,
+        cf.revenue.toFixed(2),
+        cf.contractedRevenue.toFixed(2),
+        cf.merchantRevenue.toFixed(2),
+        cf.opex.toFixed(2),
+        cf.operatingCashFlow.toFixed(2),
+        (cf.debtService || 0).toFixed(2),
+        cf.dscr ? cf.dscr.toFixed(2) : '',
+        cf.equityCashFlow.toFixed(2),
+        (cf.terminalValue || 0).toFixed(2)
+      ]);
+    });
 
     const csvContent = csvData.map(row => row.join(',')).join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${selectedAsset}_enhanced_cashflows.csv`;
+    a.download = `${selectedAsset}_operational_cashflows.csv`;
     a.click();
     window.URL.revokeObjectURL(url);
   };
@@ -462,7 +513,7 @@ export default function EnhancedAssetDetailPage() {
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading enhanced asset data...</p>
+          <p className="text-gray-600">Loading asset data...</p>
         </div>
       </div>
     );
@@ -477,13 +528,13 @@ export default function EnhancedAssetDetailPage() {
             <span>Back to Finance</span>
           </Link>
           <div className="h-6 border-l border-gray-300"></div>
-          <h1 className="text-2xl font-bold text-gray-900">Enhanced Asset Analysis</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Asset Detail Analysis</h1>
         </div>
 
         <div className="bg-white rounded-lg shadow border p-6">
           <div className="text-center text-gray-500 py-12">
             <Building2 className="w-12 h-12 mx-auto mb-2 opacity-50" />
-            <p>No assets available for enhanced analysis</p>
+            <p>No assets available for analysis</p>
             <p className="text-sm mt-2">Configure assets in the Asset Definition page</p>
             <Link href="/pages/assets" className="mt-4 inline-block px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700">
               Go to Asset Definition
@@ -496,7 +547,7 @@ export default function EnhancedAssetDetailPage() {
 
   return (
     <div className="space-y-6">
-      {/* Enhanced Header */}
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
           <Link href="/pages/finance" className="flex items-center space-x-2 text-gray-600 hover:text-gray-900">
@@ -504,88 +555,16 @@ export default function EnhancedAssetDetailPage() {
             <span>Back to Finance</span>
           </Link>
           <div className="h-6 border-l border-gray-300"></div>
-          <h1 className="text-2xl font-bold text-gray-900">Enhanced Asset Analysis</h1>
-          <div className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
-            v3.0 Enhanced
-          </div>
+          <h1 className="text-2xl font-bold text-gray-900">Asset Detail Analysis</h1>
         </div>
         
         <div className="text-sm text-gray-500">
           Portfolio: {portfolioName} • {Object.keys(assets).length} assets
-          {escalationSettings.enabled && (
-            <span className="ml-2 text-blue-600">
-              • Escalation: {escalationSettings.rate}% from {escalationSettings.referenceYear}
-            </span>
-          )}
-          {getMerchantPrice && (
-            <span className="ml-2 text-green-600">
-              • Price Curves: Active
-            </span>
-          )}
         </div>
       </div>
 
-      {/* Merchant Price Diagnostic Panel */}
-      {selectedAsset && getMerchantPrice && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
-          <div className="flex items-center space-x-2 mb-3">
-            <Settings className="w-4 h-4 text-yellow-600" />
-            <h3 className="text-sm font-semibold text-yellow-800">Merchant Price Diagnostics</h3>
-            <span className="text-xs text-yellow-600">(Debug Panel - Remove in Production)</span>
-          </div>
-          
-          {(() => {
-            const asset = Object.values(assets).find(a => a.name === selectedAsset);
-            if (!asset) return null;
-            
-            const currentYear = new Date().getFullYear();
-            const testYears = [currentYear, currentYear + 5, currentYear + 10];
-            
-            return (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
-                {testYears.map(year => {
-                  const greenPrice = getMerchantPrice(asset.type, 'green', asset.state, year);
-                  const energyPrice = getMerchantPrice(asset.type, 'Energy', asset.state, year);
-                  
-                  return (
-                    <div key={year} className="bg-white p-3 rounded border">
-                      <div className="font-medium text-gray-900 mb-2">Year {year}</div>
-                      <div className="space-y-1">
-                        <div className="flex justify-between">
-                          <span>Green:</span>
-                          <span className="font-medium">${greenPrice?.toFixed(2) || 'N/A'}/MWh</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Energy:</span>
-                          <span className="font-medium">${energyPrice?.toFixed(2) || 'N/A'}/MWh</span>
-                        </div>
-                        <div className="flex justify-between text-blue-600">
-                          <span>Total:</span>
-                          <span className="font-medium">${((greenPrice || 0) + (energyPrice || 0)).toFixed(2)}/MWh</span>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            );
-          })()}
-          
-          <div className="mt-3 text-xs text-yellow-700">
-            <strong>Asset:</strong> {selectedAsset} ({Object.values(assets).find(a => a.name === selectedAsset)?.type}, {Object.values(assets).find(a => a.name === selectedAsset)?.state})
-            <br />
-            <strong>Escalation:</strong> {escalationSettings.enabled ? `${escalationSettings.rate}% from ${escalationSettings.referenceYear}` : 'Disabled'}
-          </div>
-        </div>
-      )}
-
-      {/* Enhanced Configuration Panel */}
+      {/* Configuration Panel */}
       <div className="bg-white rounded-lg shadow border p-6">
-        <div className="flex items-center space-x-2 mb-4">
-          <Settings className="w-5 h-5 text-gray-600" />
-          <h3 className="text-lg font-semibold">Enhanced Analysis Configuration</h3>
-        </div>
-        
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Select Asset</label>
@@ -603,23 +582,10 @@ export default function EnhancedAssetDetailPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Interval Type</label>
-            <select
-              value={analysisConfig.intervalType}
-              onChange={(e) => setAnalysisConfig(prev => ({...prev, intervalType: e.target.value}))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="annual">Annual</option>
-              <option value="quarterly">Quarterly</option>
-              <option value="monthly">Monthly</option>
-            </select>
-          </div>
-
-          <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Analysis Period</label>
             <select
-              value={analysisConfig.periods}
-              onChange={(e) => setAnalysisConfig(prev => ({...prev, periods: parseInt(e.target.value)}))}
+              value={analysisYears}
+              onChange={(e) => setAnalysisYears(parseInt(e.target.value))}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
               <option value={15}>15 Years</option>
@@ -630,173 +596,152 @@ export default function EnhancedAssetDetailPage() {
             </select>
           </div>
 
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Debt Payment Frequency</label>
+            <select
+              value={debtPaymentFrequency}
+              onChange={(e) => setDebtPaymentFrequency(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="monthly">Monthly</option>
+              <option value="quarterly">Quarterly</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Summary Period</label>
+            <select
+              value={summaryPeriod}
+              onChange={(e) => setSummaryPeriod(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="annual">Annual</option>
+              <option value="quarterly">Quarterly</option>
+            </select>
+          </div>
+
           <div className="flex items-end">
             <button
-              onClick={exportEnhancedData}
-              disabled={!enhancedResults || calculating}
-              className="w-full flex items-center justify-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              onClick={exportData}
+              className="w-full flex items-center justify-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
             >
               <Download className="w-4 h-4" />
-              <span>Export Enhanced CSV</span>
+              <span>Export CSV</span>
             </button>
           </div>
         </div>
-
-        {calculating && (
-          <div className="mt-4 flex items-center space-x-2 text-blue-600">
-            <Loader2 className="w-4 h-4 animate-spin" />
-            <span className="text-sm">Running enhanced calculations...</span>
-          </div>
-        )}
-
-        {errorState && (
-          <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-            <div className="flex items-center space-x-2 text-red-700">
-              <AlertCircle className="w-4 h-4" />
-              <span className="text-sm font-medium">Analysis Error</span>
-            </div>
-            <p className="text-sm text-red-600 mt-1">{errorState}</p>
-          </div>
-        )}
       </div>
 
-      {/* Enhanced Asset Summary */}
-      {assetSummaryMetrics && (
+      {/* Asset Summary */}
+      {summaryMetrics && (
         <div className="bg-white rounded-lg shadow border p-6">
           <div className="flex items-center space-x-2 mb-4">
-            {getAssetIcon(assetSummaryMetrics.assetType)}
-            <h3 className="text-lg font-semibold">{assetSummaryMetrics.assetName} - Enhanced Analysis</h3>
-            <span className="text-sm text-gray-500">({assetSummaryMetrics.assetType} • {assetSummaryMetrics.state})</span>
-            {assetSummaryMetrics.equityIRR && (
-              <div className="ml-4 text-sm text-blue-600 font-medium">
-                Equity IRR: {formatPercent(assetSummaryMetrics.equityIRR)}
+            {getAssetIcon(summaryMetrics.assetType)}
+            <h3 className="text-lg font-semibold">{summaryMetrics.assetName} - Project Summary</h3>
+            <span className="text-sm text-gray-500">({summaryMetrics.assetType} • {summaryMetrics.state})</span>
+            <div className="ml-4 text-sm text-blue-600">
+              IRR: {summaryMetrics.equityIRR ? formatPercent(summaryMetrics.equityIRR) : 'N/A'}
+              <div className="text-center">
+                <p className="text-lg font-bold blue-900">
+                  {formatCurrency(aggregatedData.reduce((sum, p) => sum + (p.netEquityCashFlow || 0), 0))}
+                </p>
+                <p className="text-sm text-blue-600">Net Equity CF</p>
               </div>
-            )}
+            </div>
           </div>
           
-          {/* Enhanced KPI Grid */}
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4 mb-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-4">
             <div className="text-center p-3 bg-gray-50 rounded-lg">
-              <p className="text-lg font-bold text-gray-900">{assetSummaryMetrics.capacity}MW</p>
+              <p className="text-lg font-bold text-gray-900">{summaryMetrics.capacity}MW</p>
               <p className="text-xs text-gray-600">Capacity</p>
             </div>
             <div className="text-center p-3 bg-blue-50 rounded-lg">
-              <p className="text-lg font-bold text-blue-900">{formatCurrency(assetSummaryMetrics.totalCapex)}</p>
+              <p className="text-lg font-bold text-blue-900">{formatCurrency(summaryMetrics.totalCapex)}</p>
               <p className="text-xs text-blue-600">Total CAPEX</p>
             </div>
             <div className="text-center p-3 bg-purple-50 rounded-lg">
-              <p className="text-lg font-bold text-purple-900">{formatPercent(assetSummaryMetrics.calculatedGearing * 100)}</p>
-              <p className="text-xs text-purple-600">Optimal Gearing</p>
+              <p className="text-lg font-bold text-purple-900">{formatPercent(summaryMetrics.calculatedGearing * 100)}</p>
+              <p className="text-xs text-purple-600">Calculated Gearing</p>
             </div>
             <div className="text-center p-3 bg-green-50 rounded-lg">
               <p className="text-lg font-bold text-green-900">
-                {assetSummaryMetrics.equityIRR ? formatPercent(assetSummaryMetrics.equityIRR) : 'N/A'}
+                {summaryMetrics.equityIRR ? formatPercent(summaryMetrics.equityIRR) : 'N/A'}
               </p>
               <p className="text-xs text-green-600">Equity IRR</p>
             </div>
-            <div className="text-center p-3 bg-orange-50 rounded-lg">
-              <p className="text-lg font-bold text-orange-900">
-                {assetSummaryMetrics.projectIRR ? formatPercent(assetSummaryMetrics.projectIRR) : 'N/A'}
-              </p>
-              <p className="text-xs text-orange-600">Project IRR</p>
-            </div>
             <div className="text-center p-3 bg-yellow-50 rounded-lg">
-              <p className="text-lg font-bold text-yellow-900">{formatCurrency(assetSummaryMetrics.totalRevenue)}</p>
+              <p className="text-lg font-bold text-yellow-900">{formatCurrency(summaryMetrics.totalRevenue)}</p>
               <p className="text-xs text-yellow-600">Total Revenue</p>
             </div>
             <div className="text-center p-3 bg-red-50 rounded-lg">
               <p className="text-lg font-bold text-red-900">
-                {assetSummaryMetrics.minDSCR ? `${assetSummaryMetrics.minDSCR.toFixed(2)}x` : 'N/A'}
+                {summaryMetrics.minDSCR ? `${summaryMetrics.minDSCR.toFixed(2)}x` : 'N/A'}
               </p>
               <p className="text-xs text-red-600">Min DSCR</p>
             </div>
-            <div className="text-center p-3 bg-indigo-50 rounded-lg">
-              <p className="text-lg font-bold text-indigo-900">
-                {assetSummaryMetrics.paybackPeriod ? `${assetSummaryMetrics.paybackPeriod}y` : 'N/A'}
-              </p>
-              <p className="text-xs text-indigo-600">Payback</p>
-            </div>
           </div>
 
-          {/* Enhanced Details Grid */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="p-4 bg-blue-25 rounded-lg border">
-              <h4 className="font-medium text-gray-900 mb-3 flex items-center space-x-2">
-                <Building2 className="w-4 h-4" />
-                <span>Capital Structure</span>
-              </h4>
-              <div className="text-sm space-y-2">
+            <div className="p-3 bg-blue-25 rounded-lg border">
+              <h4 className="font-medium text-gray-900 mb-2">Construction</h4>
+              <div className="text-sm space-y-1">
                 <div className="flex justify-between">
-                  <span>Equity Amount:</span>
-                  <span className="font-medium">{formatCurrency(assetSummaryMetrics.equityAmount)}</span>
+                  <span>Duration:</span>
+                  <span>{summaryMetrics.constructionDuration} months</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>Debt Amount:</span>
-                  <span className="font-medium">{formatCurrency(assetSummaryMetrics.debtAmount)}</span>
+                  <span>Equity:</span>
+                  <span>{formatCurrency(summaryMetrics.equityAmount)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Debt:</span>
+                  <span>{formatCurrency(summaryMetrics.debtAmount)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Equity Timing:</span>
-                  <span className="font-medium">{assetSummaryMetrics.equityTimingUpfront ? 'Upfront' : 'Progressive'}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Construction:</span>
-                  <span className="font-medium">{assetSummaryMetrics.constructionDuration} months</span>
+                  <span>{summaryMetrics.equityTimingUpfront ? 'Upfront' : 'Pro-rata'}</span>
                 </div>
               </div>
             </div>
 
-            <div className="p-4 bg-green-25 rounded-lg border">
-              <h4 className="font-medium text-gray-900 mb-3 flex items-center space-x-2">
-                <TrendingUp className="w-4 h-4" />
-                <span>Financial Returns</span>
-              </h4>
-              <div className="text-sm space-y-2">
+            <div className="p-3 bg-green-25 rounded-lg border">
+              <h4 className="font-medium text-gray-900 mb-2">Operations</h4>
+              <div className="text-sm space-y-1">
                 <div className="flex justify-between">
-                  <span>Equity NPV:</span>
-                  <span className="font-medium">{formatCurrency(assetSummaryMetrics.equityNPV)}</span>
+                  <span>Total OPEX:</span>
+                  <span>{formatCurrency(summaryMetrics.totalOpex)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>Avg EBITDA:</span>
-                  <span className="font-medium">{formatCurrency(assetSummaryMetrics.averageEBITDA)}</span>
+                  <span>Equity Cash Flow:</span>
+                  <span>{formatCurrency(summaryMetrics.totalEquityCashFlow)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Terminal Value:</span>
-                  <span className="font-medium">{formatCurrency(assetSummaryMetrics.terminalValue)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Total OPEX:</span>
-                  <span className="font-medium">{formatCurrency(assetSummaryMetrics.totalOpex)}</span>
+                  <span>{formatCurrency(summaryMetrics.terminalValue)}</span>
                 </div>
               </div>
             </div>
 
-            <div className="p-4 bg-orange-25 rounded-lg border">
-              <h4 className="font-medium text-gray-900 mb-3 flex items-center space-x-2">
-                <BarChart3 className="w-4 h-4" />
-                <span>Debt Analysis</span>
-              </h4>
-              <div className="text-sm space-y-2">
+            <div className="p-3 bg-orange-25 rounded-lg border">
+              <h4 className="font-medium text-gray-900 mb-2">Financing</h4>
+              <div className="text-sm space-y-1">
                 <div className="flex justify-between">
                   <span>Interest Rate:</span>
-                  <span className="font-medium">{formatPercent(assetSummaryMetrics.interestRate)}</span>
+                  <span>{formatPercent(summaryMetrics.interestRate)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Tenor:</span>
-                  <span className="font-medium">{assetSummaryMetrics.tenorYears} years</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Avg Debt Service:</span>
-                  <span className="font-medium">{formatCurrency(assetSummaryMetrics.avgDebtService)}</span>
+                  <span>{summaryMetrics.tenorYears} years</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Contracts:</span>
                   <span className="flex items-center space-x-1">
-                    {assetSummaryMetrics.hasContracts ? (
+                    {summaryMetrics.hasContracts ? (
                       <CheckCircle className="w-3 h-3 text-green-500" />
                     ) : (
                       <AlertCircle className="w-3 h-3 text-yellow-500" />
                     )}
-                    <span className="font-medium">{assetSummaryMetrics.contractCount}</span>
+                    <span>{summaryMetrics.contractCount}</span>
                   </span>
                 </div>
               </div>
@@ -805,221 +750,537 @@ export default function EnhancedAssetDetailPage() {
         </div>
       )}
 
-      {/* Enhanced Cash Flow Analysis */}
+      {/* Monthly Timeline Analysis */}
       <div className="bg-white rounded-lg shadow border p-6">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center space-x-2">
             <Calendar className="w-5 h-5 text-gray-600" />
-            <h3 className="text-lg font-semibold">Enhanced Project Cash Flow Analysis</h3>
-            <span className="text-sm text-blue-600">(Complete Investment Timeline)</span>
+            <h3 className="text-lg font-semibold">Monthly Construction + Operations Timeline</h3>
+            <span className="text-sm text-blue-600">(Investment → Revenue Timeline)</span>
           </div>
           <div className="text-sm text-gray-500">
-            {selectedAsset ? `Asset: ${selectedAsset}` : 'No asset selected'}
+            {selectedAsset ? `Asset: ${selectedAsset}` : 'No asset selected'} • {monthlyTimeline.length} months
           </div>
         </div>
 
-        {selectedAsset && enhancedResults ? (
+        {timelineLoading ? (
+          <div className="flex items-center justify-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            <span className="ml-2 text-gray-600">Loading monthly timeline...</span>
+          </div>
+        ) : selectedAsset && monthlyTimeline.length > 0 ? (
           <div>
-            {/* Enhanced Summary Metrics */}
-            <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-6 p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg">
+            {/* Timeline Summary */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 p-4 bg-gray-50 rounded-lg">
               <div className="text-center">
                 <p className="text-lg font-bold text-red-900">
-                  {formatCurrency(Math.abs(assetSummaryMetrics?.equityAmount || 0))}
+                  {monthlyTimeline.filter(m => m.phase === 'construction').length}
                 </p>
-                <p className="text-sm text-red-600">Total Investment</p>
-              </div>
-              <div className="text-center">
-                <p className="text-lg font-bold text-gray-900">
-                  {formatCurrency(assetSummaryMetrics?.totalRevenue || 0)}
-                </p>
-                <p className="text-sm text-gray-600">Total Revenue</p>
-              </div>
-              <div className="text-center">
-                <p className="text-lg font-bold text-gray-900">
-                  {formatCurrency(assetSummaryMetrics?.totalOpex || 0)}
-                </p>
-                <p className="text-sm text-gray-600">Total OPEX</p>
+                <p className="text-sm text-red-600">Construction Months</p>
               </div>
               <div className="text-center">
                 <p className="text-lg font-bold text-green-900">
-                  {formatCurrency(assetSummaryMetrics?.equityNPV || 0)}
+                  {monthlyTimeline.filter(m => m.phase === 'operations').length}
                 </p>
-                <p className="text-sm text-green-600">Equity NPV</p>
+                <p className="text-sm text-green-600">Operations Months</p>
               </div>
               <div className="text-center">
-                <p className="text-lg font-bold text-orange-900">
-                  {formatCurrency(assetSummaryMetrics?.terminalValue || 0)}
+                <p className="text-lg font-bold text-blue-900">
+                  {formatCurrency(Math.abs(monthlyTimeline.reduce((sum, m) => sum + (m.monthlyInvestment || 0), 0)))}
                 </p>
-                <p className="text-sm text-orange-600">Terminal Value</p>
+                <p className="text-sm text-blue-600">Total Investment</p>
               </div>
               <div className="text-center">
                 <p className="text-lg font-bold text-purple-900">
-                  {assetSummaryMetrics?.equityIRR ? `${assetSummaryMetrics.equityIRR.toFixed(1)}%` : 'N/A'}
+                  {formatCurrency(monthlyTimeline.reduce((sum, m) => sum + (m.totalRevenue || 0), 0))}
                 </p>
-                <p className="text-sm text-purple-600">Equity IRR</p>
+                <p className="text-sm text-purple-600">Total Revenue</p>
               </div>
             </div>
 
-            {/* Enhanced Cash Flow Table WITH CONTRACTED AND MERCHANT COLUMNS */}
-            <div className="overflow-x-auto">
+            {/* Monthly Timeline Table */}
+            <div className="overflow-x-auto max-h-96">
               <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-gray-200">
-                    <th className="text-left py-3 px-2 font-medium text-gray-900">Time Period</th>
-                    <th className="text-left py-3 px-2 font-medium text-gray-900">Index</th>
-                    <th className="text-right py-3 px-2 font-medium text-gray-900">Volume (GWh)</th>
-                    <th className="text-right py-3 px-2 font-medium text-gray-900">Revenue ($M)</th>
-                    <th className="text-right py-3 px-2 font-medium text-gray-900 bg-green-50">Contracted ($M)</th>
-                    <th className="text-right py-3 px-2 font-medium text-gray-900 bg-yellow-50">Merchant ($M)</th>
-                    <th className="text-right py-3 px-2 font-medium text-gray-900">OPEX ($M)</th>
-                    <th className="text-right py-3 px-2 font-medium text-gray-900">Operating CF ($M)</th>
-                    <th className="text-right py-3 px-2 font-medium text-gray-900">Debt Service ($M)</th>
-                    <th className="text-right py-3 px-2 font-medium text-gray-900">DSCR</th>
-                    <th className="text-right py-3 px-2 font-medium text-gray-900 bg-green-50">Equity CF ($M)</th>
-                    <th className="text-right py-3 px-2 font-medium text-gray-900 bg-orange-50">Terminal ($M)</th>
-                    <th className="text-right py-3 px-2 font-medium text-gray-900 bg-blue-50">Net CF ($M)</th>
+                <thead className="sticky top-0 bg-gray-50">
+                  <tr>
+                    <th className="text-left py-2 px-2 font-medium text-gray-900">Month</th>
+                    <th className="text-left py-2 px-2 font-medium text-gray-900">Phase</th>
+                    <th className="text-right py-2 px-2 font-medium text-gray-900 bg-red-50">Investment ($M)</th>
+                    <th className="text-right py-2 px-2 font-medium text-gray-900 bg-blue-50">Equity ($M)</th>
+                    <th className="text-right py-2 px-2 font-medium text-gray-900 bg-orange-50">Debt ($M)</th>
+                    <th className="text-right py-2 px-2 font-medium text-gray-900 bg-yellow-50">Cumulative ($M)</th>
+                    <th className="text-right py-2 px-2 font-medium text-gray-900">Volume (MWh)</th>
+                    <th className="text-right py-2 px-2 font-medium text-gray-900">Revenue ($M)</th>
+                    <th className="text-right py-2 px-2 font-medium text-gray-900">Contracted ($M)</th>
+                    <th className="text-right py-2 px-2 font-medium text-gray-900">Merchant ($M)</th>
+                    <th className="text-right py-2 px-2 font-medium text-gray-900">OPEX ($M)</th>
+                    <th className="text-right py-2 px-2 font-medium text-gray-900">Operating CF ($M)</th>
+                    <th className="text-right py-2 px-2 font-medium text-gray-900">Debt Service ($M)</th>
+                    <th className="text-right py-2 px-2 font-medium text-gray-900">DSCR</th>
+                    <th className="text-right py-2 px-2 font-medium text-gray-900">Equity CF ($M)</th>
+                    <th className="text-right py-2 px-2 font-medium text-gray-900">Terminal ($M)</th>
+                    <th className="text-right py-2 px-2 font-medium text-gray-900 bg-green-50">Net Equity CF ($M)</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {/* Construction Phase */}
-                  {(() => {
-                    const rows = [];
-                    
-                    // Add construction/investment phase
-                    if (assetSummaryMetrics?.equityTimingUpfront) {
-                      const constructionYear = enhancedResults.cashFlowAnalysis?.[0]?.year - 1 || 'Y0';
-                      const equityInvestment = assetSummaryMetrics.equityAmount;
+                  {monthlyTimeline.slice(0, 1200).map((month, index) => (
+                    <tr key={month.month} className={`border-b border-gray-100 hover:bg-gray-25 ${
+                      month.phase === 'construction' ? 'bg-red-25' : month.phase === 'operations' ? 'bg-green-25' : ''
+                    }`}>
+                      <td className="py-2 px-2 font-medium text-gray-900">{month.monthName}</td>
+                      <td className="py-2 px-2">
+                        <span className={`px-2 py-1 text-xs rounded-full ${
+                          month.phase === 'construction' 
+                            ? 'bg-red-100 text-red-800' 
+                            : month.phase === 'operations'
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-gray-100 text-gray-800'
+                        }`}>
+                          {month.phase === 'construction' ? 'Construction' : 
+                           month.phase === 'operations' ? 'Operations' : 
+                           month.phase}
+                        </span>
+                        {month.phase === 'construction' && month.constructionProgress > 0 && (
+                          <div className="mt-1">
+                            <div className="w-16 h-1 bg-gray-200 rounded">
+                              <div 
+                                className="h-1 bg-red-500 rounded" 
+                                style={{ width: `${month.constructionProgress * 100}%` }}
+                              ></div>
+                            </div>
+                            <span className="text-xs text-gray-500">{(month.constructionProgress * 100).toFixed(0)}%</span>
+                          </div>
+                        )}
+                      </td>
                       
-                      rows.push(
-                        <tr key="construction-0" className="border-b border-gray-100 hover:bg-red-25 bg-red-50">
-                          <td className="py-2 px-2 font-medium text-gray-900">{constructionYear}</td>
-                          <td className="py-2 px-2">
-                            <span className="px-2 py-1 text-xs rounded-full bg-red-100 text-red-800">Investment</span>
-                          </td>
-                          <td className="text-right py-2 px-2 text-gray-400">-</td>
-                          <td className="text-right py-2 px-2 text-gray-400">-</td>
-                          <td className="text-right py-2 px-2 text-gray-400 bg-green-25">-</td>
-                          <td className="text-right py-2 px-2 text-gray-400 bg-yellow-25">-</td>
-                          <td className="text-right py-2 px-2 text-gray-400">-</td>
-                          <td className="text-right py-2 px-2 text-gray-400">-</td>
-                          <td className="text-right py-2 px-2 text-gray-400">-</td>
-                          <td className="text-right py-2 px-2 text-gray-400">-</td>
-                          <td className="text-right py-2 px-2 text-red-700 bg-green-25 font-medium">
-                            {formatCurrency(-Math.abs(equityInvestment))}
-                          </td>
-                          <td className="text-right py-2 px-2 text-gray-400 bg-orange-25">-</td>
-                          <td className="text-right py-2 px-2 text-red-700 bg-blue-25 font-medium">
-                            {formatCurrency(-Math.abs(equityInvestment))}
-                          </td>
-                        </tr>
-                      );
-                    }
-                    
-                    // Add operational phase rows
-                    if (enhancedResults.cashFlowAnalysis) {
-                      enhancedResults.cashFlowAnalysis.slice(0, Math.min(30, analysisConfig.periods)).forEach((cf, index) => {
-                        const netCashFlow = cf.equityCashFlow + (cf.terminalValue || 0);
-                        const volume = calculateVolumeForPeriod(cf.year, index);
-                        const timePeriodLabel = generateTimePeriodLabel(cf.year, analysisConfig.intervalType, index);
-                        
-                        // Get contracted and merchant revenue from portfolio analysis
-                        const timePeriod = portfolioAnalysis?.timeSeries?.find(ts => ts.timeDimension?.year === cf.year);
-                        const assetData = timePeriod?.assets?.[selectedAsset];
-                        const contractedRevenue = (assetData?.revenue?.contractedGreenRevenue || 0) + 
-                                                 (assetData?.revenue?.contractedEnergyRevenue || 0);
-                        const merchantRevenue = (assetData?.revenue?.merchantGreenRevenue || 0) + 
-                                               (assetData?.revenue?.merchantEnergyRevenue || 0);
-                        
-                        rows.push(
-                          <tr key={`operational-${index}`} className="border-b border-gray-100 hover:bg-green-25">
-                            <td className="py-2 px-2 font-medium text-gray-900">{timePeriodLabel}</td>
-                            <td className="py-2 px-2">
-                              <span className="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800">Operations</span>
-                            </td>
-                            <td className="text-right py-2 px-2 text-blue-700">
-                              {(volume / 1000).toFixed(1)}
-                            </td>
-                            <td className="text-right py-2 px-2 text-green-700">
-                              {formatCurrency(cf.revenue || 0)}
-                            </td>
-                            <td className="text-right py-2 px-2 text-green-600 bg-green-25">
-                              {formatCurrency(contractedRevenue)}
-                            </td>
-                            <td className="text-right py-2 px-2 text-yellow-600 bg-yellow-25">
-                              {formatCurrency(merchantRevenue)}
-                            </td>
-                            <td className="text-right py-2 px-2 text-red-600">
-                              {formatCurrency(Math.abs(cf.opex || 0))}
-                            </td>
-                            <td className="text-right py-2 px-2 text-blue-700">
-                              {formatCurrency(cf.operatingCashFlow || 0)}
-                            </td>
-                            <td className="text-right py-2 px-2 text-purple-600">
-                              {cf.debtService ? formatCurrency(Math.abs(cf.debtService)) : '-'}
-                            </td>
-                            <td className="text-right py-2 px-2 text-gray-700">
-                              {cf.dscr ? `${cf.dscr.toFixed(2)}x` : '-'}
-                            </td>
-                            <td className={`text-right py-2 px-2 font-medium bg-green-25 ${
-                              (cf.equityCashFlow || 0) >= 0 ? 'text-green-600' : 'text-red-600'
-                            }`}>
-                              {formatCurrency(cf.equityCashFlow || 0)}
-                            </td>
-                            <td className="text-right py-2 px-2 text-orange-600 bg-orange-25">
-                              {cf.terminalValue ? formatCurrency(cf.terminalValue) : '-'}
-                            </td>
-                            <td className={`text-right py-2 px-2 font-bold bg-blue-25 ${
-                              netCashFlow >= 0 ? 'text-blue-600' : 'text-red-600'
-                            }`}>
-                              {formatCurrency(netCashFlow)}
-                            </td>
-                          </tr>
-                        );
-                      });
-                    }
-                    
-                    return rows;
-                  })()}
+                      {/* Investment columns - only show during construction */}
+                      <td className={`text-right py-2 px-2 bg-red-25 ${
+                        month.monthlyInvestment !== 0 ? 'text-red-700 font-medium' : 'text-gray-400'
+                      }`}>
+                        {month.monthlyInvestment !== 0 ? formatCurrency(Math.abs(month.monthlyInvestment)) : '-'}
+                      </td>
+                      <td className={`text-right py-2 px-2 bg-blue-25 ${
+                        month.monthlyEquityInvestment !== 0 ? 'text-blue-700 font-medium' : 'text-gray-400'
+                      }`}>
+                        {month.monthlyEquityInvestment !== 0 ? formatCurrency(Math.abs(month.monthlyEquityInvestment)) : '-'}
+                      </td>
+                      <td className={`text-right py-2 px-2 bg-orange-25 ${
+                        month.monthlyDebtDrawdown !== 0 ? 'text-orange-700 font-medium' : 'text-gray-400'
+                      }`}>
+                        {month.monthlyDebtDrawdown !== 0 ? formatCurrency(Math.abs(month.monthlyDebtDrawdown)) : '-'}
+                      </td>
+                      <td className={`text-right py-2 px-2 bg-yellow-25 ${
+                        month.cumulativeInvestment !== 0 ? 'text-yellow-800 font-medium' : 'text-gray-400'
+                      }`}>
+                        {month.cumulativeInvestment !== 0 ? formatCurrency(month.cumulativeInvestment) : '-'}
+                      </td>
+                      
+                      {/* Operations columns - only show during operations */}
+                      <td className={`text-right py-2 px-2 ${
+                        month.volume > 0 ? 'text-blue-600' : 'text-gray-400'
+                      }`}>
+                        {month.volume > 0 ? (month.volume / 1000).toFixed(1) + ' GWh' : '-'}
+                      </td>
+                      <td className={`text-right py-2 px-2 ${
+                        month.totalRevenue > 0 ? 'text-green-700 font-medium' : 'text-gray-400'
+                      }`}>
+                        {month.totalRevenue > 0 ? formatCurrency(month.totalRevenue) : '-'}
+                      </td>
+                      <td className={`text-right py-2 px-2 ${
+                        month.contractedRevenue > 0 ? 'text-green-600' : 'text-gray-400'
+                      }`}>
+                        {month.contractedRevenue > 0 ? formatCurrency(month.contractedRevenue) : '-'}
+                      </td>
+                      <td className={`text-right py-2 px-2 ${
+                        month.merchantRevenue > 0 ? 'text-green-500' : 'text-gray-400'
+                      }`}>
+                        {month.merchantRevenue > 0 ? formatCurrency(month.merchantRevenue) : '-'}
+                      </td>
+                      
+                      {/* New columns - OPEX, Operating CF, Debt Service, DSCR, Equity CF, Terminal */}
+                      <td className={`text-right py-2 px-2 ${
+                        month.totalRevenue > 0 ? 'text-red-600' : 'text-gray-400'
+                      }`}>
+                        {month.totalRevenue > 0 ? formatCurrency(getMonthlyOpex(month, selectedAsset)) : '-'}
+                      </td>
+                      <td className={`text-right py-2 px-2 ${
+                        month.totalRevenue > 0 ? 'text-blue-700' : 'text-gray-400'
+                      }`}>
+                        {month.totalRevenue > 0 ? formatCurrency((month.totalRevenue || 0) - getMonthlyOpex(month, selectedAsset)) : '-'}
+                      </td>
+                      
+                      {/* Debt Service - only show in payment months */}
+                      <td className={`text-right py-2 px-2 ${
+                        month.phase === 'operations' ? 'text-purple-600' : 'text-gray-400'
+                      }`}>
+                        {(() => {
+                          if (month.phase !== 'operations') return '-';
+                          
+                          const monthNum = parseInt(month.month.split('-')[1]);
+                          const isPaymentMonth = debtPaymentFrequency === 'quarterly' 
+                            ? (monthNum % 3 === 0) // March, June, Sept, Dec
+                            : true; // Every month
+                          
+                          if (isPaymentMonth) {
+                            const debtService = debtPaymentFrequency === 'quarterly'
+                              ? calculateQuarterlyDebtService(month, selectedAsset)
+                              : calculateMonthlyDebtService(month, selectedAsset);
+                            return debtService > 0 ? formatCurrency(debtService) : '-';
+                          }
+                          return '-';
+                        })()}
+                      </td>
+                      
+                      {/* DSCR - based on trailing period */}
+                      <td className={`text-right py-2 px-2 ${
+                        month.phase === 'operations' ? 'text-gray-700' : 'text-gray-400'
+                      }`}>
+                        {(() => {
+                          if (month.phase !== 'operations') return '-';
+                          
+                          const monthNum = parseInt(month.month.split('-')[1]);
+                          const isPaymentMonth = debtPaymentFrequency === 'quarterly' 
+                            ? (monthNum % 3 === 0) 
+                            : true;
+                          
+                          if (isPaymentMonth) {
+                            const currentIndex = monthlyTimeline.indexOf(month);
+                            const dscr = calculateDSCR(monthlyTimeline, currentIndex, selectedAsset);
+                            return dscr > 0 ? `${dscr.toFixed(2)}x` : '-';
+                          }
+                          return '-';
+                        })()}
+                      </td>
+                      
+                      {/* Equity CF */}
+                      <td className={`text-right py-2 px-2 ${
+                        month.phase === 'operations' ? 'text-green-600' : 'text-gray-400'
+                      }`}>
+                        {(() => {
+                          if (month.phase !== 'operations') return '-';
+                          
+                          const monthlyOpex = getMonthlyOpex(month, selectedAsset);
+                          const operatingCF = (month.totalRevenue || 0) - monthlyOpex;
+                          const monthNum = parseInt(month.month.split('-')[1]);
+                          const isPaymentMonth = debtPaymentFrequency === 'quarterly' 
+                            ? (monthNum % 3 === 0) 
+                            : true;
+                          
+                          let debtService = 0;
+                          if (isPaymentMonth) {
+                            debtService = debtPaymentFrequency === 'quarterly'
+                              ? calculateQuarterlyDebtService(month, selectedAsset)
+                              : calculateMonthlyDebtService(month, selectedAsset);
+                          }
+                          
+                          const equityCF = operatingCF - debtService;
+                          return equityCF !== 0 ? formatCurrency(equityCF) : '-';
+                        })()}
+                      </td>
+                      
+                      {/* Terminal Value - only in final operational month */}
+                      <td className="text-right py-2 px-2 text-gray-400">
+                        {(() => {
+                          const isLastOperationalMonth = monthlyTimeline.indexOf(month) === monthlyTimeline.length - 1 
+                            && month.phase === 'operations' 
+                            && summaryMetrics?.terminalValue;
+                          return isLastOperationalMonth ? formatCurrency(summaryMetrics.terminalValue) : '-';
+                        })()}
+                      </td>
+                      
+                      {/* Net Equity Cash Flow */}
+                      <td className={`text-right py-2 px-2 font-bold bg-green-25 ${
+                        month.netCashFlow > 0 ? 'text-green-600' : 
+                        month.netCashFlow < 0 ? 'text-red-600' : 'text-gray-400'
+                      }`}>
+                        {(() => {
+                          const investment = month.monthlyEquityInvestment || 0;
+                          let operatingCF = 0;
+                          let debtService = 0;
+                          let terminal = 0;
+                          
+                          if (month.phase === 'operations') {
+                            const monthlyOpex = getMonthlyOpex(month, selectedAsset);
+                            operatingCF = (month.totalRevenue || 0) - monthlyOpex;
+                            const monthNum = parseInt(month.month.split('-')[1]);
+                            const isPaymentMonth = debtPaymentFrequency === 'quarterly' 
+                              ? (monthNum % 3 === 0) 
+                              : true;
+                            
+                            if (isPaymentMonth) {
+                              debtService = debtPaymentFrequency === 'quarterly'
+                                ? calculateQuarterlyDebtService(month, selectedAsset)
+                                : calculateMonthlyDebtService(month, selectedAsset);
+                            }
+                            
+                            // Terminal value in final month
+                            const isLastOperationalMonth = monthlyTimeline.indexOf(month) === monthlyTimeline.length - 1;
+                            if (isLastOperationalMonth && summaryMetrics?.terminalValue) {
+                              terminal = summaryMetrics.terminalValue;
+                            }
+                          }
+                          
+                          const netEquityCF = operatingCF - debtService + terminal - Math.abs(investment);
+                          return netEquityCF !== 0 ? formatCurrency(netEquityCF) : '-';
+                        })()}
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>
 
-            {/* Enhanced Analysis Notes */}
-            <div className="mt-6 text-sm text-gray-600">
+            {monthlyTimeline.length > 120 && (
+              <div className="mt-4 text-sm text-gray-500 text-center">
+                Showing first 120 months of {monthlyTimeline.length} total months
+              </div>
+            )}
+
+            <div className="mt-4 text-sm text-gray-600">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <h4 className="font-medium mb-2">Enhanced Features:</h4>
+                  <h4 className="font-medium mb-2">Monthly Timeline Phases:</h4>
                   <ul className="text-xs space-y-1">
-                    <li>• <span className="text-blue-600">Auto-Optimized Gearing:</span> Maximum sustainable debt calculated</li>
-                    <li>• <span className="text-green-600">Enhanced Escalation:</span> Price escalation from merchant context</li>
-                    <li>• <span className="text-purple-600">Sculpted Debt:</span> DSCR-constrained debt service</li>
-                    <li>• <span className="text-orange-600">Terminal Value:</span> Asset residual value included</li>
+                    <li>• <span className="text-red-600">Construction:</span> Monthly equity + debt investments until operations start</li>
+                    <li>• <span className="text-green-600">Operations:</span> Monthly revenue generation from asset start date</li>
+                    <li>• <span className="text-purple-600">Debt Service:</span> {debtPaymentFrequency === 'quarterly' ? 'Quarterly' : 'Monthly'} debt payments</li>
+                    <li>• <span className="text-blue-600">DSCR:</span> Based on trailing {debtPaymentFrequency === 'quarterly' ? '3-month' : '1-month'} period</li>
+                    <li>• <span className="text-orange-600">Terminal:</span> Shows in final operational month</li>
+                    <li>• <span className="text-yellow-600">Net Equity CF:</span> Operating CF - Debt Service + Terminal - Equity Investment</li>
                   </ul>
                 </div>
                 <div>
-                  <h4 className="font-medium mb-2">Revenue Breakdown:</h4>
+                  <h4 className="font-medium mb-2">Key Insights:</h4>
                   <ul className="text-xs space-y-1">
-                    <li>• <span className="text-green-600">✓ Contracted Revenue:</span> Green + Energy contract revenue</li>
-                    <li>• <span className="text-yellow-600">✓ Merchant Revenue:</span> Green + Energy merchant revenue</li>
-                    <li>• <span className="text-blue-600">✓ Total Revenue:</span> Contracted + Merchant combined</li>
-                    <li>• <span className="text-orange-600">✓ Real-time:</span> Live price curves and escalation</li>
+                    <li>• <span className="font-medium">Construction Period:</span> {monthlyTimeline.filter(m => m.phase === 'construction').length} months of capital deployment</li>
+                    <li>• <span className="font-medium">First Revenue:</span> {monthlyTimeline.find(m => m.totalRevenue > 0)?.monthName || 'Not found'}</li>
+                    <li>• <span className="font-medium">Investment Total:</span> {formatCurrency(Math.abs(monthlyTimeline.reduce((sum, m) => sum + (m.monthlyInvestment || 0), 0)))}</li>
+                    <li>• <span className="font-medium">Payback Indicator:</span> Monthly revenue vs investment timing clearly visible</li>
                   </ul>
                 </div>
               </div>
-              
-              <div className="mt-4 text-center text-blue-600 bg-blue-50 p-3 rounded">
-                <strong>Enhanced Asset Analysis v3.0:</strong> Complete project timeline with detailed revenue breakdown showing contracted vs merchant revenue composition
+              <div className="mt-2 text-center text-blue-600 bg-blue-50 p-2 rounded">
+                ✓ Monthly view shows exact construction timeline (e.g., 1/3/2024 → 1/8/2025) with revenue starting at operations date
               </div>
             </div>
           </div>
         ) : (
           <div className="text-center text-gray-500 py-8">
             <Calendar className="w-12 h-12 mx-auto mb-2 opacity-50" />
-            <p>No enhanced analysis available for selected asset</p>
-            <p className="text-sm">Configure analysis settings and run calculations</p>
+            <p>No monthly timeline data available for selected asset</p>
+            <p className="text-sm">Select an asset to view construction + operations timeline</p>
           </div>
         )}
       </div>
+
+      {/* Period Summary Analysis */}
+      <div className="bg-white rounded-lg shadow border p-6">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center space-x-2">
+            <Calendar className="w-5 h-5 text-gray-600" />
+            <h3 className="text-lg font-semibold">{summaryPeriod.charAt(0).toUpperCase() + summaryPeriod.slice(1)} Summary Analysis</h3>
+            <span className="text-sm text-blue-600">(Aggregated from monthly data)</span>
+          </div>
+          <div className="text-sm text-gray-500">
+            {selectedAsset ? `Asset: ${selectedAsset}` : 'No asset selected'} • {aggregatedData.length} periods
+          </div>
+        </div>
+
+        {selectedAsset && aggregatedData.length > 0 ? (
+          <div>
+            {/* Summary metrics */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 p-4 bg-gray-50 rounded-lg">
+              <div className="text-center">
+                <p className="text-lg font-bold text-red-900">
+                  {formatCurrency(Math.abs(aggregatedData.reduce((sum, p) => sum + (p.monthlyEquityInvestment || 0), 0)))}
+                </p>
+                <p className="text-sm text-red-600">Total Equity Investment</p>
+              </div>
+              <div className="text-center">
+                <p className="text-lg font-bold text-green-900">
+                  {formatCurrency(aggregatedData.reduce((sum, p) => sum + (p.totalRevenue || 0), 0))}
+                </p>
+                <p className="text-sm text-green-600">Total Revenue</p>
+              </div>
+              <div className="text-center">
+                <p className="text-lg font-bold text-purple-900">
+                  {formatCurrency(aggregatedData.reduce((sum, p) => sum + (p.debtService || 0), 0))}
+                </p>
+                <p className="text-sm text-purple-600">Total Debt Service</p>
+              </div>
+              <div className="text-center">
+                <p className="text-lg font-bold text-orange-900">
+                  {formatCurrency(aggregatedData.reduce((sum, p) => sum + (p.terminalValue || 0), 0))}
+                </p>
+                <p className="text-sm text-orange-600">Terminal Value</p>
+              </div>
+            </div>
+
+            {/* Period summary table */}
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-gray-200">
+                    <th className="text-left py-3 px-2 font-medium text-gray-900">Period</th>
+                    <th className="text-left py-3 px-2 font-medium text-gray-900">Phase</th>
+                    <th className="text-right py-3 px-2 font-medium text-gray-900 bg-red-50">Equity Investment ($M)</th>
+                    <th className="text-right py-3 px-2 font-medium text-gray-900">Volume (GWh)</th>
+                    <th className="text-right py-3 px-2 font-medium text-gray-900">Revenue ($M)</th>
+                    <th className="text-right py-3 px-2 font-medium text-gray-900">Contracted ($M)</th>
+                    <th className="text-right py-3 px-2 font-medium text-gray-900">Merchant ($M)</th>
+                    <th className="text-right py-3 px-2 font-medium text-gray-900">OPEX ($M)</th>
+                    <th className="text-right py-3 px-2 font-medium text-gray-900">Operating CF ($M)</th>
+                    <th className="text-right py-3 px-2 font-medium text-gray-900">Debt Service ($M)</th>
+                    <th className="text-right py-3 px-2 font-medium text-gray-900">DSCR (Avg)</th>
+                    <th className="text-right py-3 px-2 font-medium text-gray-900">Equity CF ($M)</th>
+                    <th className="text-right py-3 px-2 font-medium text-gray-900">Terminal ($M)</th>
+                    <th className="text-right py-3 px-2 font-medium text-gray-900 bg-green-50">Net Equity CF ($M)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {aggregatedData.slice(0, 50).map((period, index) => (
+                    <tr key={period.period} className={`border-b border-gray-100 hover:bg-gray-25 ${
+                      period.hasConstruction && period.hasOperations ? 'bg-yellow-25' :
+                      period.hasConstruction ? 'bg-red-25' : 
+                      period.hasOperations ? 'bg-green-25' : ''
+                    }`}>
+                      <td className="py-2 px-2 font-medium text-gray-900">{period.period}</td>
+                      <td className="py-2 px-2">
+                        <span className={`px-2 py-1 text-xs rounded-full ${
+                          period.hasTerminal ? 'bg-orange-100 text-orange-800' :
+                          period.hasConstruction && period.hasOperations ? 'bg-yellow-100 text-yellow-800' :
+                          period.hasConstruction ? 'bg-red-100 text-red-800' : 
+                          period.hasOperations ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                        }`}>
+                          {period.hasTerminal ? 'Terminal' :
+                           period.hasConstruction && period.hasOperations ? 'Mixed' :
+                           period.hasConstruction ? 'Construction' : 
+                           period.hasOperations ? 'Operations' : 'None'}
+                        </span>
+                      </td>
+                      
+                      <td className={`text-right py-2 px-2 bg-red-25 ${
+                        period.monthlyEquityInvestment !== 0 ? 'text-red-700 font-medium' : 'text-gray-400'
+                      }`}>
+                        {period.monthlyEquityInvestment !== 0 ? formatCurrency(Math.abs(period.monthlyEquityInvestment)) : '-'}
+                      </td>
+                      
+                      <td className={`text-right py-2 px-2 ${
+                        period.volume > 0 ? 'text-blue-600' : 'text-gray-400'
+                      }`}>
+                        {period.volume > 0 ? (period.volume / 1000).toFixed(1) : '-'}
+                      </td>
+                      
+                      <td className={`text-right py-2 px-2 ${
+                        period.totalRevenue > 0 ? 'text-green-700 font-medium' : 'text-gray-400'
+                      }`}>
+                        {period.totalRevenue > 0 ? formatCurrency(period.totalRevenue) : '-'}
+                      </td>
+                      
+                      <td className={`text-right py-2 px-2 ${
+                        period.contractedRevenue > 0 ? 'text-green-600' : 'text-gray-400'
+                      }`}>
+                        {period.contractedRevenue > 0 ? formatCurrency(period.contractedRevenue) : '-'}
+                      </td>
+                      
+                      <td className={`text-right py-2 px-2 ${
+                        period.merchantRevenue > 0 ? 'text-green-500' : 'text-gray-400'
+                      }`}>
+                        {period.merchantRevenue > 0 ? formatCurrency(period.merchantRevenue) : '-'}
+                      </td>
+                      
+                      <td className={`text-right py-2 px-2 ${
+                        period.opex > 0 ? 'text-red-600' : 'text-gray-400'
+                      }`}>
+                        {period.opex > 0 ? formatCurrency(period.opex) : '-'}
+                      </td>
+                      
+                      <td className={`text-right py-2 px-2 ${
+                        period.operatingCashFlow > 0 ? 'text-blue-700' : 'text-gray-400'
+                      }`}>
+                        {period.operatingCashFlow > 0 ? formatCurrency(period.operatingCashFlow) : '-'}
+                      </td>
+                      
+                      <td className={`text-right py-2 px-2 ${
+                        period.debtService > 0 ? 'text-purple-600' : 'text-gray-400'
+                      }`}>
+                        {period.debtService > 0 ? formatCurrency(period.debtService) : '-'}
+                      </td>
+                      
+                      <td className={`text-right py-2 px-2 ${
+                        period.avgDSCR > 0 ? 'text-gray-700' : 'text-gray-400'
+                      }`}>
+                        {period.avgDSCR > 0 ? `${period.avgDSCR.toFixed(2)}x` : '-'}
+                      </td>
+                      
+                      <td className={`text-right py-2 px-2 ${
+                        period.equityCashFlow !== 0 ? 
+                          (period.equityCashFlow > 0 ? 'text-green-600' : 'text-red-600') : 'text-gray-400'
+                      }`}>
+                        {period.equityCashFlow !== 0 ? formatCurrency(period.equityCashFlow) : '-'}
+                      </td>
+                      
+                      <td className={`text-right py-2 px-2 ${
+                        period.terminalValue > 0 ? 'text-orange-600' : 'text-gray-400'
+                      }`}>
+                        {period.terminalValue > 0 ? formatCurrency(period.terminalValue) : '-'}
+                      </td>
+                      
+                      <td className={`text-right py-2 px-2 font-bold bg-green-25 ${
+                        period.netEquityCashFlow > 0 ? 'text-green-600' : 
+                        period.netEquityCashFlow < 0 ? 'text-red-600' : 'text-gray-400'
+                      }`}>
+                        {period.netEquityCashFlow !== 0 ? formatCurrency(period.netEquityCashFlow) : '-'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {aggregatedData.length > 50 && (
+              <div className="mt-4 text-sm text-gray-500 text-center">
+                Showing first 50 periods of {aggregatedData.length} total periods
+              </div>
+            )}
+
+            <div className="mt-4 text-sm text-gray-600">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <h4 className="font-medium mb-2">{summaryPeriod.charAt(0).toUpperCase() + summaryPeriod.slice(1)} Aggregation:</h4>
+                  <ul className="text-xs space-y-1">
+                    <li>• <span className="text-red-600">Equity Investment:</span> Sum of monthly equity investments in period</li>
+                    <li>• <span className="text-green-600">Revenue & OPEX:</span> From project finance calculations (not 15% assumption)</li>
+                    <li>• <span className="text-purple-600">Debt Service:</span> {debtPaymentFrequency === 'quarterly' ? 'Quarterly' : 'Monthly'} debt payments</li>
+                    <li>• <span className="text-gray-600">DSCR:</span> Average of payment period DSCRs in this {summaryPeriod}</li>
+                    <li>• <span className="text-orange-600">Terminal:</span> Separate phase after operations end</li>
+                  </ul>
+                </div>
+                <div>
+                  <h4 className="font-medium mb-2">Configuration:</h4>
+                  <ul className="text-xs space-y-1">
+                    <li>• <span className="font-medium">Debt Payment:</span> {debtPaymentFrequency === 'quarterly' ? 'Quarterly (Mar, Jun, Sep, Dec)' : 'Monthly'}</li>
+                    <li>• <span className="font-medium">OPEX Source:</span> Project finance calculations (monthly allocation)</li>
+                    <li>• <span className="font-medium">DSCR Calculation:</span> Trailing {debtPaymentFrequency === 'quarterly' ? '3-month' : '1-month'} average</li>
+                    <li>• <span className="font-medium">Terminal Timing:</span> Final operational month + separate terminal phase</li>
+                    <li>• <span className="font-medium">Spare Columns:</span> Ready for additional cash flow metrics</li>
+                  </ul>
+                </div>
+              </div>
+              <div className="mt-2 text-center text-blue-600 bg-blue-50 p-2 rounded">
+                ✓ {summaryPeriod.charAt(0).toUpperCase() + summaryPeriod.slice(1)} summary correctly aggregates monthly construction + operations timeline
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="text-center text-gray-500 py-8">
+            <Calendar className="w-12 h-12 mx-auto mb-2 opacity-50" />
+            <p>No {summaryPeriod} summary data available</p>
+            <p className="text-sm">Monthly timeline data required for aggregation</p>
+          </div>
+        )}
+      </div>
+
     </div>
   );
 }
