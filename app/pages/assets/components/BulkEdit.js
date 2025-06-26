@@ -72,40 +72,94 @@ const BulkEdit = ({
     return displayDate; // Return original if parsing fails
   };
 
-  // Auto-calculate operations start date
+  // Auto-calculate operations start date (always 1st of month)
   const calculateOperationsStart = (constructionStart, duration) => {
     if (!constructionStart || !duration) return '';
     
-    // Convert display format to ISO for calculation
-    const isoStartDate = formatDateForStorage(constructionStart);
-    console.log('calculateOperationsStart:', { constructionStart, isoStartDate, duration });
+    // Parse DD/MM/YYYY to get day, month, year
+    const parts = constructionStart.split('/');
+    if (parts.length !== 3) return '';
     
-    const startDate = new Date(isoStartDate);
-    if (isNaN(startDate.getTime())) {
-      console.error('Invalid start date:', isoStartDate);
-      return '';
+    let day = parseInt(parts[0]);
+    let month = parseInt(parts[1]);
+    let year = parseInt(parts[2]);
+    
+    // Add construction duration in months
+    month += parseInt(duration);
+    
+    // Handle year overflow - adjust while month > 12
+    while (month > 12) {
+      month -= 12;
+      year += 1;
     }
     
-    startDate.setMonth(startDate.getMonth() + parseInt(duration));
+    // Always set to 1st of the month
+    day = 1;
     
-    // Round to nearest month start (1st of month)
-    const year = startDate.getFullYear();
-    const month = startDate.getMonth();
-    const operationsStart = new Date(year, month, 1);
-    
-    const result = operationsStart.toISOString().split('T')[0];
-    console.log('Operations start calculated:', result);
-    return result;
+    // Return in ISO format YYYY-MM-DD
+    const isoDate = `${year}-${month.toString().padStart(2, '0')}-01`;
+    console.log('Operations start calculated:', { 
+      input: constructionStart, 
+      parsed: { day: parts[0], month: parts[1], year: parts[2] },
+      duration, 
+      finalMonth: month,
+      finalYear: year,
+      result: isoDate 
+    });
+    return isoDate;
   };
 
-  // Auto-calculate operations end date
+  // Auto-calculate operations end date (last day of the final month)
   const calculateOperationsEnd = (operationsStart, assetLife) => {
     if (!operationsStart || !assetLife) return '';
     
-    const startDate = new Date(operationsStart);
-    startDate.setFullYear(startDate.getFullYear() + parseInt(assetLife));
+    // Parse ISO date YYYY-MM-DD
+    const parts = operationsStart.split('-');
+    if (parts.length !== 3) return '';
     
-    return startDate.toISOString().split('T')[0];
+    let year = parseInt(parts[0]);
+    let month = parseInt(parts[1]);
+    let day = parseInt(parts[2]);
+    
+    // Add asset life in years
+    year += parseInt(assetLife);
+    
+    // Get last day of the month
+    const daysInMonth = new Date(year, month, 0).getDate();
+    day = daysInMonth;
+    
+    // Return in ISO format YYYY-MM-DD
+    const isoDate = `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+    console.log('Operations end calculated:', { operationsStart, assetLife, result: isoDate });
+    return isoDate;
+  };
+
+  // Normalize construction start to 1st of month
+  const normalizeStartDate = (dateStr) => {
+    if (!dateStr) return '';
+    
+    // If already in ISO format, parse and normalize
+    if (dateStr.includes('-')) {
+      const parts = dateStr.split('-');
+      if (parts.length === 3) {
+        const year = parts[0];
+        const month = parts[1];
+        return `${year}-${month}-01`;
+      }
+    }
+    
+    // If in DD/MM/YYYY format, parse and convert
+    if (dateStr.includes('/')) {
+      const parts = dateStr.split('/');
+      if (parts.length === 3) {
+        const day = parseInt(parts[0]);
+        const month = parseInt(parts[1]);
+        const year = parseInt(parts[2]);
+        return `${year}-${month.toString().padStart(2, '0')}-01`;
+      }
+    }
+    
+    return dateStr;
   };
 
   // Get asset icon
@@ -155,8 +209,14 @@ const BulkEdit = ({
       // Auto-calculate operations start if construction fields change
       if (field === 'constructionStartDate' || field === 'constructionDuration') {
         const asset = updatedAssets[assetId];
-        const constructionStart = field === 'constructionStartDate' ? valueToSave : asset.constructionStartDate;
+        let constructionStart = field === 'constructionStartDate' ? valueToSave : asset.constructionStartDate;
         const duration = field === 'constructionDuration' ? valueToSave : asset.constructionDuration;
+        
+        // Normalize construction start to 1st of month if it's being set
+        if (field === 'constructionStartDate') {
+          constructionStart = normalizeStartDate(valueToSave);
+          updatedAssets[assetId].constructionStartDate = constructionStart;
+        }
         
         if (constructionStart && duration) {
           updatedAssets[assetId].assetStartDate = calculateOperationsStart(
@@ -775,12 +835,22 @@ const BulkEdit = ({
 
       {/* Date Format Help */}
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <h4 className="font-medium text-blue-900 mb-2">Date Format Information</h4>
+        <h4 className="font-medium text-blue-900 mb-2">Date Format & Business Rules</h4>
         <div className="text-sm text-blue-700">
           <p className="mb-2">
             <strong>Date Format:</strong> All dates are displayed and edited in DD/MM/YYYY format (e.g., 25/12/2024).
           </p>
-          <p>
+          <p className="mb-2">
+            <strong>Business Rules:</strong>
+          </p>
+          <ul className="list-disc ml-4 space-y-1">
+            <li>Construction Start dates are automatically normalized to the 1st of the month</li>
+            <li>Operations Start dates are always the 1st of the month</li>
+            <li>Operations End dates are always the last day of the month</li>
+            <li>Operations Start = Construction Start + Construction Duration (months)</li>
+            <li>Operations End = Operations Start + Asset Life (years)</li>
+          </ul>
+          <p className="mt-2">
             <strong>Storage:</strong> Dates are automatically converted to standard ISO format (YYYY-MM-DD) when saving to the database.
           </p>
         </div>
