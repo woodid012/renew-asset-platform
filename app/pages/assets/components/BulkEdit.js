@@ -30,11 +30,62 @@ const BulkEdit = ({
     return String(value);
   };
 
+  // Convert ISO date (YYYY-MM-DD) to DD/MM/YYYY format for display
+  const formatDateForDisplay = (isoDate) => {
+    if (!isoDate) return '';
+    
+    try {
+      const date = new Date(isoDate);
+      if (isNaN(date.getTime())) return isoDate; // Return original if invalid
+      
+      const day = date.getDate().toString().padStart(2, '0');
+      const month = (date.getMonth() + 1).toString().padStart(2, '0');
+      const year = date.getFullYear();
+      
+      return `${day}/${month}/${year}`;
+    } catch (error) {
+      return isoDate; // Return original if parsing fails
+    }
+  };
+
+  // Convert DD/MM/YYYY format to ISO date (YYYY-MM-DD) for storage
+  const formatDateForStorage = (displayDate) => {
+    if (!displayDate) return '';
+    
+    // If it's already in ISO format, return as is
+    if (displayDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      return displayDate;
+    }
+    
+    // Parse DD/MM/YYYY format
+    const ddmmyyyy = displayDate.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (ddmmyyyy) {
+      const [, day, month, year] = ddmmyyyy;
+      // Important: month is 0-indexed in JavaScript Date constructor
+      const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+      
+      if (!isNaN(date.getTime())) {
+        return date.toISOString().split('T')[0]; // Return YYYY-MM-DD
+      }
+    }
+    
+    return displayDate; // Return original if parsing fails
+  };
+
   // Auto-calculate operations start date
   const calculateOperationsStart = (constructionStart, duration) => {
     if (!constructionStart || !duration) return '';
     
-    const startDate = new Date(constructionStart);
+    // Convert display format to ISO for calculation
+    const isoStartDate = formatDateForStorage(constructionStart);
+    console.log('calculateOperationsStart:', { constructionStart, isoStartDate, duration });
+    
+    const startDate = new Date(isoStartDate);
+    if (isNaN(startDate.getTime())) {
+      console.error('Invalid start date:', isoStartDate);
+      return '';
+    }
+    
     startDate.setMonth(startDate.getMonth() + parseInt(duration));
     
     // Round to nearest month start (1st of month)
@@ -42,7 +93,19 @@ const BulkEdit = ({
     const month = startDate.getMonth();
     const operationsStart = new Date(year, month, 1);
     
-    return operationsStart.toISOString().split('T')[0];
+    const result = operationsStart.toISOString().split('T')[0];
+    console.log('Operations start calculated:', result);
+    return result;
+  };
+
+  // Auto-calculate operations end date
+  const calculateOperationsEnd = (operationsStart, assetLife) => {
+    if (!operationsStart || !assetLife) return '';
+    
+    const startDate = new Date(operationsStart);
+    startDate.setFullYear(startDate.getFullYear() + parseInt(assetLife));
+    
+    return startDate.toISOString().split('T')[0];
   };
 
   // Get asset icon
@@ -58,7 +121,13 @@ const BulkEdit = ({
   // Handle cell edit start
   const startEdit = (assetId, field, currentValue) => {
     setEditingCell({ assetId, field });
-    setEditValue(safeValue(currentValue));
+    
+    // For date fields, convert to DD/MM/YYYY for editing
+    if (field.includes('Date')) {
+      setEditValue(formatDateForDisplay(currentValue));
+    } else {
+      setEditValue(safeValue(currentValue));
+    }
   };
 
   // Handle cell edit save
@@ -66,13 +135,19 @@ const BulkEdit = ({
     if (!editingCell) return;
     
     const { assetId, field } = editingCell;
+    let valueToSave = editValue;
+    
+    // For date fields, convert back to ISO format for storage
+    if (field.includes('Date')) {
+      valueToSave = formatDateForStorage(editValue);
+    }
     
     setAssets(prev => {
       const updatedAssets = {
         ...prev,
         [assetId]: {
           ...prev[assetId],
-          [field]: editValue,
+          [field]: valueToSave,
           lastUpdated: new Date().toISOString()
         }
       };
@@ -80,11 +155,34 @@ const BulkEdit = ({
       // Auto-calculate operations start if construction fields change
       if (field === 'constructionStartDate' || field === 'constructionDuration') {
         const asset = updatedAssets[assetId];
-        const constructionStart = field === 'constructionStartDate' ? editValue : asset.constructionStartDate;
-        const duration = field === 'constructionDuration' ? editValue : asset.constructionDuration;
+        const constructionStart = field === 'constructionStartDate' ? valueToSave : asset.constructionStartDate;
+        const duration = field === 'constructionDuration' ? valueToSave : asset.constructionDuration;
         
         if (constructionStart && duration) {
-          updatedAssets[assetId].assetStartDate = calculateOperationsStart(constructionStart, duration);
+          updatedAssets[assetId].assetStartDate = calculateOperationsStart(
+            formatDateForDisplay(constructionStart), 
+            duration
+          );
+          
+          // Also calculate operations end if asset life is available
+          const assetLife = asset.assetLife;
+          if (assetLife && updatedAssets[assetId].assetStartDate) {
+            updatedAssets[assetId].assetEndDate = calculateOperationsEnd(
+              updatedAssets[assetId].assetStartDate,
+              assetLife
+            );
+          }
+        }
+      }
+
+      // Auto-calculate operations end if asset life changes
+      if (field === 'assetLife') {
+        const asset = updatedAssets[assetId];
+        if (asset.assetStartDate && valueToSave) {
+          updatedAssets[assetId].assetEndDate = calculateOperationsEnd(
+            asset.assetStartDate,
+            valueToSave
+          );
         }
       }
 
@@ -104,6 +202,13 @@ const BulkEdit = ({
 
   // Handle contract edit
   const updateContract = (assetId, contractIndex, field, value) => {
+    let valueToSave = value;
+    
+    // Convert date fields to ISO format for storage
+    if (field.includes('Date')) {
+      valueToSave = formatDateForStorage(value);
+    }
+    
     setAssets(prev => {
       const asset = prev[assetId];
       const updatedContracts = [...(asset.contracts || [])];
@@ -114,7 +219,7 @@ const BulkEdit = ({
       
       updatedContracts[contractIndex] = {
         ...updatedContracts[contractIndex],
-        [field]: value
+        [field]: valueToSave
       };
       
       return {
@@ -204,7 +309,7 @@ const BulkEdit = ({
       return (
         <div className="flex items-center space-x-1">
           <input
-            type={type}
+            type={field.includes('Date') ? 'text' : type}
             value={editValue}
             onChange={(e) => setEditValue(e.target.value)}
             onKeyDown={(e) => {
@@ -212,6 +317,7 @@ const BulkEdit = ({
               if (e.key === 'Escape') cancelEdit();
             }}
             className="w-full px-1 py-0.5 text-xs border border-blue-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+            placeholder={field.includes('Date') ? 'DD/MM/YYYY' : ''}
             autoFocus
           />
           <button onClick={saveEdit} className="text-green-600 hover:text-green-800">
@@ -224,13 +330,16 @@ const BulkEdit = ({
       );
     }
     
+    // Display value - format dates as DD/MM/YYYY
+    const displayValue = field.includes('Date') ? formatDateForDisplay(value) : safeValue(value);
+    
     return (
       <div 
         className="cursor-pointer hover:bg-gray-100 px-1 py-0.5 rounded text-xs"
         onClick={() => startEdit(assetId, field, value)}
-        title="Click to edit"
+        title={`Click to edit${field.includes('Date') ? ' (DD/MM/YYYY format)' : ''}`}
       >
-        {safeValue(value) || '-'}
+        {displayValue || '-'}
       </div>
     );
   };
@@ -241,8 +350,7 @@ const BulkEdit = ({
     { key: 'state', label: 'State', type: 'select', options: ['NSW', 'VIC', 'QLD', 'SA', 'WA', 'TAS'] },
     { key: 'type', label: 'Type', type: 'select', options: ['solar', 'wind', 'storage'] },
     { key: 'capacity', label: 'Capacity (MW)', type: 'number' },
-    { key: 'volume', label: 'Storage (MWh)', type: 'number' },
-    { key: 'assetLife', label: 'Asset Life (years)', type: 'number' }
+    { key: 'volume', label: 'Storage (MWh)', type: 'number' }
   ];
 
   const performanceFields = [
@@ -255,9 +363,11 @@ const BulkEdit = ({
   ];
 
   const timelineFields = [
-    { key: 'constructionStartDate', label: 'Construction Start', type: 'date' },
+    { key: 'constructionStartDate', label: 'Construction Start (DD/MM/YYYY)', type: 'date' },
     { key: 'constructionDuration', label: 'Construction Duration (months)', type: 'number' },
-    { key: 'assetStartDate', label: 'Operations Start (Auto-calc)', type: 'date', readonly: true }
+    { key: 'assetStartDate', label: 'Operations Start (Auto-calc)', type: 'date', readonly: true },
+    { key: 'assetLife', label: 'Operations Duration (years)', type: 'number' },
+    { key: 'assetEndDate', label: 'Operations End (Auto-calc)', type: 'date', readonly: true }
   ];
 
   const costFields = [
@@ -445,8 +555,17 @@ const BulkEdit = ({
                     {timelineFields.map(field => (
                       <td key={field.key} className="px-3 py-2">
                         {field.readonly ? (
-                          <div className="px-1 py-0.5 text-xs bg-gray-100 rounded">
-                            {safeValue(asset[field.key]) || 'Auto-calculated'}
+                          <div className="px-1 py-0.5 text-xs bg-gray-100 rounded" title={
+                            field.key === 'assetStartDate' 
+                              ? "Auto-calculated: Construction Start + Duration" 
+                              : field.key === 'assetEndDate'
+                              ? "Auto-calculated: Operations Start + Asset Life"
+                              : "Auto-calculated"
+                          }>
+                            {field.key.includes('Date') 
+                              ? formatDateForDisplay(asset[field.key]) || 'Auto-calculated'
+                              : asset[field.key] || 'Auto-calculated'
+                            }
                           </div>
                         ) : (
                           renderEditableCell(asset.id, field.key, asset[field.key], field.type)
@@ -496,8 +615,8 @@ const BulkEdit = ({
                           Strike Price ({asset.type === 'storage' ? '$/MW/hr' : '$/MWh'})
                         </th>
                         <th className="px-3 py-2 text-left font-medium">Coverage (%)</th>
-                        <th className="px-3 py-2 text-left font-medium">Start Date</th>
-                        <th className="px-3 py-2 text-left font-medium">End Date</th>
+                        <th className="px-3 py-2 text-left font-medium">Start Date (DD/MM/YYYY)</th>
+                        <th className="px-3 py-2 text-left font-medium">End Date (DD/MM/YYYY)</th>
                         <th className="px-3 py-2 text-left font-medium">Indexation (%)</th>
                         <th className="px-3 py-2 text-left font-medium">Actions</th>
                       </tr>
@@ -558,18 +677,20 @@ const BulkEdit = ({
                           </td>
                           <td className="px-3 py-2">
                             <input
-                              type="date"
-                              value={safeValue(contract.startDate)}
+                              type="text"
+                              value={formatDateForDisplay(contract.startDate)}
                               onChange={(e) => updateContract(asset.id, contractIndex, 'startDate', e.target.value)}
                               className="w-full text-xs border border-gray-300 rounded px-1 py-0.5"
+                              placeholder="DD/MM/YYYY"
                             />
                           </td>
                           <td className="px-3 py-2">
                             <input
-                              type="date"
-                              value={safeValue(contract.endDate)}
+                              type="text"
+                              value={formatDateForDisplay(contract.endDate)}
                               onChange={(e) => updateContract(asset.id, contractIndex, 'endDate', e.target.value)}
                               className="w-full text-xs border border-gray-300 rounded px-1 py-0.5"
+                              placeholder="DD/MM/YYYY"
                             />
                           </td>
                           <td className="px-3 py-2">
@@ -651,6 +772,19 @@ const BulkEdit = ({
           </div>
         </div>
       )}
+
+      {/* Date Format Help */}
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <h4 className="font-medium text-blue-900 mb-2">Date Format Information</h4>
+        <div className="text-sm text-blue-700">
+          <p className="mb-2">
+            <strong>Date Format:</strong> All dates are displayed and edited in DD/MM/YYYY format (e.g., 25/12/2024).
+          </p>
+          <p>
+            <strong>Storage:</strong> Dates are automatically converted to standard ISO format (YYYY-MM-DD) when saving to the database.
+          </p>
+        </div>
+      </div>
     </div>
   );
 };
