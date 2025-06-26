@@ -86,7 +86,7 @@ export default function EnhancedRevenuePage() {
     }
   }, [assets, constants, analysisConfig, escalationSettings]);
 
-  const loadPortfolioData = async () => {
+  const loadPortfolioData = useCallback(async () => {
     if (!currentUser || !currentPortfolio) return;
     
     setLoading(true);
@@ -129,7 +129,7 @@ export default function EnhancedRevenuePage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentUser, currentPortfolio, analysisConfig.scenario, escalationSettings.rate, escalationSettings.referenceYear]);
 
   const calculateEnhancedRevenue = useCallback(async () => {
     if (Object.keys(assets).length === 0 || calculating) return;
@@ -175,9 +175,9 @@ export default function EnhancedRevenuePage() {
     } finally {
       setCalculating(false);
     }
-  }, [assets, constants, analysisConfig, currentUser, currentPortfolio, calculating]);
+  }, [assets, constants, analysisConfig, currentUser, currentPortfolio, calculating, calculateLegacyRevenue, calculateSummaryFromEnhanced]);
 
-  const calculateLegacyRevenue = async () => {
+  const calculateLegacyRevenue = useCallback(async () => {
     console.log('Using legacy revenue calculation as fallback...');
     
     try {
@@ -266,7 +266,7 @@ export default function EnhancedRevenuePage() {
     } catch (error) {
       console.error('Legacy calculation error:', error);
     }
-  };
+  }, [analysisConfig.startYear, analysisConfig.periods, analysisConfig.intervalType, displayConfig.selectedRegion, assets, constants, getMerchantPrice, assetVisibility]);
 
   const calculateSummaryFromEnhanced = (results) => {
     if (!results.timeSeries || results.timeSeries.length === 0) {

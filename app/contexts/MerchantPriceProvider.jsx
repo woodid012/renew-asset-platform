@@ -1,3 +1,4 @@
+'use client'
 // app/contexts/MerchantPriceProvider.jsx
 // Updated to include escalation settings management
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
