@@ -19,13 +19,6 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 
-// Import calculations
-import { 
-  calculateProjectMetrics, 
-  calculateIRR,
-  initializeProjectValues
-} from '@/app/components/ProjectFinance_Calcs';
-
 export default function AssetDetailPage() {
   const { currentUser, currentPortfolio } = useUser();
   const { getMerchantPrice } = useMerchantPrices();
@@ -37,9 +30,9 @@ export default function AssetDetailPage() {
   const [portfolioName, setPortfolioName] = useState('Portfolio');
   const [loading, setLoading] = useState(true);
   const [selectedAsset, setSelectedAsset] = useState('');
-  const [projectMetrics, setProjectMetrics] = useState({});
   
-  // State for monthly timeline data
+  // State for enhanced backend results
+  const [enhancedResults, setEnhancedResults] = useState(null);
   const [monthlyTimeline, setMonthlyTimeline] = useState([]);
   const [timelineLoading, setTimelineLoading] = useState(false);
   
@@ -49,18 +42,17 @@ export default function AssetDetailPage() {
   const [solveGearing] = useState(true);
   
   // Updated configuration options
-  const [debtPaymentFrequency, setDebtPaymentFrequency] = useState('quarterly'); // monthly/quarterly
-  const [summaryPeriod, setSummaryPeriod] = useState('annual'); // annual/quarterly
-  const [gracePeriodTreatment, setGracePeriodTreatment] = useState('prorated'); // prorated/free
+  const [debtPaymentFrequency, setDebtPaymentFrequency] = useState('quarterly');
+  const [summaryPeriod, setSummaryPeriod] = useState('annual');
+  const [gracePeriodTreatment, setGracePeriodTreatment] = useState('prorated');
 
-  // FIXED: Calculate operations period from selected asset
+  // Operations period from selected asset
   const operationsPeriod = useMemo(() => {
     if (!selectedAsset || !assets[selectedAsset]) return 30;
     
     const asset = Object.values(assets).find(a => a.name === selectedAsset);
     if (!asset?.assetStartDate) return 30;
     
-    // Use the assetLife from the asset data, fallback to 30
     const assetLife = asset.assetLife || asset.projectLife || 30;
     return assetLife;
   }, [selectedAsset, assets]);
@@ -80,17 +72,10 @@ export default function AssetDetailPage() {
     }
   }, [assets, selectedAsset]);
 
-  // Calculate metrics when data changes
-  useEffect(() => {
-    if (Object.keys(assets).length > 0 && constants.assetCosts) {
-      calculateMetrics();
-    }
-  }, [assets, constants, selectedRevenueCase, operationsPeriod, includeTerminalValue, solveGearing]);
-
-  // Load monthly timeline when asset is selected
+  // Load enhanced results when asset is selected
   useEffect(() => {
     if (selectedAsset && currentUser && currentPortfolio) {
-      loadMonthlyTimeline();
+      loadEnhancedBackendResults();
     }
   }, [selectedAsset, currentUser, currentPortfolio]);
 
@@ -104,8 +89,7 @@ export default function AssetDetailPage() {
       if (response.ok) {
         const portfolioData = await response.json();
         setAssets(portfolioData.assets || {});
-        
-        const updatedConstants = {
+        setConstants({
           ...portfolioData.constants,
           HOURS_IN_YEAR: 8760,
           volumeVariation: portfolioData.constants?.volumeVariation || 20,
@@ -113,15 +97,7 @@ export default function AssetDetailPage() {
           EnergyPriceVariation: portfolioData.constants?.EnergyPriceVariation || 20,
           escalation: 2.5,
           referenceYear: 2025
-        };
-
-        // FIXED: Initialize asset costs using actual asset data
-        if (!updatedConstants.assetCosts && Object.keys(portfolioData.assets || {}).length > 0) {
-          updatedConstants.assetCosts = initializeAssetCostsFromAssets(portfolioData.assets || {});
-          setHasUnsavedChanges(true);
-        }
-
-        setConstants(updatedConstants);
+        });
         setPortfolioName(portfolioData.portfolioName || 'Portfolio');
         
       } else if (response.status === 404) {
@@ -135,34 +111,14 @@ export default function AssetDetailPage() {
     }
   };
 
-  // FIXED: Initialize asset costs from actual asset data
-  const initializeAssetCostsFromAssets = (portfolioAssets) => {
-    const assetCosts = {};
-    
-    Object.values(portfolioAssets).forEach(asset => {
-      // Get construction duration from asset data
-      const constructionDuration = asset.constructionDuration || getDefaultConstructionDuration(asset.type);
-      
-      // Calculate default costs based on capacity and type
-      const defaultCosts = getDefaultAssetCosts(asset.type, parseFloat(asset.capacity) || 0);
-      
-      assetCosts[asset.name] = {
-        ...defaultCosts,
-        // FIXED: Use construction duration from asset
-        constructionDuration: constructionDuration,
-        equityTimingUpfront: true, // Default
-        lastUpdated: new Date().toISOString()
-      };
-    });
-    
-    return assetCosts;
-  };
-
-  const loadMonthlyTimeline = async () => {
+  // UPDATED: Use enhanced backend for all calculations
+  const loadEnhancedBackendResults = async () => {
     if (!currentUser || !currentPortfolio || !selectedAsset) return;
     
     setTimelineLoading(true);
     try {
+      console.log('Loading enhanced backend results...');
+      
       const response = await fetch('/api/portfolio-analysis', {
         method: 'POST',
         headers: {
@@ -177,37 +133,32 @@ export default function AssetDetailPage() {
             includeConstructionPhase: true,
             constructionStartOffset: 24,
             scenario: selectedRevenueCase,
-            includeProjectFinance: true
+            includeProjectFinance: true,
+            includeSensitivity: true
           }
         })
       });
       
       if (response.ok) {
         const data = await response.json();
+        console.log('Enhanced backend results:', data);
         
-        // Find the last operational period across all data
-        const operationalPeriods = data.monthlyTimeSeries
-          .map((period, index) => ({ period, index }))
-          .filter(item => item.period.assets[selectedAsset]?.phaseInfo?.phase === 'operations');
+        setEnhancedResults(data);
         
-        const lastOperationalIndex = operationalPeriods.length > 0 ? 
-          operationalPeriods[operationalPeriods.length - 1].index : -1;
-        
-        console.log(`Found ${operationalPeriods.length} operational periods, last at index ${lastOperationalIndex}`);
-        
-        // Filter timeline to selected asset only and add phase information
+        // Extract monthly timeline for selected asset
         const assetTimeline = data.monthlyTimeSeries
           .map((period, index) => {
             const assetData = period.assets[selectedAsset];
             if (!assetData) return null;
             
-            const isLastOperationalPeriod = index === lastOperationalIndex && 
+            // Determine if this is the last operational period
+            const isLastOperationalPeriod = index === data.monthlyTimeSeries.length - 1 && 
                                            assetData.phaseInfo?.phase === 'operations';
             
+            // Get terminal value from project finance results if available
             let terminalValue = 0;
-            if (isLastOperationalPeriod && summaryMetrics?.terminalValue) {
-              terminalValue = summaryMetrics.terminalValue;
-              console.log(`Adding terminal value ${terminalValue} to period ${period.timeDimension.interval}`);
+            if (isLastOperationalPeriod && data.projectFinance?.assetFinance?.[selectedAsset]) {
+              terminalValue = data.projectFinance.assetFinance[selectedAsset].operatingMetrics?.terminalValue || 0;
             }
             
             return {
@@ -241,59 +192,25 @@ export default function AssetDetailPage() {
         setMonthlyTimeline(assetTimeline);
         console.log(`Loaded ${assetTimeline.length} months of timeline for ${selectedAsset}`);
         
-        // Log terminal value info
-        const terminalPeriods = assetTimeline.filter(p => p.terminalValue > 0);
-        console.log(`Terminal value periods:`, terminalPeriods.map(p => `${p.monthName}: ${p.terminalValue}`));
+      } else {
+        console.error('Enhanced backend analysis failed:', response.status);
       }
     } catch (error) {
-      console.error('Error loading monthly timeline:', error);
+      console.error('Error loading enhanced backend results:', error);
     } finally {
       setTimelineLoading(false);
     }
   };
 
-  const calculateMetrics = () => {
-    try {
-      if (!constants.assetCosts && Object.keys(assets).length > 0) {
-        const updatedConstants = {
-          ...constants,
-          assetCosts: initializeAssetCostsFromAssets(assets)
-        };
-        setConstants(updatedConstants);
-        setHasUnsavedChanges(true);
-        return;
-      }
-      
-      if (Object.keys(assets).length === 0 || !constants.assetCosts) return;
-      
-      const metrics = calculateProjectMetrics(
-        assets,
-        constants.assetCosts,
-        constants,
-        getMerchantPrice,
-        selectedRevenueCase,
-        solveGearing,
-        includeTerminalValue
-      );
-      
-      setProjectMetrics(metrics);
-      
-    } catch (error) {
-      console.error('Error calculating project metrics:', error);
-      setProjectMetrics({});
-    }
-  };
-
-  // Summary metrics
+  // Summary metrics from enhanced backend
   const summaryMetrics = useMemo(() => {
-    if (!selectedAsset || !projectMetrics[selectedAsset]) return null;
+    if (!selectedAsset || !enhancedResults?.projectFinance?.assetFinance?.[selectedAsset]) return null;
 
     const assetEntry = Object.entries(assets).find(([key, asset]) => asset.name === selectedAsset);
     if (!assetEntry) return null;
 
     const [assetKey, asset] = assetEntry;
-    const assetData = projectMetrics[selectedAsset];
-    const assetCosts = constants.assetCosts?.[selectedAsset] || {};
+    const financeData = enhancedResults.projectFinance.assetFinance[selectedAsset];
 
     return {
       assetName: asset.name,
@@ -302,118 +219,68 @@ export default function AssetDetailPage() {
       state: asset.state || 'N/A',
       assetStartDate: asset.assetStartDate,
       
-      totalCapex: assetData.capex || 0,
-      calculatedGearing: assetData.calculatedGearing || 0,
-      equityAmount: assetData.capex ? assetData.capex * (1 - assetData.calculatedGearing) : 0,
-      debtAmount: assetData.debtAmount || 0,
-      minDSCR: assetData.minDSCR,
-      terminalValue: assetData.terminalValue || 0,
+      // From enhanced backend
+      totalCapex: financeData.capitalStructure?.totalCapex || 0,
+      calculatedGearing: financeData.capitalStructure?.calculatedGearing || 0,
+      equityAmount: financeData.capitalStructure?.equityAmount || 0,
+      debtAmount: financeData.capitalStructure?.debtAmount || 0,
+      minDSCR: financeData.debtAnalysis?.minDSCR || 0,
+      terminalValue: financeData.operatingMetrics?.terminalValue || 0,
       
-      equityIRR: assetData.equityCashFlows ? calculateIRR(assetData.equityCashFlows) * 100 : null,
+      equityIRR: financeData.returns?.equityIRR || null,
       
-      // FIXED: Use construction duration from asset data
-      constructionDuration: asset.constructionDuration || assetCosts.constructionDuration || 12,
-      interestRate: (assetCosts.interestRate || 0.06) * 100,
-      tenorYears: assetCosts.tenorYears || 20,
-      equityTimingUpfront: assetData.equityTimingUpfront,
+      constructionDuration: financeData.equityAnalysis?.constructionDuration || 12,
+      interestRate: financeData.debtAnalysis?.interestRate || 6.0,
+      tenorYears: financeData.debtAnalysis?.tenorYears || 20,
+      equityTimingUpfront: financeData.equityAnalysis?.timingStructure === 'upfront',
       
       contractCount: asset.contracts?.length || 0,
       hasContracts: (asset.contracts?.length || 0) > 0,
       
-      totalRevenue: assetData.cashFlows ? assetData.cashFlows.reduce((sum, cf) => sum + cf.revenue, 0) : 0,
-      totalOpex: assetData.cashFlows ? Math.abs(assetData.cashFlows.reduce((sum, cf) => sum + cf.opex, 0)) : 0,
-      totalEquityCashFlow: assetData.cashFlows ? assetData.cashFlows.reduce((sum, cf) => sum + cf.equityCashFlow, 0) : 0
+      totalRevenue: financeData.operatingMetrics?.totalRevenue || 0,
+      totalOpex: financeData.operatingMetrics?.totalOpex || 0,
+      totalEquityCashFlow: financeData.equityAnalysis?.totalEquityReturns || 0
     };
-  }, [selectedAsset, projectMetrics, assets, constants]);
+  }, [selectedAsset, enhancedResults, assets]);
 
-  // Update monthly timeline when summaryMetrics changes to add terminal value
-  useEffect(() => {
-    if (monthlyTimeline.length > 0 && summaryMetrics?.terminalValue && summaryMetrics.terminalValue > 0) {
-      console.log(`Updating timeline with terminal value: ${summaryMetrics.terminalValue}`);
-      
-      // Find the last operational period
-      const operationalPeriods = monthlyTimeline
-        .map((period, index) => ({ period, index }))
-        .filter(item => item.period.phase === 'operations');
-      
-      if (operationalPeriods.length === 0) {
-        console.log('No operational periods found for terminal value');
-        return;
-      }
-      
-      const lastOperationalIndex = operationalPeriods[operationalPeriods.length - 1].index;
-      const lastOperationalPeriod = monthlyTimeline[lastOperationalIndex];
-      
-      console.log(`Adding terminal value to period at index ${lastOperationalIndex}: ${lastOperationalPeriod.monthName}`);
-      
-      // Check if terminal value is already set to avoid infinite updates
-      if (lastOperationalPeriod.terminalValue === summaryMetrics.terminalValue) {
-        console.log('Terminal value already set, skipping update');
-        return;
-      }
-      
-      setMonthlyTimeline(prevTimeline => 
-        prevTimeline.map((month, index) => {
-          if (index === lastOperationalIndex) {
-            console.log(`Setting terminal value ${summaryMetrics.terminalValue} for ${month.monthName}`);
-            return {
-              ...month,
-              terminalValue: summaryMetrics.terminalValue,
-              isLastOperationalPeriod: true
-            };
-          }
-          return month;
-        })
-      );
-    }
-  }, [summaryMetrics?.terminalValue]);
-
-  // Helper function to get operational months in a quarter for an asset
+  // Helper functions for display calculations only
   const getOperationalMonthsInQuarter = (year, quarter, assetName) => {
     const asset = Object.values(assets).find(a => a.name === assetName);
     if (!asset?.assetStartDate) return 0;
     
     const assetStartDate = new Date(asset.assetStartDate);
     const assetStartYear = assetStartDate.getFullYear();
-    const assetStartMonth = assetStartDate.getMonth() + 1; // 1-12
+    const assetStartMonth = assetStartDate.getMonth() + 1;
     
-    // Calculate quarter months
     const quarterStartMonth = (quarter - 1) * 3 + 1;
     const quarterEndMonth = quarter * 3;
     
-    // If asset hasn't started yet in this year/quarter
     if (year < assetStartYear || (year === assetStartYear && quarterEndMonth < assetStartMonth)) {
       return 0;
     }
     
-    // If asset started before this quarter
     if (year > assetStartYear || (year === assetStartYear && quarterStartMonth >= assetStartMonth)) {
-      return 3; // Full quarter
+      return 3;
     }
     
-    // Asset starts during this quarter
     if (year === assetStartYear && assetStartMonth >= quarterStartMonth && assetStartMonth <= quarterEndMonth) {
-      return quarterEndMonth - assetStartMonth + 1; // Partial quarter
+      return quarterEndMonth - assetStartMonth + 1;
     }
     
     return 0;
   };
 
-  // Helper function to check if this is the first partial quarter of operations
   const isFirstPartialQuarter = (year, quarter, assetName) => {
     const asset = Object.values(assets).find(a => a.name === assetName);
     if (!asset?.assetStartDate) return false;
     
     const assetStartDate = new Date(asset.assetStartDate);
     const assetStartYear = assetStartDate.getFullYear();
-    const assetStartMonth = assetStartDate.getMonth() + 1; // 1-12
+    const assetStartMonth = assetStartDate.getMonth() + 1;
     
     const quarterStartMonth = (quarter - 1) * 3 + 1;
     const quarterEndMonth = quarter * 3;
     
-    // This is the first partial quarter if:
-    // 1. Asset starts in this year/quarter
-    // 2. Asset doesn't start on the first month of the quarter
     return (year === assetStartYear && 
             assetStartMonth >= quarterStartMonth && 
             assetStartMonth <= quarterEndMonth &&
@@ -421,24 +288,19 @@ export default function AssetDetailPage() {
   };
 
   const getMonthlyOpex = (month, assetName) => {
-    if (!projectMetrics[assetName]?.cashFlows) {
-      // Fallback: 15% of revenue assumption
-      return (month.totalRevenue || 0) * 0.15;
+    // Use enhanced backend data if available
+    if (enhancedResults?.projectFinance?.assetFinance?.[assetName]) {
+      const financeData = enhancedResults.projectFinance.assetFinance[assetName];
+      const annualOpex = financeData.operatingMetrics?.totalOpex || 0;
+      const operationYears = financeData.cashFlowAnalysis?.length || 30;
+      return annualOpex / operationYears / 12; // Monthly OPEX
     }
     
-    const year = month.year;
-    const assetStartYear = new Date(Object.values(assets).find(a => a.name === assetName)?.assetStartDate).getFullYear();
-    const operationalYear = year - assetStartYear;
-    
-    if (operationalYear < 0 || operationalYear >= projectMetrics[assetName].cashFlows.length) {
-      return (month.totalRevenue || 0) * 0.15; // Fallback
-    }
-    
-    const annualOpex = Math.abs(projectMetrics[assetName].cashFlows[operationalYear]?.opex || 0);
-    return annualOpex / 12; // Monthly OPEX
+    // Fallback: 15% of revenue assumption
+    return (month.totalRevenue || 0) * 0.15;
   };
 
-  // Helper function to calculate DSCR based on trailing period with pro-rating
+  // Display functions for debt service calculations
   const calculateDSCR = (monthlyData, currentIndex, assetName) => {
     if (!monthlyData || currentIndex < 0) return 0;
     
@@ -459,10 +321,9 @@ export default function AssetDetailPage() {
         const operatingCF = (month.totalRevenue || 0) - monthlyOpex;
         totalOperatingCF += operatingCF;
         
-        // Only count debt service in payment months
         if (debtPaymentFrequency === 'quarterly') {
           const monthNum = parseInt(month.month.split('-')[1]);
-          if (monthNum % 3 === 0) { // Payment month
+          if (monthNum % 3 === 0) {
             const debtService = calculateQuarterlyDebtService(month, assetName);
             totalDebtService += debtService;
           }
@@ -472,7 +333,6 @@ export default function AssetDetailPage() {
       }
     }
     
-    // For quarterly payments, we need to consider the operational period for DSCR
     if (debtPaymentFrequency === 'quarterly' && totalDebtService > 0) {
       const currentMonthNum = parseInt(currentMonth.month.split('-')[1]);
       const quarter = Math.ceil(currentMonthNum / 3);
@@ -480,12 +340,9 @@ export default function AssetDetailPage() {
       const isPartialQuarter = isFirstPartialQuarter(currentMonth.year, quarter, assetName);
       
       if (isPartialQuarter && gracePeriodTreatment === 'prorated') {
-        // Adjust operating cash flow for partial quarter comparison
-        const quarterlyOperatingCF = totalOperatingCF;
-        const adjustedOperatingCF = quarterlyOperatingCF; // Use actual operating CF
+        const adjustedOperatingCF = totalOperatingCF;
         return adjustedOperatingCF / totalDebtService;
       } else if (isPartialQuarter && gracePeriodTreatment === 'free') {
-        // No debt service in free quarter, so DSCR is effectively infinite
         return totalDebtService === 0 ? 0 : Infinity;
       }
     }
@@ -493,9 +350,8 @@ export default function AssetDetailPage() {
     return totalDebtService > 0 ? totalOperatingCF / totalDebtService : 0;
   };
 
-  // Calculate debt service payments with pro-rating support
   const calculateQuarterlyDebtService = (month, assetName) => {
-    if (!projectMetrics[assetName]?.cashFlows) return 0;
+    if (!enhancedResults?.projectFinance?.assetFinance?.[assetName]) return 0;
     
     const year = month.year;
     const monthNum = parseInt(month.month.split('-')[1]);
@@ -504,22 +360,22 @@ export default function AssetDetailPage() {
     const assetStartYear = new Date(Object.values(assets).find(a => a.name === assetName)?.assetStartDate).getFullYear();
     const operationalYear = year - assetStartYear;
     
-    if (operationalYear < 0 || operationalYear >= projectMetrics[assetName].cashFlows.length) return 0;
+    const financeData = enhancedResults.projectFinance.assetFinance[assetName];
+    const cashFlowData = financeData.cashFlowAnalysis?.find(cf => cf.yearIndex === operationalYear);
     
-    const annualDebtService = projectMetrics[assetName].cashFlows[operationalYear]?.debtService || 0;
-    const quarterlyDebtService = Math.abs(annualDebtService) / 4; // Base quarterly payment
+    if (!cashFlowData) return 0;
     
-    // Check if this is a partial quarter and apply treatment
+    const annualDebtService = Math.abs(cashFlowData.debtService || 0);
+    const quarterlyDebtService = annualDebtService / 4;
+    
     if (debtPaymentFrequency === 'quarterly') {
       const operationalMonths = getOperationalMonthsInQuarter(year, quarter, assetName);
       const isPartialQuarter = isFirstPartialQuarter(year, quarter, assetName);
       
       if (isPartialQuarter) {
         if (gracePeriodTreatment === 'free') {
-          // No payment in first partial quarter
           return 0;
         } else if (gracePeriodTreatment === 'prorated') {
-          // Pro-rate based on operational months
           return quarterlyDebtService * (operationalMonths / 3);
         }
       }
@@ -529,16 +385,19 @@ export default function AssetDetailPage() {
   };
 
   const calculateMonthlyDebtService = (month, assetName) => {
-    if (!projectMetrics[assetName]?.cashFlows) return 0;
+    if (!enhancedResults?.projectFinance?.assetFinance?.[assetName]) return 0;
     
     const year = month.year;
     const assetStartYear = new Date(Object.values(assets).find(a => a.name === assetName)?.assetStartDate).getFullYear();
     const operationalYear = year - assetStartYear;
     
-    if (operationalYear < 0 || operationalYear >= projectMetrics[assetName].cashFlows.length) return 0;
+    const financeData = enhancedResults.projectFinance.assetFinance[assetName];
+    const cashFlowData = financeData.cashFlowAnalysis?.find(cf => cf.yearIndex === operationalYear);
     
-    const annualDebtService = projectMetrics[assetName].cashFlows[operationalYear]?.debtService || 0;
-    return Math.abs(annualDebtService) / 12; // Monthly payment
+    if (!cashFlowData) return 0;
+    
+    const annualDebtService = Math.abs(cashFlowData.debtService || 0);
+    return annualDebtService / 12;
   };
 
   const formatCurrency = (value) => {
@@ -559,33 +418,6 @@ export default function AssetDetailPage() {
       default: return <Zap className="w-5 h-5 text-gray-500" />;
     }
   };
-
-  // Helper functions for defaults
-  function getDefaultConstructionDuration(assetType) {
-    const defaults = { solar: 12, wind: 18, storage: 12 };
-    return defaults[assetType] || 12;
-  }
-
-  function getDefaultAssetCosts(assetType, capacity) {
-    const capexRates = { solar: 1.2, wind: 2.5, storage: 1.6 };
-    const opexRates = { solar: 0.01, wind: 0.02, storage: 0.03 };
-    
-    const capex = (capexRates[assetType] || 1.0) * (capacity || 100);
-    const operatingCosts = (opexRates[assetType] || 0.02) * (capacity || 100);
-    
-    return {
-      capex: Math.round(capex * 10) / 10,
-      operatingCosts: Math.round(operatingCosts * 100) / 100,
-      operatingCostEscalation: 2.5,
-      terminalValue: assetType === 'storage' ? Math.round(capacity * 0.5) : 0,
-      maxGearing: assetType === 'solar' ? 0.7 : 0.65,
-      targetDSCRContract: 1.4,
-      targetDSCRMerchant: 1.8,
-      interestRate: 0.06,
-      tenorYears: 20,
-      debtStructure: 'sculpting'
-    };
-  }
 
   // Loading states
   if (!currentUser || !currentPortfolio) {
@@ -725,7 +557,50 @@ export default function AssetDetailPage() {
           <div className="flex items-center space-x-2 mb-4">
             {getAssetIcon(summaryMetrics.assetType)}
             <h3 className="text-lg font-semibold">{summaryMetrics.assetName} - Project Summary</h3>
+            <span className="text-sm text-green-600 bg-green-100 px-2 py-1 rounded">Enhanced Backend</span>
           </div>
+          
+          {/* DEBUG: Timeline Dates */}
+          {enhancedResults?.timelineAnalysis?.assetPhases?.[selectedAsset] && (
+            <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <h4 className="text-sm font-medium text-yellow-800 mb-2">🔍 DEBUG: Timeline Dates for {selectedAsset}</h4>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-xs">
+                <div>
+                  <span className="font-medium text-red-700">Construction Start:</span>
+                  <div className="text-red-600">
+                    {new Date(enhancedResults.timelineAnalysis.assetPhases[selectedAsset].constructionStart).toLocaleDateString()}
+                  </div>
+                  <div className="text-red-500 text-xs">
+                    ({enhancedResults.timelineAnalysis.assetPhases[selectedAsset].constructionDurationMonths} months)
+                  </div>
+                </div>
+                <div>
+                  <span className="font-medium text-blue-700">Construction End:</span>
+                  <div className="text-blue-600">
+                    {new Date(enhancedResults.timelineAnalysis.assetPhases[selectedAsset].constructionEnd).toLocaleDateString()}
+                  </div>
+                </div>
+                <div>
+                  <span className="font-medium text-green-700">Operations Start:</span>
+                  <div className="text-green-600">
+                    {new Date(enhancedResults.timelineAnalysis.assetPhases[selectedAsset].operationalStart).toLocaleDateString()}
+                  </div>
+                  <div className="text-green-500 text-xs">
+                    ({enhancedResults.timelineAnalysis.assetPhases[selectedAsset].operationalDurationMonths} months)
+                  </div>
+                </div>
+              </div>
+              <div className="mt-2 text-xs text-yellow-700">
+                <strong>Asset Data:</strong> Start Date: {summaryMetrics.assetStartDate} | 
+                Construction Duration: {summaryMetrics.constructionDuration} months |
+                Total Timeline: {enhancedResults.metadata?.timelineMetadata?.totalMonths} months
+              </div>
+              <div className="mt-1 text-xs text-yellow-600">
+                <strong>Expected:</strong> If ops start is {summaryMetrics.assetStartDate} and construction is {summaryMetrics.constructionDuration} months,
+                construction should start ~{new Date(new Date(summaryMetrics.assetStartDate).getTime() - (summaryMetrics.constructionDuration * 30 * 24 * 60 * 60 * 1000)).toLocaleDateString()}
+              </div>
+            </div>
+          )}
           
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-4">
             <div className="text-center p-3 bg-gray-50 rounded-lg">
@@ -825,14 +700,13 @@ export default function AssetDetailPage() {
         </div>
       )}
 
-
       {/* Monthly Timeline Analysis */}
       <div className="bg-white rounded-lg shadow border p-6">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center space-x-2">
             <Calendar className="w-5 h-5 text-gray-600" />
             <h3 className="text-lg font-semibold">Monthly Cashflows</h3>
-            <span className="text-sm text-blue-600">(Investment → Revenue Timeline)</span>
+            <span className="text-sm text-blue-600">(Enhanced Backend Timeline)</span>
           </div>
           <div className="text-sm text-gray-500">
             {selectedAsset ? `Asset: ${selectedAsset}` : 'No asset selected'} • {monthlyTimeline.length} months
@@ -842,7 +716,7 @@ export default function AssetDetailPage() {
         {timelineLoading ? (
           <div className="flex items-center justify-center py-8">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-            <span className="ml-2 text-gray-600">Loading monthly timeline...</span>
+            <span className="ml-2 text-gray-600">Loading enhanced backend timeline...</span>
           </div>
         ) : selectedAsset && monthlyTimeline.length > 0 ? (
           <div>
@@ -899,7 +773,7 @@ export default function AssetDetailPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {monthlyTimeline.slice(0, 1200).map((month, index) => (
+                  {monthlyTimeline.slice(0, 120).map((month, index) => (
                     <tr key={month.month} className={`border-b border-gray-100 hover:bg-gray-25 ${
                       month.phase === 'construction' ? 'bg-red-25' : month.phase === 'operations' ? 'bg-green-25' : ''
                     }`}>
@@ -929,7 +803,7 @@ export default function AssetDetailPage() {
                         )}
                       </td>
                       
-                      {/* Investment columns - only show during construction */}
+                      {/* Investment columns */}
                       <td className={`text-right py-2 px-2 bg-red-25 ${
                         month.monthlyInvestment !== 0 ? 'text-red-700 font-medium' : 'text-gray-400'
                       }`}>
@@ -951,7 +825,7 @@ export default function AssetDetailPage() {
                         {month.cumulativeInvestment !== 0 ? formatCurrency(month.cumulativeInvestment) : '-'}
                       </td>
                       
-                      {/* Operations columns - only show during operations */}
+                      {/* Operations columns */}
                       <td className={`text-right py-2 px-2 ${
                         month.volume > 0 ? 'text-blue-600' : 'text-gray-400'
                       }`}>
@@ -973,7 +847,7 @@ export default function AssetDetailPage() {
                         {month.merchantRevenue > 0 ? formatCurrency(month.merchantRevenue) : '-'}
                       </td>
                       
-                      {/* New columns - OPEX, Operating CF, Debt Service, DSCR, Equity CF, Terminal */}
+                      {/* OPEX, Operating CF, Debt Service, DSCR, Equity CF, Terminal */}
                       <td className={`text-right py-2 px-2 ${
                         month.totalRevenue > 0 ? 'text-red-600' : 'text-gray-400'
                       }`}>
@@ -985,7 +859,7 @@ export default function AssetDetailPage() {
                         {month.totalRevenue > 0 ? formatCurrency((month.totalRevenue || 0) - getMonthlyOpex(month, selectedAsset)) : '-'}
                       </td>
                       
-                      {/* Debt Service - only show in payment months with pro-rating */}
+                      {/* Debt Service */}
                       <td className={`text-right py-2 px-2 ${
                         month.phase === 'operations' ? 'text-purple-600' : 'text-gray-400'
                       }`}>
@@ -994,8 +868,8 @@ export default function AssetDetailPage() {
                           
                           const monthNum = parseInt(month.month.split('-')[1]);
                           const isPaymentMonth = debtPaymentFrequency === 'quarterly' 
-                            ? (monthNum % 3 === 0) // March, June, Sept, Dec
-                            : true; // Every month
+                            ? (monthNum % 3 === 0)
+                            : true;
                           
                           if (isPaymentMonth) {
                             const debtService = debtPaymentFrequency === 'quarterly'
@@ -1003,7 +877,6 @@ export default function AssetDetailPage() {
                               : calculateMonthlyDebtService(month, selectedAsset);
                             
                             if (debtService > 0) {
-                              // Check if this is pro-rated or free quarter
                               if (debtPaymentFrequency === 'quarterly') {
                                 const quarter = Math.ceil(monthNum / 3);
                                 const operationalMonths = getOperationalMonthsInQuarter(month.year, quarter, selectedAsset);
@@ -1019,13 +892,13 @@ export default function AssetDetailPage() {
                               }
                               return formatCurrency(debtService);
                             }
-                            return debtService === 0 ? '-' : '-';
+                            return '-';
                           }
                           return '-';
                         })()}
                       </td>
                       
-                      {/* DSCR - based on trailing period */}
+                      {/* DSCR */}
                       <td className={`text-right py-2 px-2 ${
                         month.phase === 'operations' ? 'text-gray-700' : 'text-gray-400'
                       }`}>
@@ -1072,7 +945,7 @@ export default function AssetDetailPage() {
                         })()}
                       </td>
                       
-                      {/* Terminal Value - show when terminalValue > 0 */}
+                      {/* Terminal Value */}
                       <td className={`text-right py-2 px-2 ${
                         month.terminalValue > 0 ? 'text-gray-700 font-medium' : 'text-gray-400'
                       }`}>
@@ -1088,7 +961,7 @@ export default function AssetDetailPage() {
                           const investment = month.monthlyEquityInvestment || 0;
                           let operatingCF = 0;
                           let debtService = 0;
-                          let terminal = month.terminalValue || 0; // FIXED: Use month's terminal value
+                          let terminal = month.terminalValue || 0;
                           
                           if (month.phase === 'operations') {
                             const monthlyOpex = getMonthlyOpex(month, selectedAsset);
@@ -1124,43 +997,37 @@ export default function AssetDetailPage() {
             <div className="mt-4 text-sm text-gray-600">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <h4 className="font-medium mb-2">Monthly Timeline Phases:</h4>
+                  <h4 className="font-medium mb-2">Enhanced Backend Features:</h4>
                   <ul className="text-xs space-y-1">
-                    <li>• <span className="text-red-600">Construction:</span> Monthly equity + debt investments until operations start</li>
-                    <li>• <span className="text-green-600">Operations:</span> Monthly revenue generation from asset start date</li>
-                    <li>• <span className="text-purple-600">Debt Service:</span> {debtPaymentFrequency === 'quarterly' ? 'Quarterly' : 'Monthly'} debt payments</li>
-                    <li>• <span className="text-blue-600">DSCR:</span> Based on trailing {debtPaymentFrequency === 'quarterly' ? '3-month' : '1-month'} period</li>
-                    <li>• <span className="text-orange-600">Terminal:</span> Shows in final operational month</li>
-                    <li>• <span className="text-yellow-600">Net Equity CF:</span> Operating CF - Debt Service + Terminal - Equity Investment</li>
+                    <li>• <span className="text-blue-600">Backend Integration:</span> All calculations performed by enhanced backend APIs</li>
+                    <li>• <span className="text-green-600">Project Finance:</span> Automatic debt sizing and equity cash flows</li>
+                    <li>• <span className="text-purple-600">DSCR Calculation:</span> Based on backend debt schedules with grace periods</li>
+                    <li>• <span className="text-orange-600">Terminal Value:</span> Integrated from backend project finance calculations</li>
                   </ul>
                 </div>
                 <div>
-                  <h4 className="font-medium mb-2">Key Insights:</h4>
+                  <h4 className="font-medium mb-2">Timeline Analysis:</h4>
                   <ul className="text-xs space-y-1">
-                    <li>• <span className="font-medium">Construction Period:</span> {monthlyTimeline.filter(m => m.phase === 'construction').length} months of capital deployment</li>
-                    <li>• <span className="font-medium">First Revenue:</span> {monthlyTimeline.find(m => m.totalRevenue > 0)?.monthName || 'Not found'}</li>
-                    <li>• <span className="font-medium">Investment Total:</span> {formatCurrency(Math.abs(monthlyTimeline.reduce((sum, m) => sum + (m.monthlyInvestment || 0), 0)))}</li>
-                    <li>• <span className="font-medium">Terminal Value:</span> {formatCurrency(monthlyTimeline.reduce((sum, m) => sum + (m.terminalValue || 0), 0))}</li>
-                    <li>• <span className="font-medium">Payback Indicator:</span> Monthly revenue vs investment timing clearly visible</li>
+                    <li>• <span className="font-medium">Construction:</span> {monthlyTimeline.filter(m => m.phase === 'construction').length} months of capital deployment</li>
+                    <li>• <span className="font-medium">Operations:</span> {monthlyTimeline.filter(m => m.phase === 'operations').length} months of revenue generation</li>
+                    <li>• <span className="font-medium">Investment:</span> {formatCurrency(Math.abs(monthlyTimeline.reduce((sum, m) => sum + (m.monthlyInvestment || 0), 0)))}</li>
+                    <li>• <span className="font-medium">Terminal:</span> {formatCurrency(monthlyTimeline.reduce((sum, m) => sum + (m.terminalValue || 0), 0))}</li>
                   </ul>
                 </div>
               </div>
-              <div className="mt-2 text-center text-blue-600 bg-blue-50 p-2 rounded">
-                ✓ Monthly view shows construction timeline with {operationsPeriod}-year operations period from asset settings
+              <div className="mt-2 text-center text-green-600 bg-green-50 p-2 rounded">
+                ✓ All calculations powered by enhanced backend - no frontend project finance calculations
               </div>
             </div>
           </div>
         ) : (
           <div className="text-center text-gray-500 py-8">
             <Calendar className="w-12 h-12 mx-auto mb-2 opacity-50" />
-            <p>No monthly timeline data available for selected asset</p>
-            <p className="text-sm">Select an asset to view construction + operations timeline</p>
+            <p>No enhanced backend timeline data available</p>
+            <p className="text-sm">Select an asset to load enhanced backend calculations</p>
           </div>
         )}
       </div>
-
-
-
     </div>
   );
 }

@@ -1,6 +1,5 @@
 // app/api/portfolio-analysis/route.js
-// Enhanced unified backend API for portfolio analysis - FIXED merchant price integration
-// ADDED: Monthly timeseries with construction + operations phases
+// FIXED: Construction date handling and date parsing issues
 import { NextResponse } from 'next/server'
 import clientPromise from '@/lib/mongodb'
 
@@ -36,18 +35,18 @@ export async function POST(request) {
     
     // Set default analysis configuration
     const config = {
-      intervalType: analysisConfig.intervalType || 'monthly', // Default to monthly for construction + ops
+      intervalType: analysisConfig.intervalType || 'monthly',
       startYear: analysisConfig.startYear || new Date().getFullYear(),
       periods: analysisConfig.periods || 30,
       includeProjectFinance: analysisConfig.includeProjectFinance !== false,
       includeSensitivity: analysisConfig.includeSensitivity !== false,
       scenario: analysisConfig.scenario || 'base',
       
-      // NEW: Construction + Operations timeline settings
+      // Construction + Operations timeline settings
       includeConstructionPhase: analysisConfig.includeConstructionPhase !== false,
       constructionStartOffset: analysisConfig.constructionStartOffset || 24, // months before asset start
       
-      // FIXED: Extract escalation settings from request
+      // Escalation settings
       escalationSettings: analysisConfig.escalationSettings || {
         enabled: true,
         rate: 2.5,
@@ -94,15 +93,20 @@ export async function POST(request) {
       )
     }
     
-    // NEW: Generate monthly timeline including construction phases
+    // FIXED: Generate monthly timeline with proper date parsing
     const timelineResults = generateMonthlyConstructionOperationsTimeline(
       portfolio.assets,
       config
     )
     
     console.log(`Generated monthly timeline: ${timelineResults.totalMonths} months (${timelineResults.constructionMonths} construction + ${timelineResults.operationalMonths} operational)`)
+    console.log('Asset phases:', Object.keys(timelineResults.assetPhases).map(assetName => ({
+      asset: assetName,
+      constructionStart: timelineResults.assetPhases[assetName].constructionStart.toISOString(),
+      operationalStart: timelineResults.assetPhases[assetName].operationalStart.toISOString()
+    })))
     
-    // FIXED: Get enhanced price function that properly uses merchant pricing context
+    // Get enhanced price function
     const getMerchantPrice = createEnhancedMerchantPriceFunction(config.escalationSettings)
     
     // Initialize enhanced constants
@@ -116,11 +120,10 @@ export async function POST(request) {
       escalation: config.escalationSettings.rate || 2.5,
       referenceYear: config.escalationSettings.referenceYear || 2025,
       scenario: config.scenario,
-      // FIXED: Pass escalation settings to constants
       escalationSettings: config.escalationSettings
     }
     
-    // NEW: Calculate monthly portfolio time series with construction + operations
+    // FIXED: Calculate monthly portfolio time series with proper date handling
     const monthlyPortfolioTimeSeries = await calculateMonthlyPortfolioTimeSeries(
       portfolio.assets,
       timelineResults.monthlyIntervals,
@@ -167,20 +170,21 @@ export async function POST(request) {
         totalAssets: Object.keys(portfolio.assets || {}).length,
         timeSeriesLength: monthlyPortfolioTimeSeries.length,
         calculationTimestamp: new Date().toISOString(),
-        dataStructureVersion: '3.1', // Updated version
+        dataStructureVersion: '3.1',
         validationStatus: validation,
         
-        // NEW: Timeline metadata
+        // Timeline metadata with detailed diagnostics
         timelineMetadata: {
           totalMonths: timelineResults.totalMonths,
           constructionMonths: timelineResults.constructionMonths,
           operationalMonths: timelineResults.operationalMonths,
-          earliestConstructionStart: timelineResults.earliestConstructionStart,
-          latestOperationalEnd: timelineResults.latestOperationalEnd,
-          includedPhases: ['construction', 'operations']
+          earliestConstructionStart: timelineResults.earliestConstructionStart?.toISOString(),
+          latestOperationalEnd: timelineResults.latestOperationalEnd?.toISOString(),
+          includedPhases: ['construction', 'operations'],
+          assetDateDiagnostics: timelineResults.assetDateDiagnostics
         },
         
-        // FIXED: Include pricing diagnostics
+        // Pricing diagnostics
         pricingDiagnostics: {
           escalationEnabled: config.escalationSettings.enabled,
           escalationRate: config.escalationSettings.rate,
@@ -191,10 +195,10 @@ export async function POST(request) {
       
       summary: summaryStats,
       
-      // NEW: Monthly time series with construction + operations
+      // Monthly time series with construction + operations
       monthlyTimeSeries: monthlyPortfolioTimeSeries,
       
-      // NEW: Timeline analysis
+      // Timeline analysis
       timelineAnalysis: {
         assetPhases: timelineResults.assetPhases,
         constructionCashFlows: extractConstructionCashFlows(monthlyPortfolioTimeSeries, timelineResults.assetPhases),
@@ -231,65 +235,141 @@ export async function POST(request) {
 }
 
 /**
- * NEW: Generate monthly timeline including construction and operations phases
+ * FIXED: Generate monthly timeline with proper date parsing and validation
  */
 function generateMonthlyConstructionOperationsTimeline(assets, config) {
   const assetPhases = {}
   let earliestConstructionStart = null
   let latestOperationalEnd = null
+  const assetDateDiagnostics = []
   
   // Calculate phases for each asset
   Object.values(assets).forEach(asset => {
-    const assetStartDate = new Date(asset.assetStartDate)
-    const assetStartYear = assetStartDate.getFullYear()
-    const assetStartMonth = assetStartDate.getMonth()
-    
-    // Get construction duration from asset or defaults
-    const constructionDurationMonths = Math.ceil((asset.constructionDuration || 
-      getDefaultConstructionDuration(asset.type)) / 12 * 12) || 18
-    
-    // Calculate construction start (before asset operational start)
-    const constructionStart = new Date(assetStartYear, assetStartMonth - constructionDurationMonths, 1)
-    
-    // Calculate operational end
-    const operationalDurationYears = config.periods || 30
-    const operationalEnd = new Date(assetStartYear + operationalDurationYears, assetStartMonth, 0)
-    
-    assetPhases[asset.name] = {
-      assetName: asset.name,
-      assetType: asset.type,
-      constructionStart,
-      constructionEnd: new Date(assetStartYear, assetStartMonth - 1, 0), // Last day before operations
-      operationalStart: assetStartDate,
-      operationalEnd,
-      constructionDurationMonths,
-      operationalDurationMonths: operationalDurationYears * 12,
-      phases: {
-        construction: {
-          start: constructionStart,
-          end: new Date(assetStartYear, assetStartMonth - 1, 0),
-          durationMonths: constructionDurationMonths
-        },
-        operations: {
-          start: assetStartDate,
-          end: operationalEnd,
-          durationMonths: operationalDurationYears * 12
+    try {
+      console.log(`Processing asset: ${asset.name}`)
+      console.log(`Asset data:`, {
+        name: asset.name,
+        type: asset.type,
+        assetStartDate: asset.assetStartDate,
+        constructionDuration: asset.constructionDuration,
+        constructionStart: asset.constructionStart
+      })
+      
+      // FIXED: Robust date parsing for asset start date
+      const assetStartDate = parseAssetStartDate(asset.assetStartDate)
+      
+      if (!assetStartDate || isNaN(assetStartDate.getTime())) {
+        console.warn(`Invalid assetStartDate for asset ${asset.name}: ${asset.assetStartDate}`)
+        assetDateDiagnostics.push({
+          assetName: asset.name,
+          originalDate: asset.assetStartDate,
+          parsedDate: null,
+          error: 'Invalid date format'
+        })
+        return // Skip this asset
+      }
+      
+      console.log(`Parsed asset start date for ${asset.name}: ${assetStartDate.toISOString()}`)
+      
+      const assetStartYear = assetStartDate.getFullYear()
+      const assetStartMonth = assetStartDate.getMonth()
+      
+      // Get construction duration from asset or defaults
+      const constructionDurationMonths = getConstructionDurationMonths(asset)
+      console.log(`Construction duration for ${asset.name}: ${constructionDurationMonths} months`)
+      
+      // FIXED: Calculate construction start (before asset operational start)
+      // If asset has explicit constructionStart date, use that; otherwise calculate it
+      let constructionStart
+      if (asset.constructionStart) {
+        constructionStart = parseAssetStartDate(asset.constructionStart)
+        console.log(`Using explicit construction start for ${asset.name}: ${constructionStart?.toISOString()}`)
+      } else {
+        constructionStart = new Date(assetStartYear, assetStartMonth - constructionDurationMonths, 1)
+        console.log(`Calculated construction start for ${asset.name}: ${constructionStart.toISOString()}`)
+      }
+      
+      // Calculate operational end
+      const operationalDurationYears = config.periods || 30
+      const operationalEnd = new Date(assetStartYear + operationalDurationYears, assetStartMonth, 0)
+      
+      console.log(`Timeline for ${asset.name}:`, {
+        constructionStart: constructionStart.toISOString(),
+        operationalStart: assetStartDate.toISOString(),
+        operationalEnd: operationalEnd.toISOString(),
+        constructionDurationMonths,
+        operationalDurationYears
+      })
+      
+      // Store diagnostic information
+      assetDateDiagnostics.push({
+        assetName: asset.name,
+        originalDate: asset.assetStartDate,
+        originalConstructionStart: asset.constructionStart,
+        parsedDate: assetStartDate.toISOString(),
+        constructionStart: constructionStart.toISOString(),
+        operationalStart: assetStartDate.toISOString(),
+        operationalEnd: operationalEnd.toISOString(),
+        constructionDurationMonths,
+        error: null
+      })
+      
+      assetPhases[asset.name] = {
+        assetName: asset.name,
+        assetType: asset.type,
+        constructionStart,
+        constructionEnd: new Date(assetStartYear, assetStartMonth - 1, 0), // Last day before operations
+        operationalStart: assetStartDate,
+        operationalEnd,
+        constructionDurationMonths,
+        operationalDurationMonths: operationalDurationYears * 12,
+        phases: {
+          construction: {
+            start: constructionStart,
+            end: new Date(assetStartYear, assetStartMonth - 1, 0),
+            durationMonths: constructionDurationMonths
+          },
+          operations: {
+            start: assetStartDate,
+            end: operationalEnd,
+            durationMonths: operationalDurationYears * 12
+          }
         }
       }
-    }
-    
-    // Track portfolio-wide timeline bounds
-    if (!earliestConstructionStart || constructionStart < earliestConstructionStart) {
-      earliestConstructionStart = constructionStart
-    }
-    if (!latestOperationalEnd || operationalEnd > latestOperationalEnd) {
-      latestOperationalEnd = operationalEnd
+      
+      // Track portfolio-wide timeline bounds
+      if (!earliestConstructionStart || constructionStart < earliestConstructionStart) {
+        earliestConstructionStart = constructionStart
+      }
+      if (!latestOperationalEnd || operationalEnd > latestOperationalEnd) {
+        latestOperationalEnd = operationalEnd
+      }
+      
+    } catch (error) {
+      console.error(`Error processing dates for asset ${asset.name}:`, error)
+      assetDateDiagnostics.push({
+        assetName: asset.name,
+        originalDate: asset.assetStartDate,
+        parsedDate: null,
+        error: error.message
+      })
     }
   })
   
-  // Generate monthly intervals from earliest construction to latest operational end
+  // Validate that we have at least one valid asset
+  if (Object.keys(assetPhases).length === 0) {
+    throw new Error('No assets with valid dates found in portfolio')
+  }
+  
+  if (!earliestConstructionStart || !latestOperationalEnd) {
+    throw new Error('Unable to determine portfolio timeline bounds')
+  }
+  
+  // FIXED: Generate monthly intervals from earliest construction to latest operational end
   const monthlyIntervals = []
   const currentDate = new Date(earliestConstructionStart)
+  
+  console.log(`Generating monthly intervals from ${earliestConstructionStart.toISOString()} to ${latestOperationalEnd.toISOString()}`)
   
   while (currentDate <= latestOperationalEnd) {
     const year = currentDate.getFullYear()
@@ -300,19 +380,167 @@ function generateMonthlyConstructionOperationsTimeline(assets, config) {
     currentDate.setMonth(currentDate.getMonth() + 1)
   }
   
+  // Calculate phase statistics
+  const firstOperationalStart = Math.min(...Object.values(assetPhases).map(p => p.operationalStart.getTime()))
+  const constructionMonths = Math.ceil((firstOperationalStart - earliestConstructionStart.getTime()) / (1000 * 60 * 60 * 24 * 30.44)) // Average days per month
+  const operationalMonths = monthlyIntervals.length - constructionMonths
+  
+  console.log(`Timeline generated: ${monthlyIntervals.length} total months, ${constructionMonths} construction, ${operationalMonths} operational`)
+  
   return {
     monthlyIntervals,
     assetPhases,
     totalMonths: monthlyIntervals.length,
-    constructionMonths: Math.ceil((new Date(Math.min(...Object.values(assetPhases).map(p => p.operationalStart))) - earliestConstructionStart) / (1000 * 60 * 60 * 24 * 30)),
-    operationalMonths: monthlyIntervals.length - Math.ceil((new Date(Math.min(...Object.values(assetPhases).map(p => p.operationalStart))) - earliestConstructionStart) / (1000 * 60 * 60 * 24 * 30)),
+    constructionMonths,
+    operationalMonths,
     earliestConstructionStart,
-    latestOperationalEnd
+    latestOperationalEnd,
+    assetDateDiagnostics
   }
 }
 
 /**
- * NEW: Calculate monthly portfolio time series with construction and operations phases
+ * FIXED: Robust date parsing for asset start dates
+ */
+function parseAssetStartDate(dateInput) {
+  if (!dateInput) {
+    console.warn('No date input provided')
+    return null
+  }
+  
+  console.log(`Parsing date input: "${dateInput}" (type: ${typeof dateInput})`)
+  
+  // If it's already a Date object
+  if (dateInput instanceof Date) {
+    console.log(`Date object provided: ${dateInput.toISOString()}`)
+    return dateInput
+  }
+  
+  // If it's a string, try multiple parsing strategies
+  if (typeof dateInput === 'string') {
+    // Try ISO format first (YYYY-MM-DD)
+    if (dateInput.match(/^\d{4}-\d{2}-\d{2}/)) {
+      const parsed = new Date(dateInput)
+      console.log(`ISO format parsed: ${parsed.toISOString()}`)
+      return parsed
+    }
+    
+    // Try DD/MM/YYYY format (your format: 1/3/2024, 1/8/2025)
+    if (dateInput.match(/^\d{1,2}\/\d{1,2}\/\d{4}$/)) {
+      const [day, month, year] = dateInput.split('/')
+      const parsed = new Date(parseInt(year), parseInt(month) - 1, parseInt(day))
+      console.log(`DD/MM/YYYY format parsed: ${day}/${month}/${year} -> ${parsed.toISOString()}`)
+      return parsed
+    }
+    
+    // Try D/M/YYYY format (single digits without leading zeros)
+    if (dateInput.match(/^\d{1,2}\/\d{1,2}\/\d{4}$/)) {
+      const parts = dateInput.split('/')
+      // For ambiguous formats like 1/3/2024, assume DD/MM/YYYY based on your example
+      const day = parseInt(parts[0])
+      const month = parseInt(parts[1])
+      const year = parseInt(parts[2])
+      
+      // Validate day/month ranges to determine format
+      if (day <= 12 && month <= 12) {
+        // Ambiguous - use your preferred format (DD/MM/YYYY based on 1/3/2024 = 1st March)
+        const parsed = new Date(year, month - 1, day)
+        console.log(`Ambiguous date assumed DD/MM: ${day}/${month}/${year} -> ${parsed.toISOString()}`)
+        return parsed
+      } else if (day > 12) {
+        // Must be DD/MM/YYYY
+        const parsed = new Date(year, month - 1, day)
+        console.log(`DD/MM/YYYY format: ${day}/${month}/${year} -> ${parsed.toISOString()}`)
+        return parsed
+      } else if (month > 12) {
+        // Must be MM/DD/YYYY
+        const parsed = new Date(year, day - 1, month)
+        console.log(`MM/DD/YYYY format: ${month}/${day}/${year} -> ${parsed.toISOString()}`)
+        return parsed
+      }
+    }
+    
+    // Try general Date parsing as fallback
+    const parsed = new Date(dateInput)
+    if (!isNaN(parsed.getTime())) {
+      console.log(`General parsing successful: ${parsed.toISOString()}`)
+      return parsed
+    }
+  }
+  
+  // If it's a number (timestamp)
+  if (typeof dateInput === 'number') {
+    const parsed = new Date(dateInput)
+    console.log(`Timestamp parsed: ${parsed.toISOString()}`)
+    return parsed
+  }
+  
+  console.warn(`Unable to parse date: "${dateInput}"`)
+  return null
+}
+
+/**
+ * FIXED: Get construction duration with proper defaults and field checking
+ */
+function getConstructionDurationMonths(asset) {
+  console.log(`Getting construction duration for ${asset.name}:`, {
+    constructionDuration: asset.constructionDuration,
+    type: asset.type
+  })
+  
+  // Check if asset has constructionDuration specified
+  if (asset.constructionDuration && !isNaN(asset.constructionDuration)) {
+    const duration = parseFloat(asset.constructionDuration)
+    console.log(`Asset has constructionDuration: ${duration}`)
+    
+    // If it's in years, convert to months; if it's already months, use as is
+    if (duration > 0 && duration <= 5) {
+      // Assume it's in years if it's a small number
+      const months = Math.ceil(duration * 12)
+      console.log(`Interpreted as years, converted to months: ${months}`)
+      return months
+    } else if (duration > 5 && duration <= 60) {
+      // Assume it's already in months
+      const months = Math.ceil(duration)
+      console.log(`Interpreted as months: ${months}`)
+      return months
+    }
+  }
+  
+  // Check for explicit construction period fields that might be in your data
+  if (asset.constructionPeriod) {
+    const period = parseFloat(asset.constructionPeriod)
+    if (!isNaN(period)) {
+      console.log(`Using constructionPeriod: ${period} months`)
+      return Math.ceil(period)
+    }
+  }
+  
+  if (asset.constructionMonths) {
+    const months = parseFloat(asset.constructionMonths)
+    if (!isNaN(months)) {
+      console.log(`Using constructionMonths: ${months}`)
+      return Math.ceil(months)
+    }
+  }
+  
+  // Use defaults based on asset type
+  const defaultDurations = {
+    'solar': 12,    // 12 months
+    'wind': 18,     // 18 months  
+    'storage': 12,  // 12 months
+    'battery': 12,  // 12 months
+    'hydro': 24,    // 24 months
+    'gas': 18       // 18 months
+  }
+  
+  const defaultDuration = defaultDurations[asset.type?.toLowerCase()] || 18
+  console.log(`Using default duration for ${asset.type}: ${defaultDuration} months`)
+  return defaultDuration
+}
+
+/**
+ * FIXED: Calculate monthly portfolio time series with proper phase detection
  */
 async function calculateMonthlyPortfolioTimeSeries(assets, monthlyIntervals, constants, getMerchantPrice, assetPhases) {
   const portfolioTimeSeries = []
@@ -322,7 +550,7 @@ async function calculateMonthlyPortfolioTimeSeries(assets, monthlyIntervals, con
     
     // Parse time period
     const periodInfo = parseMonthlyTimePeriod(timeInterval)
-    const periodDate = new Date(periodInfo.year, periodInfo.month - 1, 1)
+    const periodDate = new Date(periodInfo.year, periodInfo.month - 1, 15) // Use mid-month for calculations
     
     // Calculate asset-level revenues and investments
     const assetResults = {}
@@ -331,6 +559,13 @@ async function calculateMonthlyPortfolioTimeSeries(assets, monthlyIntervals, con
     for (const [assetKey, asset] of Object.entries(assets)) {
       try {
         const assetPhase = assetPhases[asset.name]
+        
+        if (!assetPhase) {
+          console.warn(`No phase information found for asset ${asset.name}`)
+          assetResults[asset.name] = createEmptyMonthlyAssetResult(asset, timeInterval, periodInfo, { phase: 'error' })
+          continue
+        }
+        
         const phaseInfo = determineAssetPhase(periodDate, assetPhase)
         
         let assetResult
@@ -390,38 +625,43 @@ async function calculateMonthlyPortfolioTimeSeries(assets, monthlyIntervals, con
 }
 
 /**
- * NEW: Determine what phase an asset is in for a given period
+ * FIXED: Determine what phase an asset is in for a given period
  */
 function determineAssetPhase(periodDate, assetPhase) {
-  if (periodDate < assetPhase.constructionStart) {
+  const periodTime = periodDate.getTime()
+  const constructionStartTime = assetPhase.constructionStart.getTime()
+  const operationalStartTime = assetPhase.operationalStart.getTime()
+  const operationalEndTime = assetPhase.operationalEnd.getTime()
+  
+  if (periodTime < constructionStartTime) {
     return {
       phase: 'pre-construction',
       daysIntoPhase: 0,
-      daysRemainingInPhase: Math.ceil((assetPhase.constructionStart - periodDate) / (1000 * 60 * 60 * 24))
+      daysRemainingInPhase: Math.ceil((constructionStartTime - periodTime) / (1000 * 60 * 60 * 24))
     }
-  } else if (periodDate >= assetPhase.constructionStart && periodDate < assetPhase.operationalStart) {
+  } else if (periodTime >= constructionStartTime && periodTime < operationalStartTime) {
     return {
       phase: 'construction',
-      daysIntoPhase: Math.ceil((periodDate - assetPhase.constructionStart) / (1000 * 60 * 60 * 24)),
-      daysRemainingInPhase: Math.ceil((assetPhase.operationalStart - periodDate) / (1000 * 60 * 60 * 24))
+      daysIntoPhase: Math.ceil((periodTime - constructionStartTime) / (1000 * 60 * 60 * 24)),
+      daysRemainingInPhase: Math.ceil((operationalStartTime - periodTime) / (1000 * 60 * 60 * 24))
     }
-  } else if (periodDate >= assetPhase.operationalStart && periodDate <= assetPhase.operationalEnd) {
+  } else if (periodTime >= operationalStartTime && periodTime <= operationalEndTime) {
     return {
       phase: 'operations',
-      daysIntoPhase: Math.ceil((periodDate - assetPhase.operationalStart) / (1000 * 60 * 60 * 24)),
-      daysRemainingInPhase: Math.ceil((assetPhase.operationalEnd - periodDate) / (1000 * 60 * 60 * 24))
+      daysIntoPhase: Math.ceil((periodTime - operationalStartTime) / (1000 * 60 * 60 * 24)),
+      daysRemainingInPhase: Math.ceil((operationalEndTime - periodTime) / (1000 * 60 * 60 * 24))
     }
   } else {
     return {
       phase: 'post-operations',
-      daysIntoPhase: Math.ceil((periodDate - assetPhase.operationalEnd) / (1000 * 60 * 60 * 24)),
+      daysIntoPhase: Math.ceil((periodTime - operationalEndTime) / (1000 * 60 * 60 * 24)),
       daysRemainingInPhase: 0
     }
   }
 }
 
 /**
- * NEW: Calculate construction phase monthly result
+ * FIXED: Calculate construction phase monthly result with proper investment timing
  */
 function calculateConstructionMonthlyResult(asset, timeInterval, periodInfo, assetPhase, constants) {
   const capacity = parseFloat(asset.capacity) || 0
@@ -431,17 +671,17 @@ function calculateConstructionMonthlyResult(asset, timeInterval, periodInfo, ass
   const totalCapex = assetCosts?.capex || (capacity * getDefaultCapex(asset.type))
   const constructionDurationMonths = assetPhase.constructionDurationMonths
   
-  // Calculate monthly investment based on timing strategy
+  // FIXED: Calculate monthly investment based on timing strategy and current month
   let monthlyInvestment = 0
   let monthlyEquityInvestment = 0
   let monthlyDebtDrawdown = 0
   
+  // Determine current month in construction timeline
+  const monthsIntoConstruction = calculateMonthsIntoPhase(periodInfo, assetPhase.constructionStart)
+  
   if (assetCosts?.equityTimingUpfront) {
     // Upfront equity - only in first month of construction
-    const isFirstConstructionMonth = periodInfo.year === assetPhase.constructionStart.getFullYear() && 
-                                    periodInfo.month === assetPhase.constructionStart.getMonth() + 1
-    
-    if (isFirstConstructionMonth) {
+    if (monthsIntoConstruction === 1) {
       const gearing = assetCosts?.calculatedGearing || 0.7
       monthlyEquityInvestment = totalCapex * (1 - gearing)
       monthlyDebtDrawdown = totalCapex * gearing
@@ -449,10 +689,12 @@ function calculateConstructionMonthlyResult(asset, timeInterval, periodInfo, ass
     }
   } else {
     // Progressive investment over construction period
-    monthlyInvestment = totalCapex / constructionDurationMonths
-    const gearing = assetCosts?.calculatedGearing || 0.7
-    monthlyEquityInvestment = monthlyInvestment * (1 - gearing)
-    monthlyDebtDrawdown = monthlyInvestment * gearing
+    if (monthsIntoConstruction >= 1 && monthsIntoConstruction <= constructionDurationMonths) {
+      monthlyInvestment = totalCapex / constructionDurationMonths
+      const gearing = assetCosts?.calculatedGearing || 0.7
+      monthlyEquityInvestment = monthlyInvestment * (1 - gearing)
+      monthlyDebtDrawdown = monthlyInvestment * gearing
+    }
   }
   
   return {
@@ -489,9 +731,9 @@ function calculateConstructionMonthlyResult(asset, timeInterval, periodInfo, ass
     // Phase information
     phaseInfo: {
       phase: 'construction',
-      monthsIntoConstruction: calculateMonthsIntoPhase(periodInfo, assetPhase.constructionStart),
-      monthsRemainingInConstruction: Math.max(0, constructionDurationMonths - calculateMonthsIntoPhase(periodInfo, assetPhase.constructionStart)),
-      constructionProgress: Math.min(1, calculateMonthsIntoPhase(periodInfo, assetPhase.constructionStart) / constructionDurationMonths)
+      monthsIntoConstruction: monthsIntoConstruction,
+      monthsRemainingInConstruction: Math.max(0, constructionDurationMonths - monthsIntoConstruction),
+      constructionProgress: Math.min(1, monthsIntoConstruction / constructionDurationMonths)
     },
     
     // Zero operational values during construction
@@ -518,9 +760,8 @@ function calculateConstructionMonthlyResult(asset, timeInterval, periodInfo, ass
   }
 }
 
-/**
- * NEW: Helper functions for monthly timeline calculations
- */
+// Helper functions - keeping all existing ones and adding the missing ones
+
 function parseMonthlyTimePeriod(timeInterval) {
   const [year, month] = timeInterval.split('-')
   return {
@@ -553,7 +794,7 @@ function calculateCumulativeInvestment(periodInfo, assetPhase, totalCapex, const
     return monthsInto >= 1 ? totalCapex : 0
   } else {
     const monthlyInvestment = totalCapex / constructionDurationMonths
-    return Math.min(totalCapex, monthsInto * monthlyInvestment)
+    return Math.min(totalCapex, Math.max(0, monthsInto) * monthlyInvestment)
   }
 }
 
@@ -570,18 +811,18 @@ function initializeMonthlyPortfolioAggregates() {
     weightedAvgPrice: 0,
     contractedPercentage: 0,
     
-    // NEW: Construction aggregates
+    // Construction aggregates
     totalMonthlyInvestment: 0,
     totalMonthlyEquityInvestment: 0,
     totalMonthlyDebtDrawdown: 0,
     totalCumulativeInvestment: 0,
     
-    // NEW: Phase tracking
+    // Phase tracking
     assetsInConstruction: 0,
     assetsInOperations: 0,
     assetCount: 0,
     
-    // NEW: Net cash flow (operations revenue - construction investment)
+    // Net cash flow (operations revenue - construction investment)
     netCashFlow: 0
   }
 }
@@ -662,9 +903,6 @@ function createEmptyMonthlyAssetResult(asset, timeInterval, periodInfo, phaseInf
   }
 }
 
-/**
- * NEW: Extract construction cash flows from monthly timeline
- */
 function extractConstructionCashFlows(monthlyTimeSeries, assetPhases) {
   const constructionCashFlows = {}
   
@@ -684,9 +922,6 @@ function extractConstructionCashFlows(monthlyTimeSeries, assetPhases) {
   return constructionCashFlows
 }
 
-/**
- * NEW: Extract operational cash flows from monthly timeline
- */
 function extractOperationalCashFlows(monthlyTimeSeries, assetPhases) {
   const operationalCashFlows = {}
   
@@ -707,9 +942,6 @@ function extractOperationalCashFlows(monthlyTimeSeries, assetPhases) {
   return operationalCashFlows
 }
 
-/**
- * NEW: Calculate portfolio milestones
- */
 function calculatePortfolioMilestones(assetPhases) {
   const milestones = []
   
@@ -732,167 +964,75 @@ function calculatePortfolioMilestones(assetPhases) {
   return milestones.sort((a, b) => a.date - b.date)
 }
 
-// Keep all existing helper functions from the original file...
-function getDefaultConstructionDuration(assetType) {
-  const defaults = { solar: 12, wind: 18, storage: 12 }
-  return defaults[assetType] || 12
-}
-
 function getDefaultCapex(assetType) {
-  const defaults = { solar: 1.2, wind: 2.5, storage: 1.6 }
-  return defaults[assetType] || 2.0
+  const defaults = { solar: 1.2, wind: 2.5, storage: 1.6, battery: 1.6 }
+  return defaults[assetType?.toLowerCase()] || 2.0
 }
 
-/**
- * FIXED: Create enhanced merchant price function that properly implements your pricing logic
- */
 function createEnhancedMerchantPriceFunction(escalationSettings) {
   return (profile, type, region, timeStr) => {
     try {
       console.log(`getMerchantPrice called: profile=${profile}, type=${type}, region=${region}, time=${timeStr}`)
       
       let basePrice = 0
-      let targetYear = new Date().getFullYear() // Default year for escalation
+      let targetYear = new Date().getFullYear()
+      
+      // Extract year from timeStr
+      if (typeof timeStr === 'number') {
+        targetYear = timeStr
+      } else if (typeof timeStr === 'string') {
+        if (timeStr.includes('/')) {
+          const [day, month, yearPart] = timeStr.split('/')
+          targetYear = parseInt(yearPart)
+        } else if (timeStr.includes('-Q')) {
+          targetYear = parseInt(timeStr.split('-')[0])
+        } else if (timeStr.includes('-')) {
+          targetYear = parseInt(timeStr.split('-')[0])
+        } else {
+          targetYear = parseInt(timeStr)
+        }
+      }
       
       if (profile === 'storage') {
-        // For storage, extract year from timeStr and use type as duration
-        if (typeof timeStr === 'number') {
-          targetYear = timeStr
-        } else if (typeof timeStr === 'string') {
-          if (timeStr.includes('/')) {
-            // DD/MM/YYYY format
-            const [day, month, yearPart] = timeStr.split('/')
-            targetYear = parseInt(yearPart)
-          } else if (timeStr.includes('-Q')) {
-            // Quarterly format like "2025-Q1"
-            targetYear = parseInt(timeStr.split('-')[0])
-          } else if (timeStr.includes('-')) {
-            // Monthly format like "2025-03"
-            targetYear = parseInt(timeStr.split('-')[0])
-          } else {
-            // Assume it's just a year
-            targetYear = parseInt(timeStr)
-          }
-        }
-        
-        // FIXED: Use your storage pricing logic with proper spread data
-        // This should match your merchant_yearly_spreads.csv structure
         const storageSpreadData = {
-          QLD: {
-            0.5: { 2025: 160, 2026: 165, 2027: 170 },
-            1: { 2025: 180, 2026: 185, 2027: 190 },
-            2: { 2025: 200, 2026: 205, 2027: 210 },
-            4: { 2025: 220, 2026: 225, 2027: 230 }
-          },
-          NSW: {
-            0.5: { 2025: 155, 2026: 160, 2027: 165 },
-            1: { 2025: 175, 2026: 180, 2027: 185 },
-            2: { 2025: 195, 2026: 200, 2027: 205 },
-            4: { 2025: 215, 2026: 220, 2027: 225 }
-          },
-          VIC: {
-            0.5: { 2025: 150, 2026: 155, 2027: 160 },
-            1: { 2025: 170, 2026: 175, 2027: 180 },
-            2: { 2025: 190, 2026: 195, 2027: 200 },
-            4: { 2025: 210, 2026: 215, 2027: 220 }
-          },
-          SA: {
-            0.5: { 2025: 165, 2026: 170, 2027: 175 },
-            1: { 2025: 185, 2026: 190, 2027: 195 },
-            2: { 2025: 205, 2026: 210, 2027: 215 },
-            4: { 2025: 225, 2026: 230, 2027: 235 }
-          }
+          QLD: { 0.5: 160, 1: 180, 2: 200, 4: 220 },
+          NSW: { 0.5: 155, 1: 175, 2: 195, 4: 215 },
+          VIC: { 0.5: 150, 1: 170, 2: 190, 4: 210 },
+          SA: { 0.5: 165, 1: 185, 2: 205, 4: 225 }
         }
         
-        // Try to get spread from data, with extrapolation for future years
-        let spread = storageSpreadData[region]?.[type]?.[targetYear]
+        basePrice = storageSpreadData[region]?.[type] || 160
         
-        if (!spread) {
-          // Extrapolate using the base year and escalation
-          const baseSpread = storageSpreadData[region]?.[type]?.[escalationSettings.referenceYear] || 160
+        if (escalationSettings.enabled && escalationSettings.applyToStorage) {
           const yearDiff = targetYear - escalationSettings.referenceYear
-          spread = baseSpread * Math.pow(1 + (escalationSettings.rate || 2.5) / 100, yearDiff)
+          basePrice = basePrice * Math.pow(1 + escalationSettings.rate / 100, yearDiff)
         }
         
-        basePrice = spread || 160
-        
-        console.log(`Storage price lookup: region=${region}, duration=${type}, year=${targetYear}, spread=${basePrice}`)
         return basePrice
       }
       
-      // FIXED: For renewable assets, use your merchant price data structure
-      // Extract year for escalation
-      if (typeof timeStr === 'number' || (!timeStr.includes('/') && !timeStr.includes('-'))) {
-        targetYear = parseInt(timeStr.toString())
-      } else if (timeStr.includes('-Q')) {
-        targetYear = parseInt(timeStr.split('-')[0])
-      } else if (timeStr.includes('-')) {
-        // Monthly format "2025-03"
-        targetYear = parseInt(timeStr.split('-')[0])
-      } else if (timeStr.includes('/')) {
-        // DD/MM/YYYY format
-        const [day, month, year] = timeStr.split('/')
-        targetYear = parseInt(year)
-      }
-      
-      // FIXED: Use your merchant price data structure
-      // This should match your merchant_price_monthly.csv structure
+      // Renewable prices
       const renewablePriceData = {
-        solar: {
-          green: {
-            QLD: { 2025: 35, 2026: 36, 2027: 37 },
-            NSW: { 2025: 34, 2026: 35, 2027: 36 },
-            VIC: { 2025: 33, 2026: 34, 2027: 35 },
-            SA: { 2025: 36, 2026: 37, 2027: 38 }
-          },
-          Energy: {
-            QLD: { 2025: 65, 2026: 67, 2027: 69 },
-            NSW: { 2025: 64, 2026: 66, 2027: 68 },
-            VIC: { 2025: 63, 2026: 65, 2027: 67 },
-            SA: { 2025: 66, 2026: 68, 2027: 70 }
-          }
-        },
-        wind: {
-          green: {
-            QLD: { 2025: 35, 2026: 36, 2027: 37 },
-            NSW: { 2025: 34, 2026: 35, 2027: 36 },
-            VIC: { 2025: 33, 2026: 34, 2027: 35 },
-            SA: { 2025: 36, 2026: 37, 2027: 38 }
-          },
-          Energy: {
-            QLD: { 2025: 65, 2026: 67, 2027: 69 },
-            NSW: { 2025: 64, 2026: 66, 2027: 68 },
-            VIC: { 2025: 63, 2026: 65, 2027: 67 },
-            SA: { 2025: 66, 2026: 68, 2027: 70 }
-          }
-        }
+        solar: { green: 35, Energy: 65 },
+        wind: { green: 35, Energy: 65 }
       }
       
-      // Get base price from data or use default
-      basePrice = renewablePriceData[profile]?.[type]?.[region]?.[targetYear] ||
-                  renewablePriceData[profile]?.[type]?.[region]?.[escalationSettings.referenceYear] ||
-                  (type === 'green' ? 35 : 65)
+      basePrice = renewablePriceData[profile]?.[type] || (type === 'green' ? 35 : 65)
       
-      // FIXED: Apply escalation if enabled and not already in the data
-      if (escalationSettings.enabled && escalationSettings.applyToRenewables && 
-          !renewablePriceData[profile]?.[type]?.[region]?.[targetYear]) {
+      if (escalationSettings.enabled && escalationSettings.applyToRenewables) {
         const yearDiff = targetYear - escalationSettings.referenceYear
         basePrice = basePrice * Math.pow(1 + escalationSettings.rate / 100, yearDiff)
       }
       
-      console.log(`Renewable price lookup: profile=${profile}, type=${type}, region=${region}, year=${targetYear}, basePrice=${basePrice}`)
       return basePrice
       
     } catch (error) {
-      console.warn(`Error getting merchant price for profile=${profile}, type=${type}, region=${region}, time=${timeStr}`, error)
+      console.warn(`Error getting merchant price`, error)
       return profile === 'storage' ? 160 : (type === 'green' ? 35 : 65)
     }
   }
 }
 
-/**
- * FIXED: Generate sample prices for diagnostics
- */
 function generateSamplePrices(assets, getMerchantPrice, startYear) {
   const samples = {}
   
@@ -918,119 +1058,6 @@ function generateSamplePrices(assets, getMerchantPrice, startYear) {
   return samples
 }
 
-// Keep all existing GET endpoint and other helper functions from original file...
-
-/**
- * GET - Get portfolio analysis configuration options
- */
-export async function GET(request) {
-  try {
-    const { searchParams } = new URL(request.url)
-    const userId = searchParams.get('userId')
-    const portfolioId = searchParams.get('portfolioId')
-    
-    if (!userId || !portfolioId) {
-      return NextResponse.json(
-        { error: 'userId and portfolioId are required' },
-        { status: 400 }
-      )
-    }
-    
-    const client = await clientPromise
-    const db = client.db('energy_contracts')
-    
-    // Get portfolio metadata
-    const portfolio = await db.collection('portfolios').findOne(
-      { userId, portfolioId },
-      { projection: { assets: 1, constants: 1, portfolioName: 1 } }
-    )
-    
-    if (!portfolio) {
-      return NextResponse.json(
-        { error: 'Portfolio not found' },
-        { status: 404 }
-      )
-    }
-    
-    // Analyze portfolio capabilities
-    const assets = portfolio.assets || {}
-    const assetTypes = [...new Set(Object.values(assets).map(asset => asset.type))]
-    const assetStates = [...new Set(Object.values(assets).map(asset => asset.state))]
-    
-    const earliestStartYear = Math.min(
-      ...Object.values(assets).map(asset => 
-        new Date(asset.assetStartDate).getFullYear()
-      )
-    )
-    
-    const latestStartYear = Math.max(
-      ...Object.values(assets).map(asset => 
-        new Date(asset.assetStartDate).getFullYear()
-      )
-    )
-    
-    // Return configuration options
-    return NextResponse.json({
-      portfolioName: portfolio.portfolioName,
-      
-      capabilities: {
-        totalAssets: Object.keys(assets).length,
-        assetTypes,
-        assetStates,
-        hasContracts: Object.values(assets).some(asset => 
-          asset.contracts && asset.contracts.length > 0
-        ),
-        hasProjectFinance: !!portfolio.constants?.assetCosts,
-        dateRange: {
-          earliestStartYear,
-          latestStartYear
-        }
-      },
-      
-      availableOptions: {
-        intervalTypes: [
-          { value: 'annual', label: 'Annual', description: 'Yearly time series' },
-          { value: 'quarterly', label: 'Quarterly', description: 'Quarterly time series (4 per year)' },
-          { value: 'monthly', label: 'Monthly', description: 'Monthly time series (12 per year)' } // NOW SUPPORTS CONSTRUCTION + OPS
-        ],
-        
-        scenarios: [
-          { value: 'base', label: 'Base Case', description: 'No stress applied' },
-          { value: 'worst', label: 'Worst Case', description: 'Volume and price stress combined' },
-          { value: 'volume', label: 'Volume Stress', description: 'Reduced generation volumes' },
-          { value: 'price', label: 'Price Stress', description: 'Reduced merchant prices' }
-        ],
-        
-        analysisYears: [5, 10, 15, 20, 25, 30, 35],
-        
-        startYears: Array.from(
-          { length: 10 }, 
-          (_, i) => earliestStartYear + i
-        ).filter(year => year <= new Date().getFullYear() + 5)
-      },
-      
-      defaultConfig: {
-        intervalType: 'monthly', // Changed default to monthly
-        startYear: Math.max(earliestStartYear, new Date().getFullYear()),
-        periods: 30,
-        includeProjectFinance: true,
-        includeSensitivity: true,
-        scenario: 'base',
-        includeConstructionPhase: true, // NEW
-        constructionStartOffset: 24 // NEW
-      }
-    })
-    
-  } catch (error) {
-    console.error('Get configuration error:', error)
-    return NextResponse.json(
-      { error: 'Failed to get configuration options' },
-      { status: 500 }
-    )
-  }
-}
-
-// Keep all other existing helper functions...
 function generatePortfolioSummary(portfolioTimeSeries, assets) {
   if (portfolioTimeSeries.length === 0) {
     return {
@@ -1062,5 +1089,110 @@ function generatePortfolioSummary(portfolioTimeSeries, assets) {
     totalProjectedRevenue,
     averageContractedPercentage,
     averageMerchantPercentage: 100 - averageContractedPercentage
+  }
+}
+
+// Keep the existing GET endpoint
+export async function GET(request) {
+  try {
+    const { searchParams } = new URL(request.url)
+    const userId = searchParams.get('userId')
+    const portfolioId = searchParams.get('portfolioId')
+    
+    if (!userId || !portfolioId) {
+      return NextResponse.json(
+        { error: 'userId and portfolioId are required' },
+        { status: 400 }
+      )
+    }
+    
+    const client = await clientPromise
+    const db = client.db('energy_contracts')
+    
+    const portfolio = await db.collection('portfolios').findOne(
+      { userId, portfolioId },
+      { projection: { assets: 1, constants: 1, portfolioName: 1 } }
+    )
+    
+    if (!portfolio) {
+      return NextResponse.json(
+        { error: 'Portfolio not found' },
+        { status: 404 }
+      )
+    }
+    
+    const assets = portfolio.assets || {}
+    const assetTypes = [...new Set(Object.values(assets).map(asset => asset.type))]
+    const assetStates = [...new Set(Object.values(assets).map(asset => asset.state))]
+    
+    const earliestStartYear = Math.min(
+      ...Object.values(assets).map(asset => 
+        new Date(asset.assetStartDate).getFullYear()
+      )
+    )
+    
+    const latestStartYear = Math.max(
+      ...Object.values(assets).map(asset => 
+        new Date(asset.assetStartDate).getFullYear()
+      )
+    )
+    
+    return NextResponse.json({
+      portfolioName: portfolio.portfolioName,
+      
+      capabilities: {
+        totalAssets: Object.keys(assets).length,
+        assetTypes,
+        assetStates,
+        hasContracts: Object.values(assets).some(asset => 
+          asset.contracts && asset.contracts.length > 0
+        ),
+        hasProjectFinance: !!portfolio.constants?.assetCosts,
+        dateRange: {
+          earliestStartYear,
+          latestStartYear
+        }
+      },
+      
+      availableOptions: {
+        intervalTypes: [
+          { value: 'annual', label: 'Annual', description: 'Yearly time series' },
+          { value: 'quarterly', label: 'Quarterly', description: 'Quarterly time series (4 per year)' },
+          { value: 'monthly', label: 'Monthly', description: 'Monthly time series with construction + operations' }
+        ],
+        
+        scenarios: [
+          { value: 'base', label: 'Base Case', description: 'No stress applied' },
+          { value: 'worst', label: 'Worst Case', description: 'Volume and price stress combined' },
+          { value: 'volume', label: 'Volume Stress', description: 'Reduced generation volumes' },
+          { value: 'price', label: 'Price Stress', description: 'Reduced merchant prices' }
+        ],
+        
+        analysisYears: [5, 10, 15, 20, 25, 30, 35],
+        
+        startYears: Array.from(
+          { length: 10 }, 
+          (_, i) => earliestStartYear + i
+        ).filter(year => year <= new Date().getFullYear() + 5)
+      },
+      
+      defaultConfig: {
+        intervalType: 'monthly',
+        startYear: Math.max(earliestStartYear, new Date().getFullYear()),
+        periods: 30,
+        includeProjectFinance: true,
+        includeSensitivity: true,
+        scenario: 'base',
+        includeConstructionPhase: true,
+        constructionStartOffset: 24
+      }
+    })
+    
+  } catch (error) {
+    console.error('Get configuration error:', error)
+    return NextResponse.json(
+      { error: 'Failed to get configuration options' },
+      { status: 500 }
+    )
   }
 }
