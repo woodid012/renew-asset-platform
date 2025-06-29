@@ -3,6 +3,7 @@
 import pandas as pd
 import numpy as np
 from datetime import datetime
+from dateutil.relativedelta import relativedelta
 from .price_curves import get_merchant_price
 
 HOURS_IN_YEAR = 8760
@@ -220,6 +221,7 @@ def calculate_revenue_timeseries(assets, monthly_prices, yearly_spreads, start_d
         
         # Ensure assetStartDate is a datetime object for comparison
         asset_start_date = datetime.strptime(asset['assetStartDate'], '%Y-%m-%d')
+        asset_life_end_date = asset_start_date + relativedelta(years=int(asset.get('assetLife', 25)))
 
         for current_date in date_range:
             revenue_breakdown = {
@@ -228,8 +230,8 @@ def calculate_revenue_timeseries(assets, monthly_prices, yearly_spreads, start_d
                 'EnergyPercentage': 0, 'monthlyGeneration': 0
             }
 
-            # Only calculate revenue if the asset is operational
-            if current_date >= asset_start_date:
+            # Only calculate revenue if the asset is operational and within its asset life
+            if current_date >= asset_start_date and current_date < asset_life_end_date:
                 if asset['type'] in ['solar', 'wind']:
                     revenue_breakdown = calculate_renewables_revenue(asset, current_date, monthly_prices, yearly_spreads, {}) # Pass constants if needed
                 elif asset['type'] == 'storage':

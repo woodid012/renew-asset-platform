@@ -1,5 +1,7 @@
 
 import pandas as pd
+from datetime import datetime
+from dateutil.relativedelta import relativedelta
 from config import DEFAULT_CAPEX_FUNDING_TYPE
 
 def calculate_opex_timeseries(assets, opex_assumptions, start_date, end_date):
@@ -24,12 +26,12 @@ def calculate_opex_timeseries(assets, opex_assumptions, start_date, end_date):
         escalation = asset_assumptions.get('operatingCostEscalation', 0) / 100
 
         opex_values = []
+        asset_start_date = pd.to_datetime(asset['assetStartDate'])
+        asset_life_end_date = asset_start_date + relativedelta(years=int(asset.get('assetLife', 25)))
+
         for date in date_range:
-            # Calculate years from the asset's COD
-            asset_start_date = pd.to_datetime(asset['assetStartDate'])
-            
             monthly_opex = 0
-            if date >= asset_start_date:
+            if date >= asset_start_date and date < asset_life_end_date:
                 years_from_cod = (date.year - asset_start_date.year)
                 # Apply escalation
                 escalated_opex = base_opex * ((1 + escalation) ** years_from_cod)
