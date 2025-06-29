@@ -47,6 +47,12 @@
                 "tenorYears": 20,
                 "calculatedGearing": 0.65,
                 "debtStructure": "sculpting"
+            },
+            "debtSizingResults": {
+                "total_capex": 238.60000000000002,
+                "debt_amount": "0",
+                "equity_amount": 238.60000000000002,
+                "gearing": 0.0
             }
         },
         {
@@ -97,6 +103,12 @@
                 "tenorYears": 22,
                 "calculatedGearing": 0.7,
                 "debtStructure": "sculpting"
+            },
+            "debtSizingResults": {
+                "total_capex": 208.3,
+                "debt_amount": "0",
+                "equity_amount": 208.3,
+                "gearing": 0.0
             }
         },
         {
@@ -148,6 +160,12 @@
                 "tenorYears": 20,
                 "calculatedGearing": 0.7,
                 "debtStructure": "sculpting"
+            },
+            "debtSizingResults": {
+                "total_capex": 500.0,
+                "debt_amount": "0",
+                "equity_amount": 500.0,
+                "gearing": 0.0
             }
         },
         {
@@ -199,6 +217,12 @@
                 "tenorYears": 20,
                 "calculatedGearing": 0.65,
                 "debtStructure": "sculpting"
+            },
+            "debtSizingResults": {
+                "total_capex": 246.8,
+                "debt_amount": "0",
+                "equity_amount": 246.8,
+                "gearing": 0.0
             }
         },
         {
@@ -250,6 +274,12 @@
                 "tenorYears": 20,
                 "calculatedGearing": 0.65,
                 "debtStructure": "sculpting"
+            },
+            "debtSizingResults": {
+                "total_capex": 296.6,
+                "debt_amount": "0",
+                "equity_amount": 296.6,
+                "gearing": 0.0
             }
         },
         {
@@ -301,6 +331,12 @@
                 "tenorYears": 20,
                 "calculatedGearing": 0.65,
                 "debtStructure": "sculpting"
+            },
+            "debtSizingResults": {
+                "total_capex": 452.70000000000005,
+                "debt_amount": "0",
+                "equity_amount": 452.70000000000005,
+                "gearing": 0.0
             }
         },
         {
@@ -352,6 +388,12 @@
                 "tenorYears": 20,
                 "calculatedGearing": 0.65,
                 "debtStructure": "sculpting"
+            },
+            "debtSizingResults": {
+                "total_capex": 512.7000000000002,
+                "debt_amount": "0",
+                "equity_amount": 512.7000000000002,
+                "gearing": 0.0
             }
         },
         {
@@ -403,6 +445,12 @@
                 "tenorYears": 18,
                 "debtStructure": "sculpting",
                 "calculatedGearing": 0.7
+            },
+            "debtSizingResults": {
+                "total_capex": 141.5,
+                "debt_amount": "0",
+                "equity_amount": 141.5,
+                "gearing": 0.0
             }
         }
     ],
@@ -410,9 +458,63 @@
         "DATE_FORMAT": "%Y-%m-%d",
         "OUTPUT_DATE_FORMAT": "%Y-%m-%dT%H:%M:%S.%fZ",
         "DEFAULT_CAPEX_FUNDING_TYPE": "equity_first",
-        "DEFAULT_DEBT_REPAYMENT_FREQUENCY": "monthly",
+        "DEFAULT_DEBT_REPAYMENT_FREQUENCY": "quarterly",
         "DEFAULT_DEBT_GRACE_PERIOD": "full_period",
         "USER_MODEL_START_DATE": null,
-        "USER_MODEL_END_DATE": null
-    }
+        "USER_MODEL_END_DATE": null,
+        "DEFAULT_DEBT_SIZING_METHOD": "dscr",
+        "DSCR_CALCULATION_FREQUENCY": "quarterly",
+        "ENABLE_TERMINAL_VALUE": true
+    },
+    "portfolio_debt_summary": {
+        "1": {
+            "total_capex": 238.60000000000002,
+            "debt_amount": "0",
+            "equity_amount": 238.60000000000002,
+            "gearing": 0.0
+        },
+        "2": {
+            "total_capex": 208.3,
+            "debt_amount": "0",
+            "equity_amount": 208.3,
+            "gearing": 0.0
+        },
+        "3": {
+            "total_capex": 500.0,
+            "debt_amount": "0",
+            "equity_amount": 500.0,
+            "gearing": 0.0
+        },
+        "4": {
+            "total_capex": 246.8,
+            "debt_amount": "0",
+            "equity_amount": 246.8,
+            "gearing": 0.0
+        },
+        "5": {
+            "total_capex": 296.6,
+            "debt_amount": "0",
+            "equity_amount": 296.6,
+            "gearing": 0.0
+        },
+        "6": {
+            "total_capex": 452.70000000000005,
+            "debt_amount": "0",
+            "equity_amount": 452.70000000000005,
+            "gearing": 0.0
+        },
+        "7": {
+            "total_capex": 512.7000000000002,
+            "debt_amount": "0",
+            "equity_amount": 512.7000000000002,
+            "gearing": 0.0
+        },
+        "8": {
+            "total_capex": 141.5,
+            "debt_amount": "0",
+            "equity_amount": 141.5,
+            "gearing": 0.0
+        }
+    },
+    "equity_irr": 0.06014375776654377
 }

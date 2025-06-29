@@ -1,4 +1,3 @@
-
 # backend/config.py
 
 # Date and Time Settings
@@ -13,7 +12,7 @@ DEFAULT_CAPEX_FUNDING_TYPE = 'equity_first'
 # Debt Repayment Options
 # 'monthly': Debt is repaid monthly.
 # 'quarterly': Debt is repaid quarterly.
-DEFAULT_DEBT_REPAYMENT_FREQUENCY = 'monthly'
+DEFAULT_DEBT_REPAYMENT_FREQUENCY = 'quarterly'  # Changed from 'monthly' to 'quarterly'
 
 # Grace Period for Debt Repayment (in months)
 # If operations start mid-period, this determines if the first payment is delayed or pro-rated.
