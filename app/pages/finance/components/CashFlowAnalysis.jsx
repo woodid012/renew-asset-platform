@@ -1,6 +1,7 @@
 // components/CashFlowAnalysis.jsx
 'use client'
 
+import { useState, useEffect } from 'react';
 import { 
   LineChart, 
   Line, 
@@ -11,13 +12,50 @@ import {
   Legend, 
   ResponsiveContainer 
 } from 'recharts';
-import { TrendingUp, Table, BarChart } from 'lucide-react';
+import { TrendingUp, Table, BarChart, Loader2 } from 'lucide-react';
 
 export default function CashFlowAnalysis({
-  projectMetrics,
   showCashFlowTable,
   analysisYears
 }) {
+  
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const fetchCashFlows = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        // Using dummy dates for now, these should ideally come from user input or context
+        const startDate = '2023-01-01';
+        const endDate = '2045-12-31';
+
+        const response = await fetch('/api/cashflow', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ startDate, endDate }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        setCashFlows(data.cashFlows);
+      } catch (e) {
+        setError(e.message);
+        console.error("Failed to fetch cash flows:", e);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCashFlows();
+  }, [analysisYears]); // Re-fetch if analysisYears changes
+
 
   // Helper function for formatting currency
   const formatCurrency = (value) => {
@@ -31,9 +69,27 @@ export default function CashFlowAnalysis({
     return value.toFixed(2) + 'x';
   };
 
-  // Get cash flows data
-  const cashFlows = projectMetrics.portfolio?.cashFlows || [];
-  
+  if (loading) {
+    return (
+      <div className="bg-white rounded-lg shadow border p-6 flex items-center justify-center h-64">
+        <Loader2 className="w-12 h-12 text-gray-400 animate-spin" />
+        <p className="ml-4 text-gray-500">Loading cash flow data...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-white rounded-lg shadow border p-6">
+        <h3 className="text-lg font-semibold mb-4">Cash Flow Analysis</h3>
+        <div className="text-center text-red-500 py-12">
+          <p>Error loading cash flow data: {error}</p>
+          <p className="text-sm">Please try again later.</p>
+        </div>
+      </div>
+    );
+  }
+
   if (cashFlows.length === 0) {
     return (
       <div className="bg-white rounded-lg shadow border p-6">

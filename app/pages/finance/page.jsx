@@ -672,10 +672,9 @@ function OutputsTab({
 
       {/* Cash Flow Analysis Component */}
       <CashFlowAnalysis
-        projectMetrics={projectMetrics}
-        showCashFlowTable={showCashFlowTable}
-        analysisYears={analysisYears}
-      />
+          showCashFlowTable={showCashFlowTable}
+          analysisYears={analysisYears}
+        />
 
       {/* Toggle Controls */}
       <div className="flex justify-center space-x-4">
