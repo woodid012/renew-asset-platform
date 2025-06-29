@@ -1,3 +1,4 @@
+// pages/test3.jsx
 'use client'
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -5,53 +6,110 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsi
 import { 
   DollarSign,
   Calendar,
-  Zap,
   BarChart3,
-  Table
+  Download
 } from 'lucide-react';
 
 const Test3Page = () => {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedAsset, setSelectedAsset] = useState(null);
-  const [timeAggregation, setTimeAggregation] = useState('monthly'); // monthly, quarterly, fiscalYear, calendarYear
+  const [timeAggregation, setTimeAggregation] = useState('monthly');
   const [availableAssetIds, setAvailableAssetIds] = useState([]);
   const [equityIrr, setEquityIrr] = useState('N/A');
   const [clientSideIrr, setClientSideIrr] = useState('N/A');
   const [assetInputsSummary, setAssetInputsSummary] = useState([]);
 
-  // Function to calculate IRR (simplified for client-side)
-  const calculateClientIRR = (cashFlows) => {
-    if (!cashFlows || cashFlows.length < 2) {
+  // XIRR calculation function
+  const calculateXIRR = (dates, cashFlows, guess = 0.1) => {
+    if (!dates || !cashFlows || dates.length !== cashFlows.length || dates.length < 2) {
       return NaN;
     }
 
-    // Simple Newton-Raphson method for IRR
-    const npv = (rate) => {
-      let sum = 0;
-      for (let i = 0; i < cashFlows.length; i++) {
-        sum += cashFlows[i] / Math.pow(1 + rate, i);
-      }
-      return sum;
+    // Convert dates to numbers (days since first date)
+    const firstDate = new Date(dates[0]);
+    const dayNumbers = dates.map(date => {
+      const currentDate = new Date(date);
+      return (currentDate - firstDate) / (1000 * 60 * 60 * 24); // Days difference
+    });
+
+    // XNPV function
+    const xnpv = (rate) => {
+      return cashFlows.reduce((sum, cashFlow, i) => {
+        return sum + cashFlow / Math.pow(1 + rate, dayNumbers[i] / 365.25);
+      }, 0);
     };
 
-    let irr = 0.1; // Initial guess
-    let financial_accuracy = 0.00001;
-    let max_iterations = 1000;
+    // XNPV derivative for Newton-Raphson
+    const xnpvDerivative = (rate) => {
+      return cashFlows.reduce((sum, cashFlow, i) => {
+        const years = dayNumbers[i] / 365.25;
+        return sum - (years * cashFlow) / Math.pow(1 + rate, years + 1);
+      }, 0);
+    };
 
-    for (let i = 0; i < max_iterations; i++) {
-      let y0 = npv(irr);
-      let y1 = npv(irr + financial_accuracy);
-      let slope = (y1 - y0) / financial_accuracy;
-      if (slope === 0) {
-        break; // Avoid division by zero
+    // Newton-Raphson method
+    let rate = guess;
+    const tolerance = 1e-6;
+    const maxIterations = 100;
+
+    for (let i = 0; i < maxIterations; i++) {
+      const npvValue = xnpv(rate);
+      const npvDeriv = xnpvDerivative(rate);
+      
+      if (Math.abs(npvValue) < tolerance) {
+        return rate;
       }
-      irr = irr - y0 / slope;
-      if (Math.abs(y0) < financial_accuracy) {
+      
+      if (Math.abs(npvDeriv) < tolerance) {
+        break;
+      }
+      
+      const newRate = rate - npvValue / npvDeriv;
+      
+      if (Math.abs(newRate - rate) < tolerance) {
+        return newRate;
+      }
+      
+      rate = newRate;
+      
+      // Prevent extreme values
+      if (rate < -0.99 || rate > 10) {
         break;
       }
     }
-    return irr;
+
+    return NaN;
+  };
+
+  // Calculate client-side IRR using XIRR
+  const calculateClientIRR = (assetData, assetInputs) => {
+    if (!assetData || assetData.length < 2 || !assetInputs) {
+      return NaN;
+    }
+
+    // Get construction start date
+    const constructionStartDate = new Date(assetInputs.constructionStartDate);
+    
+    // Filter data from construction start onwards and sort by date
+    const filteredData = assetData
+      .filter(item => new Date(item.date) >= constructionStartDate)
+      .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+    if (filteredData.length < 2) {
+      return NaN;
+    }
+
+    // Extract dates and cash flows
+    const dates = filteredData.map(item => item.date);
+    const cashFlows = filteredData.map(item => item.equity_cash_flow || 0);
+
+    // Check if all cash flows are zero
+    if (cashFlows.every(cf => cf === 0)) {
+      return NaN;
+    }
+
+    return calculateXIRR(dates, cashFlows);
   };
 
   useEffect(() => {
@@ -78,7 +136,7 @@ const Test3Page = () => {
 
     const fetchEquityIrr = async () => {
       try {
-        const response = await fetch('/api/results?assetId=assets_combined'); // Fetch the combined data for IRR
+        const response = await fetch('/api/results?assetId=assets_combined');
         if (response.ok) {
           const combinedData = await response.json();
           if (combinedData && combinedData.length > 0 && combinedData[0].irr !== undefined) {
@@ -111,21 +169,11 @@ const Test3Page = () => {
     fetchAssetInputsSummary();
   }, []);
 
-  useEffect(() => {
-    if (selectedAsset !== null && data.length > 0) {
-      const filteredData = data.filter(item => item.asset_id === selectedAsset);
-      const equityCashFlows = filteredData.map(item => item.equity_cash_flow);
-      const irr = calculateClientIRR(equityCashFlows);
-      setClientSideIrr(isNaN(irr) ? 'N/A' : (irr * 100).toFixed(2) + '%');
-    }
-  }, [data, selectedAsset, calculateClientIRR]);
-
   const processData = useMemo(() => {
     if (!data || data.length === 0 || selectedAsset === null) return [];
 
     const filteredData = data.filter(item => item.asset_id === selectedAsset);
 
-    // Helper to aggregate data
     const aggregate = (items, periodType) => {
       const aggregated = {};
 
@@ -139,7 +187,6 @@ const Test3Page = () => {
           const quarter = Math.floor(date.getMonth() / 3) + 1;
           periodKey = `${date.getFullYear()}-Q${quarter}`;
         } else if (periodType === 'fiscalYear') {
-          // Assuming fiscal year starts July 1st
           const year = date.getMonth() >= 6 ? date.getFullYear() : date.getFullYear() - 1;
           periodKey = `FY${year + 1}`;
         } else if (periodType === 'calendarYear') {
@@ -147,7 +194,21 @@ const Test3Page = () => {
         }
 
         if (!aggregated[periodKey]) {
-          aggregated[periodKey] = { date: periodKey, revenue: 0, opex: 0, capex: 0, equity_capex: 0, debt_capex: 0, cfads: 0, equity_cash_flow: 0, terminal_value: 0, dscr: 0, period_type: '' };
+          aggregated[periodKey] = { 
+            date: periodKey, 
+            revenue: 0, 
+            opex: 0, 
+            capex: 0, 
+            equity_capex: 0, 
+            debt_capex: 0, 
+            cfads: 0, 
+            equity_cash_flow: 0, 
+            terminal_value: 0, 
+            dscr: 0, 
+            period_type: '',
+            interest: 0,
+            principal: 0
+          };
         }
 
         aggregated[periodKey].revenue += item.revenue || 0;
@@ -158,9 +219,8 @@ const Test3Page = () => {
         aggregated[periodKey].cfads += item.cfads || 0;
         aggregated[periodKey].equity_cash_flow += item.equity_cash_flow || 0;
         aggregated[periodKey].terminal_value += item.terminal_value || 0;
-        aggregated[periodKey].dscr = item.dscr || 0;
-        // For period_type, if aggregating, we might need a more sophisticated logic
-        // For now, we'll just take the last one or assume it's consistent within a period
+        aggregated[periodKey].interest += item.interest || 0;
+        aggregated[periodKey].principal += item.principal || 0;
         aggregated[periodKey].period_type = item.period_type || '';
       });
 
@@ -178,11 +238,13 @@ const Test3Page = () => {
     const totalCapex = assetData.reduce((sum, item) => sum + (item.capex || 0), 0);
     const totalEquityCapex = assetData.reduce((sum, item) => sum + (item.equity_capex || 0), 0);
     const totalDebtCapex = assetData.reduce((sum, item) => sum + (item.debt_capex || 0), 0);
+    const totalRevenue = assetData.reduce((sum, item) => sum + (item.revenue || 0), 0);
+    const totalOpex = assetData.reduce((sum, item) => sum + (item.opex || 0), 0);
+    const totalEquityCashFlow = assetData.reduce((sum, item) => sum + (item.equity_cash_flow || 0), 0);
 
     const consStart = assetData.length > 0 ? new Date(assetData[0].date).toLocaleDateString() : 'N/A';
     const consEnd = assetData.length > 0 ? new Date(assetData[assetData.length - 1].date).toLocaleDateString() : 'N/A';
 
-    // For ops start/end, we need to find when revenue or generation starts/ends
     const operationalData = assetData.filter(item => (item.revenue > 0 || item.monthlyGeneration > 0));
     const opsStart = operationalData.length > 0 ? new Date(operationalData[0].date).toLocaleDateString() : 'N/A';
     const opsEnd = operationalData.length > 0 ? new Date(operationalData[operationalData.length - 1].date).toLocaleDateString() : 'N/A';
@@ -191,23 +253,82 @@ const Test3Page = () => {
       totalCapex: totalCapex.toFixed(2),
       totalEquity: totalEquityCapex.toFixed(2),
       totalDebt: totalDebtCapex.toFixed(2),
+      totalRevenue: totalRevenue.toFixed(2),
+      totalOpex: totalOpex.toFixed(2),
+      totalEquityCashFlow: totalEquityCashFlow.toFixed(2),
       consStart,
       consEnd,
       opsStart,
-      opsEnd,
-      irr: equityIrr,
+      opsEnd
     };
-  }, [data, selectedAsset, equityIrr]);
+  }, [data, selectedAsset]);
 
   const selectedAssetInputs = useMemo(() => {
     if (!assetInputsSummary || !assetInputsSummary.asset_inputs) return null;
     return assetInputsSummary.asset_inputs.find(asset => asset.id === selectedAsset);
   }, [assetInputsSummary, selectedAsset]);
 
-  const generalConfig = useMemo(() => {
-    if (!assetInputsSummary || !assetInputsSummary.general_config) return null;
-    return assetInputsSummary.general_config;
-  }, [assetInputsSummary]);
+  // Calculate client-side IRR when data changes
+  useEffect(() => {
+    if (data.length > 0 && selectedAsset !== null && selectedAssetInputs) {
+      const assetData = data.filter(item => item.asset_id === selectedAsset);
+      const irr = calculateClientIRR(assetData, selectedAssetInputs);
+      if (!isNaN(irr)) {
+        setClientSideIrr((irr * 100).toFixed(2) + '%');
+      } else {
+        setClientSideIrr('N/A');
+      }
+    }
+  }, [data, selectedAsset, selectedAssetInputs]);
+
+  const exportToCSV = () => {
+    if (processData.length === 0) return;
+
+    const headers = [
+      'Period',
+      'Type',
+      'Revenue ($M)',
+      'Opex ($M)',
+      'Capex ($M)',
+      'Equity Capex ($M)',
+      'Debt Capex ($M)',
+      'Interest ($M)',
+      'Principal ($M)',
+      'CFADS ($M)',
+      'Equity Cash Flow ($M)',
+      'Terminal Value ($M)',
+      'DSCR'
+    ];
+
+    const csvContent = [
+      headers.join(','),
+      ...processData.map(row => [
+        row.date,
+        row.period_type,
+        row.revenue.toFixed(2),
+        row.opex.toFixed(2),
+        row.capex.toFixed(2),
+        row.equity_capex.toFixed(2),
+        row.debt_capex.toFixed(2),
+        row.interest.toFixed(2),
+        row.principal.toFixed(2),
+        row.cfads.toFixed(2),
+        row.equity_cash_flow.toFixed(2),
+        row.terminal_value.toFixed(2),
+        row.dscr.toFixed(2)
+      ].join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `asset_${selectedAsset}_${timeAggregation}_data.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   if (loading) {
     return (
@@ -222,12 +343,12 @@ const Test3Page = () => {
 
   return (
     <div className="p-6 space-y-6">
-      <h1 className="text-2xl font-bold text-gray-900">Asset Financial Analysis</h1>
+      <h1 className="text-2xl font-bold text-gray-900">Asset Financial Analysis - Debug Dashboard</h1>
 
       {/* Configuration Panel */}
       <div className="bg-white rounded-lg shadow border p-6">
         <h3 className="text-lg font-semibold mb-4">Analysis Configuration</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Select Asset</label>
             <select
@@ -253,13 +374,22 @@ const Test3Page = () => {
               <option value="calendarYear">Calendar Year</option>
             </select>
           </div>
+          <div className="flex items-end">
+            <button
+              onClick={exportToCSV}
+              className="flex items-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+            >
+              <Download className="w-4 h-4 mr-2" />
+              Export CSV
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Summary Box */}
+      {/* Key Metrics Summary */}
       <div className="bg-white rounded-lg shadow border p-6">
-        <h3 className="text-lg font-semibold mb-4">Summary Metrics</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        <h3 className="text-lg font-semibold mb-4">Key Metrics - Asset {selectedAsset}</h3>
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
           <div className="flex items-center space-x-3">
             <DollarSign className="w-6 h-6 text-green-600" />
             <div>
@@ -277,165 +407,110 @@ const Test3Page = () => {
           <div className="flex items-center space-x-3">
             <DollarSign className="w-6 h-6 text-red-600" />
             <div>
-              <p className="text-sm font-medium text-gray-600">Total Debt</p>
-              <p className="text-lg font-bold text-gray-900">${summaryMetrics.totalDebt}M</p>
+              <p className="text-sm font-medium text-gray-600">Total Revenue</p>
+              <p className="text-lg font-bold text-gray-900">${summaryMetrics.totalRevenue}M</p>
+            </div>
+          </div>
+          <div className="flex items-center space-x-3">
+            <DollarSign className="w-6 h-6 text-orange-600" />
+            <div>
+              <p className="text-sm font-medium text-gray-600">Total Opex</p>
+              <p className="text-lg font-bold text-gray-900">${summaryMetrics.totalOpex}M</p>
             </div>
           </div>
           <div className="flex items-center space-x-3">
             <BarChart3 className="w-6 h-6 text-purple-600" />
             <div>
-              <p className="text-sm font-medium text-gray-600">Backend Project IRR</p>
-              <p className="text-lg font-bold text-gray-900">{summaryMetrics.irr}</p>
+              <p className="text-sm font-medium text-gray-600">Backend IRR</p>
+              <p className="text-lg font-bold text-gray-900">{equityIrr}</p>
             </div>
           </div>
           <div className="flex items-center space-x-3">
             <BarChart3 className="w-6 h-6 text-purple-600" />
             <div>
-              <p className="text-sm font-medium text-gray-600">Client-Side Project IRR</p>
+              <p className="text-sm font-medium text-gray-600">Client IRR</p>
               <p className="text-lg font-bold text-gray-900">{clientSideIrr}</p>
             </div>
           </div>
-          <div className="flex items-center space-x-3">
-            <Calendar className="w-6 h-6 text-gray-500" />
-            <div>
-              <p className="text-sm font-medium text-gray-600">Construction Start</p>
-              <p className="text-lg font-bold text-gray-900">{summaryMetrics.consStart}</p>
-            </div>
-          </div>
-          <div className="flex items-center space-x-3">
-            <Calendar className="w-6 h-6 text-gray-500" />
-            <div>
-              <p className="text-sm font-medium text-gray-600">Construction End</p>
-              <p className="text-lg font-bold text-gray-900">{summaryMetrics.consEnd}</p>
-            </div>
-          </div>
-          <div className="flex items-center space-x-3">
-            <Calendar className="w-6 h-6 text-gray-500" />
-            <div>
-              <p className="text-sm font-medium text-gray-600">Operations Start</p>
-              <p className="text-lg font-bold text-gray-900">{summaryMetrics.opsStart}</p>
-            </div>
-          </div>
-          <div className="flex items-center space-x-3">
-            <Calendar className="w-6 h-6 text-gray-500" />
-            <div>
-              <p className="text-sm font-medium text-gray-600">Operations End</p>
-              <p className="text-lg font-bold text-gray-900">{summaryMetrics.opsEnd}</p>
-            </div>
-          </div>
+        </div>
+        <div className="mt-4">
+          <p className="text-sm text-gray-600">
+            <strong>Total Equity Cash Flow:</strong> ${summaryMetrics.totalEquityCashFlow}M | 
+            <strong> Construction Start:</strong> {selectedAssetInputs?.constructionStartDate || 'N/A'} | 
+            <strong> Periods from Construction:</strong> {
+              selectedAssetInputs ? 
+              data.filter(item => item.asset_id === selectedAsset && new Date(item.date) >= new Date(selectedAssetInputs.constructionStartDate)).length : 
+              'N/A'
+            }
+          </p>
         </div>
       </div>
 
       {/* Asset Inputs Summary */}
       {selectedAssetInputs && (
         <div className="bg-white rounded-lg shadow border p-6">
-          <h3 className="text-lg font-semibold mb-4">Asset Key Inputs - {selectedAssetInputs.name} (ID: {selectedAssetInputs.id})</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
+          <h3 className="text-lg font-semibold mb-4">Asset Inputs - {selectedAssetInputs.name}</h3>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 text-sm">
             <p><strong>Type:</strong> {selectedAssetInputs.type}</p>
             <p><strong>State:</strong> {selectedAssetInputs.state}</p>
             <p><strong>Capacity:</strong> {selectedAssetInputs.capacity} MW</p>
             <p><strong>Asset Life:</strong> {selectedAssetInputs.assetLife} years</p>
-            <p><strong>Construction Start:</strong> {selectedAssetInputs.constructionStartDate}</p>
-            <p><strong>Operations Start:</strong> {selectedAssetInputs.assetStartDate}</p>
-            <p><strong>Capex:</strong> ${selectedAssetInputs.capex}M</p>
-            <p><strong>Operating Costs:</strong> ${selectedAssetInputs.operatingCosts}M</p>
-            <p><strong>Max Gearing:</strong> {selectedAssetInputs.maxGearing * 100}%</p>
-            <p><strong>Interest Rate:</strong> {selectedAssetInputs.interestRate * 100}%</p>
-            <p><strong>Tenor Years:</strong> {selectedAssetInputs.tenorYears}</p>
-            <p><strong>Terminal Value (Input):</strong> ${selectedAssetInputs.terminalValue}M</p>
+            <p><strong>Capex:</strong> ${selectedAssetInputs.costAssumptions?.capex}M</p>
+            <p><strong>Operating Costs:</strong> ${selectedAssetInputs.costAssumptions?.operatingCosts}M</p>
+            <p><strong>Max Gearing:</strong> {(selectedAssetInputs.costAssumptions?.maxGearing * 100).toFixed(1)}%</p>
+            <p><strong>Interest Rate:</strong> {(selectedAssetInputs.costAssumptions?.interestRate * 100).toFixed(1)}%</p>
           </div>
         </div>
       )}
 
-      {/* General Configuration */}
-      {generalConfig && (
-        <div className="bg-white rounded-lg shadow border p-6">
-          <h3 className="text-lg font-semibold mb-4">General Configuration</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
-            <p><strong>Terminal Value Enabled:</strong> {generalConfig.ENABLE_TERMINAL_VALUE ? 'Yes' : 'No'}</p>
-            <p><strong>Default Debt Sizing:</strong> {generalConfig.DEFAULT_DEBT_SIZING_METHOD}</p>
-            <p><strong>DSCR Calculation Frequency:</strong> {generalConfig.DSCR_CALCULATION_FREQUENCY}</p>
-            <p><strong>Default Capex Funding:</strong> {generalConfig.DEFAULT_CAPEX_FUNDING_TYPE}</p>
-            <p><strong>Default Debt Repayment:</strong> {generalConfig.DEFAULT_DEBT_REPAYMENT_FREQUENCY}</p>
-            <p><strong>Default Debt Grace Period:</strong> {generalConfig.DEFAULT_DEBT_GRACE_PERIOD}</p>
-            <p><strong>Terminal Growth Rate:</strong> {(generalConfig.TERMINAL_GROWTH_RATE * 100).toFixed(2)}%</p>
-            <p><strong>User Model Start Date:</strong> {generalConfig.USER_MODEL_START_DATE || 'Not Set'}</p>
-            <p><strong>User Model End Date:</strong> {generalConfig.USER_MODEL_END_DATE || 'Not Set'}</p>
-          </div>
-        </div>
-      )}
-
-      {/* Capex Chart */}
+      {/* Equity Cash Flow Chart */}
       {processData.length > 0 && (
         <div className="bg-white rounded-lg shadow border p-6">
-          <h3 className="text-lg font-semibold mb-4">Capex Projections</h3>
+          <h3 className="text-lg font-semibold mb-4">Equity Cash Flow</h3>
           <ResponsiveContainer width="100%" height={300}>
             <AreaChart data={processData}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="date" />
-              <YAxis tickFormatter={(value) => `$${value.toFixed(2)}M`} />
+              <YAxis tickFormatter={(value) => `$${value.toFixed(1)}M`} />
               <Tooltip formatter={(value) => [`$${value.toFixed(2)}M`, '']} />
               <Legend />
-              <Area type="monotone" dataKey="equity_capex" stackId="1" stroke="#8884d8" fill="#8884d8" name="Equity Capex" />
-              <Area type="monotone" dataKey="debt_capex" stackId="1" stroke="#82ca9d" fill="#82ca9d" name="Debt Capex" />
+              <Area type="monotone" dataKey="equity_cash_flow" stroke="#8884d8" fill="#8884d8" name="Equity Cash Flow" />
             </AreaChart>
           </ResponsiveContainer>
         </div>
       )}
 
-      {/* Revenue and Opex Chart */}
+      {/* Simplified Data Table */}
       {processData.length > 0 && (
         <div className="bg-white rounded-lg shadow border p-6">
-          <h3 className="text-lg font-semibold mb-4">Revenue and Opex Projections</h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <AreaChart data={processData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="date" />
-              <YAxis tickFormatter={(value) => `$${value.toFixed(2)}M`} />
-              <Tooltip formatter={(value) => [`$${value.toFixed(2)}M`, '']} />
-              <Legend />
-              <Area type="monotone" dataKey="revenue" stackId="1" stroke="#ffc658" fill="#ffc658" name="Revenue" />
-              <Area type="monotone" dataKey="opex" stackId="1" stroke="#ff7300" fill="#ff7300" name="Opex" />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
-      )}
-
-      {/* Data Table */}
-      {processData.length > 0 && (
-        <div className="bg-white rounded-lg shadow border p-6">
-          <h3 className="text-lg font-semibold mb-4">Detailed Data</h3>
+          <h3 className="text-lg font-semibold mb-4">Financial Data</h3>
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Period</th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-                  <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Revenue ($M)</th>
-                  <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Opex ($M)</th>
-                  <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Capex ($M)</th>
-                  <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Equity Capex ($M)</th>
-                  <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Debt Capex ($M)</th>
-                  <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">CFADS ($M)</th>
-                  <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Equity Cash Flow ($M)</th>
-                  <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Terminal Value ($M)</th>
-                  <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">DSCR</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Period</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
+                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Revenue</th>
+                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Opex</th>
+                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">CFADS</th>
+                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Interest</th>
+                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Principal</th>
+                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Equity CF</th>
+                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Terminal Val</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {processData.map((row, index) => (
-                  <tr key={index}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{row.date}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{row.period_type}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">{row.revenue.toFixed(2)}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">{row.opex.toFixed(2)}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">{row.capex.toFixed(2)}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">{row.equity_capex.toFixed(2)}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">{row.debt_capex.toFixed(2)}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">{row.cfads.toFixed(2)}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">{row.equity_cash_flow.toFixed(2)}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">{row.terminal_value.toFixed(2)}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">{row.dscr.toFixed(2)}</td>
+                  <tr key={index} className={row.equity_cash_flow < 0 ? 'bg-red-50' : row.equity_cash_flow > 0 ? 'bg-green-50' : ''}>
+                    <td className="px-4 py-2 text-sm font-medium text-gray-900">{row.date}</td>
+                    <td className="px-4 py-2 text-sm text-gray-500">{row.period_type}</td>
+                    <td className="px-4 py-2 text-sm text-gray-500 text-right">{row.revenue.toFixed(1)}</td>
+                    <td className="px-4 py-2 text-sm text-gray-500 text-right">{row.opex.toFixed(1)}</td>
+                    <td className="px-4 py-2 text-sm text-gray-500 text-right">{row.cfads.toFixed(1)}</td>
+                    <td className="px-4 py-2 text-sm text-gray-500 text-right">{row.interest.toFixed(1)}</td>
+                    <td className="px-4 py-2 text-sm text-gray-500 text-right">{row.principal.toFixed(1)}</td>
+                    <td className="px-4 py-2 text-sm font-medium text-right">{row.equity_cash_flow.toFixed(1)}</td>
+                    <td className="px-4 py-2 text-sm text-gray-500 text-right">{row.terminal_value.toFixed(1)}</td>
                   </tr>
                 ))}
               </tbody>

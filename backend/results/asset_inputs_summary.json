@@ -411,8 +411,7 @@
         "OUTPUT_DATE_FORMAT": "%Y-%m-%dT%H:%M:%S.%fZ",
         "DEFAULT_CAPEX_FUNDING_TYPE": "equity_first",
         "DEFAULT_DEBT_REPAYMENT_FREQUENCY": "monthly",
-        "DEFAULT_DEBT_GRACE_PERIOD": "none",
-        "TERMINAL_GROWTH_RATE": 0.02,
+        "DEFAULT_DEBT_GRACE_PERIOD": "full_period",
         "USER_MODEL_START_DATE": null,
         "USER_MODEL_END_DATE": null
     }
