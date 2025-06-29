@@ -123,36 +123,42 @@ def run_cashflow_model():
     output_directory = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'results')
     generate_asset_and_platform_output(final_cash_flow, irr, output_directory)
 
-    def generate_asset_inputs_summary(assets, asset_cost_assumptions, output_dir):
-        summary_data = []
+    def generate_asset_inputs_summary(assets, asset_cost_assumptions, config_values, output_dir):
+        asset_summaries = []
         for asset in assets:
-            asset_name = asset.get('name')
             asset_id = asset.get('id')
-            costs = asset_cost_assumptions.get(asset_name, {})
+            asset_name = asset.get('name')
             
-            summary_data.append({
-                "id": asset_id,
-                "name": asset_name,
-                "type": asset.get('type'),
-                "state": asset.get('state'),
-                "capacity": asset.get('capacity'),
-                "assetLife": asset.get('assetLife'),
-                "constructionStartDate": asset.get('constructionStartDate'),
-                "assetStartDate": asset.get('assetStartDate'),
-                "capex": costs.get('capex'),
-                "operatingCosts": costs.get('operatingCosts'),
-                "maxGearing": costs.get('maxGearing'),
-                "interestRate": costs.get('interestRate'),
-                "tenorYears": costs.get('tenorYears'),
-                "terminalValue": costs.get('terminalValue')
-            })
+            # Include all direct asset properties
+            asset_data = {k: v for k, v in asset.items()}
+            
+            # Include cost assumptions for the asset
+            asset_data['costAssumptions'] = asset_cost_assumptions.get(asset_name, {})
+            
+            asset_summaries.append(asset_data)
+        
+        full_summary = {
+            "asset_inputs": asset_summaries,
+            "general_config": config_values
+        }
         
         output_path = os.path.join(output_dir, "asset_inputs_summary.json")
         with open(output_path, 'w') as f:
-            json.dump(summary_data, f, indent=4)
+            json.dump(full_summary, f, indent=4)
         print(f"Saved asset inputs summary to {output_path}")
 
-    generate_asset_inputs_summary(ASSETS, ASSET_COST_ASSUMPTIONS, output_directory)
+    # Extract all relevant config values
+    config_values = {
+        "DATE_FORMAT": DATE_FORMAT,
+        "OUTPUT_DATE_FORMAT": OUTPUT_DATE_FORMAT,
+        "DEFAULT_CAPEX_FUNDING_TYPE": DEFAULT_CAPEX_FUNDING_TYPE,
+        "DEFAULT_DEBT_REPAYMENT_FREQUENCY": DEFAULT_DEBT_REPAYMENT_FREQUENCY,
+        "DEFAULT_DEBT_GRACE_PERIOD": DEFAULT_DEBT_GRACE_PERIOD,
+        "TERMINAL_GROWTH_RATE": TERMINAL_GROWTH_RATE,
+        "USER_MODEL_START_DATE": USER_MODEL_START_DATE,
+        "USER_MODEL_END_DATE": USER_MODEL_END_DATE
+    }
+    generate_asset_inputs_summary(ASSETS, ASSET_COST_ASSUMPTIONS, config_values, output_directory)
 
     return "Cash flow model run complete. Outputs saved and summaries generated."
 

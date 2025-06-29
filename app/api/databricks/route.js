@@ -1,11 +1,11 @@
 // app/api/databricks-simple/route.js
 import { NextResponse } from 'next/server';
-
+const token = process.env.DATABRICKS_ACCESS_TOKEN
 // Your Databricks connection details
 const DATABRICKS_CONFIG = {
   host: "https://dbc-5563cebe-5df1.cloud.databricks.com",
   warehouse_id: "9fdae2ebaf20745b", // Extract from your http_path
-  access_token: "dapiaa84fd29e7d6cd2b4306ad7d6852a6f3"
+  access_token: token
 };
 
 async function executeQueryHTTP(query) {
