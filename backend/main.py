@@ -22,8 +22,16 @@ from core.summary_generator import generate_summary_data
 from core.equity_irr import calculate_equity_irr
 
 # Load real data
-ASSETS, ASSET_COST_ASSUMPTIONS = load_asset_data('public/zebre_2025-01-13.json')
-MONTHLY_PRICES, YEARLY_SPREADS = load_price_data('public/merchant_price_monthly.csv', 'public/merchant_yearly_spreads.csv')
+# Construct the absolute path to the public directory
+current_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.abspath(os.path.join(current_dir, '..')) # Go up one level from 'backend' to 'renew-asset-platform'
+
+zebre_json_path = os.path.join(project_root, 'public', 'zebre_2025-01-13.json')
+monthly_price_path = os.path.join(project_root, 'public', 'merchant_price_monthly.csv')
+yearly_spread_path = os.path.join(project_root, 'public', 'merchant_yearly_spreads.csv')
+
+ASSETS, ASSET_COST_ASSUMPTIONS = load_asset_data(zebre_json_path)
+MONTHLY_PRICES, YEARLY_SPREADS = load_price_data(monthly_price_path, yearly_spread_path)
 
 def run_cashflow_model():
     """
