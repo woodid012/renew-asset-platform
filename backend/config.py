@@ -19,7 +19,7 @@ DEFAULT_DEBT_REPAYMENT_FREQUENCY = 'monthly'
 # If operations start mid-period, this determines if the first payment is delayed or pro-rated.
 # 'none': No grace period, payment starts immediately (pro-rated if partial period).
 # 'full_period': Payment starts after the first full period of operations.
-DEFAULT_DEBT_GRACE_PERIOD = 'none'
+DEFAULT_DEBT_GRACE_PERIOD = 'full_period'
 
 # User-defined Model Period (Optional)
 # If set, these dates will override the dynamic calculation from asset data.
@@ -27,8 +27,10 @@ DEFAULT_DEBT_GRACE_PERIOD = 'none'
 USER_MODEL_START_DATE = None # e.g., '2023-01-01'
 USER_MODEL_END_DATE = None   # e.g., '2045-12-31'
 
-# Terminal Value Settings
-TERMINAL_GROWTH_RATE = 0.02 # Example: 2% perpetual growth rate for terminal value
+ENABLE_TERMINAL_VALUE = True # Enable or disable terminal value calculation
 
-# Terminal Value Settings
-TERMINAL_GROWTH_RATE = 0.02 # Example: 2% perpetual growth rate for terminal value
+# Debt Sizing Options
+# 'dscr': Debt is sized based on Debt Service Coverage Ratio (DSCR).
+# 'annuity': Debt is sized based on a fixed annuity payment (traditional approach).
+DEFAULT_DEBT_SIZING_METHOD = 'dscr'
+DSCR_CALCULATION_FREQUENCY = 'quarterly' # 'monthly' or 'quarterly'

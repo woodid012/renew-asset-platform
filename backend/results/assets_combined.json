@@ -8,7 +8,7 @@
         "merchantGreenRevenue":0.0,
         "merchantEnergyRevenue":0.0,
         "monthlyGeneration":0.0,
-        "opex":3.0527603686,
+        "opex":0.0,
         "capex":14.0352941176,
         "equity_capex":14.0352941176,
         "debt_capex":0.0,
@@ -17,10 +17,10 @@
         "interest":0.0,
         "principal":0.0,
         "ending_balance":0.0,
-        "cfads":-3.0527603686,
-        "equity_cash_flow":-3.0527603686,
+        "cfads":0.0,
+        "equity_cash_flow":-14.0352941176,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2024-04-01T00:00:00.000000Z",
@@ -31,7 +31,7 @@
         "merchantGreenRevenue":0.0,
         "merchantEnergyRevenue":0.0,
         "monthlyGeneration":0.0,
-        "opex":3.0527603686,
+        "opex":0.0,
         "capex":14.0352941176,
         "equity_capex":14.0352941176,
         "debt_capex":0.0,
@@ -40,10 +40,10 @@
         "interest":0.0,
         "principal":0.0,
         "ending_balance":0.0,
-        "cfads":-3.0527603686,
-        "equity_cash_flow":-3.0527603686,
+        "cfads":0.0,
+        "equity_cash_flow":-14.0352941176,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2024-05-01T00:00:00.000000Z",
@@ -54,7 +54,7 @@
         "merchantGreenRevenue":0.0,
         "merchantEnergyRevenue":0.0,
         "monthlyGeneration":0.0,
-        "opex":3.0527603686,
+        "opex":0.0,
         "capex":14.0352941176,
         "equity_capex":14.0352941176,
         "debt_capex":0.0,
@@ -63,10 +63,10 @@
         "interest":0.0,
         "principal":0.0,
         "ending_balance":0.0,
-        "cfads":-3.0527603686,
-        "equity_cash_flow":-3.0527603686,
+        "cfads":0.0,
+        "equity_cash_flow":-14.0352941176,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2024-06-01T00:00:00.000000Z",
@@ -77,7 +77,7 @@
         "merchantGreenRevenue":0.0,
         "merchantEnergyRevenue":0.0,
         "monthlyGeneration":0.0,
-        "opex":3.0527603686,
+        "opex":0.0,
         "capex":14.0352941176,
         "equity_capex":14.0352941176,
         "debt_capex":0.0,
@@ -86,10 +86,10 @@
         "interest":0.0,
         "principal":0.0,
         "ending_balance":0.0,
-        "cfads":-3.0527603686,
-        "equity_cash_flow":-3.0527603686,
+        "cfads":0.0,
+        "equity_cash_flow":-14.0352941176,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2024-07-01T00:00:00.000000Z",
@@ -100,7 +100,7 @@
         "merchantGreenRevenue":0.0,
         "merchantEnergyRevenue":0.0,
         "monthlyGeneration":0.0,
-        "opex":3.0527603686,
+        "opex":0.0,
         "capex":14.0352941176,
         "equity_capex":14.0352941176,
         "debt_capex":0.0,
@@ -109,10 +109,10 @@
         "interest":0.0,
         "principal":0.0,
         "ending_balance":0.0,
-        "cfads":-3.0527603686,
-        "equity_cash_flow":-3.0527603686,
+        "cfads":0.0,
+        "equity_cash_flow":-14.0352941176,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2024-08-01T00:00:00.000000Z",
@@ -123,7 +123,7 @@
         "merchantGreenRevenue":0.0,
         "merchantEnergyRevenue":0.0,
         "monthlyGeneration":0.0,
-        "opex":3.0527603686,
+        "opex":0.0,
         "capex":14.0352941176,
         "equity_capex":13.3335294118,
         "debt_capex":0.7017647059,
@@ -132,10 +132,10 @@
         "interest":0.0,
         "principal":0.0,
         "ending_balance":0.7017647059,
-        "cfads":-3.0527603686,
-        "equity_cash_flow":-3.0527603686,
+        "cfads":0.0,
+        "equity_cash_flow":-13.3335294118,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2024-09-01T00:00:00.000000Z",
@@ -146,7 +146,7 @@
         "merchantGreenRevenue":0.0,
         "merchantEnergyRevenue":0.0,
         "monthlyGeneration":0.0,
-        "opex":3.0527603686,
+        "opex":0.0,
         "capex":14.0352941176,
         "equity_capex":0.0,
         "debt_capex":14.0352941176,
@@ -155,10 +155,10 @@
         "interest":0.0,
         "principal":0.0,
         "ending_balance":14.7370588235,
-        "cfads":-3.0527603686,
-        "equity_cash_flow":-3.0527603686,
+        "cfads":0.0,
+        "equity_cash_flow":0.0,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2024-10-01T00:00:00.000000Z",
@@ -169,7 +169,7 @@
         "merchantGreenRevenue":0.0,
         "merchantEnergyRevenue":0.0,
         "monthlyGeneration":0.0,
-        "opex":3.0527603686,
+        "opex":0.0,
         "capex":14.0352941176,
         "equity_capex":0.0,
         "debt_capex":14.0352941176,
@@ -178,10 +178,10 @@
         "interest":0.0,
         "principal":0.0,
         "ending_balance":28.7723529412,
-        "cfads":-3.0527603686,
-        "equity_cash_flow":-3.0527603686,
+        "cfads":0.0,
+        "equity_cash_flow":0.0,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2024-11-01T00:00:00.000000Z",
@@ -192,7 +192,7 @@
         "merchantGreenRevenue":0.0,
         "merchantEnergyRevenue":0.0,
         "monthlyGeneration":0.0,
-        "opex":3.0527603686,
+        "opex":0.0,
         "capex":14.0352941176,
         "equity_capex":0.0,
         "debt_capex":14.0352941176,
@@ -201,10 +201,10 @@
         "interest":0.0,
         "principal":0.0,
         "ending_balance":42.8076470588,
-        "cfads":-3.0527603686,
-        "equity_cash_flow":-3.0527603686,
+        "cfads":0.0,
+        "equity_cash_flow":0.0,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2024-12-01T00:00:00.000000Z",
@@ -215,7 +215,7 @@
         "merchantGreenRevenue":0.0,
         "merchantEnergyRevenue":0.0,
         "monthlyGeneration":0.0,
-        "opex":3.0527603686,
+        "opex":0.0,
         "capex":14.0352941176,
         "equity_capex":0.0,
         "debt_capex":14.0352941176,
@@ -224,10 +224,10 @@
         "interest":0.0,
         "principal":0.0,
         "ending_balance":56.8429411765,
-        "cfads":-3.0527603686,
-        "equity_cash_flow":-3.0527603686,
+        "cfads":0.0,
+        "equity_cash_flow":0.0,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2025-01-01T00:00:00.000000Z",
@@ -238,7 +238,7 @@
         "merchantGreenRevenue":0.0,
         "merchantEnergyRevenue":0.0,
         "monthlyGeneration":0.0,
-        "opex":3.1290793778,
+        "opex":0.0,
         "capex":14.0352941176,
         "equity_capex":0.0,
         "debt_capex":14.0352941176,
@@ -247,10 +247,10 @@
         "interest":0.0,
         "principal":0.0,
         "ending_balance":70.8782352941,
-        "cfads":-3.1290793778,
-        "equity_cash_flow":-3.1290793778,
+        "cfads":0.0,
+        "equity_cash_flow":0.0,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2025-02-01T00:00:00.000000Z",
@@ -261,7 +261,7 @@
         "merchantGreenRevenue":0.0,
         "merchantEnergyRevenue":0.0,
         "monthlyGeneration":0.0,
-        "opex":3.1290793778,
+        "opex":0.0,
         "capex":14.0352941176,
         "equity_capex":0.0,
         "debt_capex":14.0352941176,
@@ -270,10 +270,10 @@
         "interest":0.0,
         "principal":0.0,
         "ending_balance":84.9135294118,
-        "cfads":-3.1290793778,
-        "equity_cash_flow":-3.1290793778,
+        "cfads":0.0,
+        "equity_cash_flow":0.0,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2025-03-01T00:00:00.000000Z",
@@ -284,7 +284,7 @@
         "merchantGreenRevenue":0.0,
         "merchantEnergyRevenue":0.0,
         "monthlyGeneration":0.0,
-        "opex":3.1290793778,
+        "opex":0.0,
         "capex":14.0352941176,
         "equity_capex":0.0,
         "debt_capex":14.0352941176,
@@ -293,10 +293,10 @@
         "interest":0.0,
         "principal":0.0,
         "ending_balance":98.9488235294,
-        "cfads":-3.1290793778,
-        "equity_cash_flow":-3.1290793778,
+        "cfads":0.0,
+        "equity_cash_flow":0.0,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2025-04-01T00:00:00.000000Z",
@@ -307,7 +307,7 @@
         "merchantGreenRevenue":0.0,
         "merchantEnergyRevenue":0.0,
         "monthlyGeneration":0.0,
-        "opex":3.1290793778,
+        "opex":0.0,
         "capex":14.0352941176,
         "equity_capex":0.0,
         "debt_capex":14.0352941176,
@@ -316,10 +316,10 @@
         "interest":0.0,
         "principal":0.0,
         "ending_balance":112.9841176471,
-        "cfads":-3.1290793778,
-        "equity_cash_flow":-3.1290793778,
+        "cfads":0.0,
+        "equity_cash_flow":0.0,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2025-05-01T00:00:00.000000Z",
@@ -330,7 +330,7 @@
         "merchantGreenRevenue":0.0,
         "merchantEnergyRevenue":0.0,
         "monthlyGeneration":0.0,
-        "opex":3.1290793778,
+        "opex":0.0,
         "capex":14.0352941176,
         "equity_capex":0.0,
         "debt_capex":14.0352941176,
@@ -339,10 +339,10 @@
         "interest":0.0,
         "principal":0.0,
         "ending_balance":127.0194117647,
-        "cfads":-3.1290793778,
-        "equity_cash_flow":-3.1290793778,
+        "cfads":0.0,
+        "equity_cash_flow":0.0,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2025-06-01T00:00:00.000000Z",
@@ -353,7 +353,7 @@
         "merchantGreenRevenue":0.0,
         "merchantEnergyRevenue":0.0,
         "monthlyGeneration":0.0,
-        "opex":3.1290793778,
+        "opex":0.0,
         "capex":14.0352941176,
         "equity_capex":0.0,
         "debt_capex":14.0352941176,
@@ -362,10 +362,10 @@
         "interest":0.0,
         "principal":0.0,
         "ending_balance":141.0547058824,
-        "cfads":-3.1290793778,
-        "equity_cash_flow":-3.1290793778,
+        "cfads":0.0,
+        "equity_cash_flow":0.0,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2025-07-01T00:00:00.000000Z",
@@ -376,7 +376,7 @@
         "merchantGreenRevenue":0.0,
         "merchantEnergyRevenue":0.0,
         "monthlyGeneration":0.0,
-        "opex":3.1290793778,
+        "opex":0.0,
         "capex":14.0352941176,
         "equity_capex":0.0,
         "debt_capex":14.0352941176,
@@ -385,10 +385,10 @@
         "interest":0.0,
         "principal":0.0,
         "ending_balance":155.09,
-        "cfads":-3.1290793778,
-        "equity_cash_flow":-3.1290793778,
+        "cfads":0.0,
+        "equity_cash_flow":0.0,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2025-08-01T00:00:00.000000Z",
@@ -399,7 +399,7 @@
         "merchantGreenRevenue":0.0,
         "merchantEnergyRevenue":0.0,
         "monthlyGeneration":8472.278125,
-        "opex":3.1290793778,
+        "opex":0.3383333333,
         "capex":0.0,
         "equity_capex":0.0,
         "debt_capex":0.0,
@@ -408,10 +408,10 @@
         "interest":0.7108291667,
         "principal":0.4218184688,
         "ending_balance":154.6681815312,
-        "cfads":-1.3573612028,
-        "equity_cash_flow":-2.4900088382,
+        "cfads":1.4333848417,
+        "equity_cash_flow":0.3007372062,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2025-09-01T00:00:00.000000Z",
@@ -422,7 +422,7 @@
         "merchantGreenRevenue":0.0,
         "merchantEnergyRevenue":0.0,
         "monthlyGeneration":8460.8980572995,
-        "opex":3.1290793778,
+        "opex":0.3383333333,
         "capex":0.0,
         "equity_capex":0.0,
         "debt_capex":0.0,
@@ -431,10 +431,10 @@
         "interest":0.708895832,
         "principal":0.4237518034,
         "ending_balance":154.2444297278,
-        "cfads":-1.356096449,
-        "equity_cash_flow":-2.4887440844,
+        "cfads":1.4346495955,
+        "equity_cash_flow":0.30200196,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2025-10-01T00:00:00.000000Z",
@@ -445,7 +445,7 @@
         "merchantGreenRevenue":0.0,
         "merchantEnergyRevenue":0.0,
         "monthlyGeneration":8449.5332754454,
-        "opex":3.1290793778,
+        "opex":0.3383333333,
         "capex":33.7285714286,
         "equity_capex":33.7285714286,
         "debt_capex":0.0,
@@ -454,10 +454,10 @@
         "interest":0.7069536363,
         "principal":0.4256939992,
         "ending_balance":153.8187357286,
-        "cfads":-1.3548307923,
-        "equity_cash_flow":-2.4874784277,
+        "cfads":1.4359152522,
+        "equity_cash_flow":-33.4253038119,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2025-11-01T00:00:00.000000Z",
@@ -468,7 +468,7 @@
         "merchantGreenRevenue":0.0,
         "merchantEnergyRevenue":0.0,
         "monthlyGeneration":8438.1837589053,
-        "opex":3.1290793778,
+        "opex":0.3383333333,
         "capex":33.7285714286,
         "equity_capex":33.7285714286,
         "debt_capex":0.0,
@@ -477,10 +477,10 @@
         "interest":0.7050025388,
         "principal":0.4276450967,
         "ending_balance":153.3910906319,
-        "cfads":-1.3535642321,
-        "equity_cash_flow":-2.4862118676,
+        "cfads":1.4371818124,
+        "equity_cash_flow":-33.4240372517,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2025-12-01T00:00:00.000000Z",
@@ -491,7 +491,7 @@
         "merchantGreenRevenue":0.0,
         "merchantEnergyRevenue":0.0,
         "monthlyGeneration":8426.8494871748,
-        "opex":3.1290793778,
+        "opex":0.3383333333,
         "capex":33.7285714286,
         "equity_capex":33.7285714286,
         "debt_capex":0.0,
@@ -500,10 +500,10 @@
         "interest":0.7030424987,
         "principal":0.4296051367,
         "ending_balance":152.9614854951,
-        "cfads":-1.3522967678,
-        "equity_cash_flow":-2.4849444032,
+        "cfads":1.4384492767,
+        "equity_cash_flow":-33.4227697873,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2026-01-01T00:00:00.000000Z",
@@ -514,7 +514,7 @@
         "merchantGreenRevenue":0.0,
         "merchantEnergyRevenue":0.0,
         "monthlyGeneration":8415.5304397768,
-        "opex":3.2073063622,
+        "opex":0.3467916667,
         "capex":33.7285714286,
         "equity_capex":33.7285714286,
         "debt_capex":0.0,
@@ -523,10 +523,10 @@
         "interest":0.7010734752,
         "principal":0.4315741603,
         "ending_balance":152.5299113349,
-        "cfads":-1.4292553831,
-        "equity_cash_flow":-2.5619030186,
+        "cfads":1.4312593125,
+        "equity_cash_flow":-33.4299597516,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2026-02-01T00:00:00.000000Z",
@@ -537,7 +537,7 @@
         "merchantGreenRevenue":0.0,
         "merchantEnergyRevenue":0.0,
         "monthlyGeneration":8404.2265962619,
-        "opex":3.2073063622,
+        "opex":0.3467916667,
         "capex":33.7285714286,
         "equity_capex":33.7285714286,
         "debt_capex":0.0,
@@ -546,10 +546,10 @@
         "interest":0.699095427,
         "principal":0.4335522085,
         "ending_balance":152.0963591263,
-        "cfads":-1.4279861086,
-        "equity_cash_flow":-2.560633744,
+        "cfads":1.432528587,
+        "equity_cash_flow":-33.428690477,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2026-03-01T00:00:00.000000Z",
@@ -560,7 +560,7 @@
         "merchantGreenRevenue":0.0,
         "merchantEnergyRevenue":0.0,
         "monthlyGeneration":8392.937936208,
-        "opex":3.2073063622,
+        "opex":0.3467916667,
         "capex":33.7285714286,
         "equity_capex":33.7285714286,
         "debt_capex":0.0,
@@ -569,10 +569,10 @@
         "interest":0.6971083127,
         "principal":0.4355393228,
         "ending_balance":151.6608198036,
-        "cfads":-1.4267159279,
-        "equity_cash_flow":-2.5593635634,
+        "cfads":1.4337987676,
+        "equity_cash_flow":-33.4274202964,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2026-04-01T00:00:00.000000Z",
@@ -583,7 +583,7 @@
         "merchantGreenRevenue":0.0,
         "merchantEnergyRevenue":0.0,
         "monthlyGeneration":8381.6644392204,
-        "opex":3.2073063622,
+        "opex":0.3467916667,
         "capex":33.7285714286,
         "equity_capex":10.1185714286,
         "debt_capex":23.61,
@@ -592,10 +592,10 @@
         "interest":0.6951120908,
         "principal":0.4375355447,
         "ending_balance":174.8332842589,
-        "cfads":-1.4254448406,
-        "equity_cash_flow":-2.558092476,
+        "cfads":1.435069855,
+        "equity_cash_flow":-9.816149209,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2026-05-01T00:00:00.000000Z",
@@ -606,7 +606,7 @@
         "merchantGreenRevenue":0.0,
         "merchantEnergyRevenue":0.0,
         "monthlyGeneration":8370.4060849321,
-        "opex":3.2073063622,
+        "opex":0.3467916667,
         "capex":52.5910714286,
         "equity_capex":18.8625,
         "debt_capex":33.7285714286,
@@ -615,10 +615,10 @@
         "interest":0.6931067195,
         "principal":0.4395409159,
         "ending_balance":208.1223147715,
-        "cfads":-1.4241728458,
-        "equity_cash_flow":-2.5568204813,
+        "cfads":1.4363418497,
+        "equity_cash_flow":-18.5588057857,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2026-06-01T00:00:00.000000Z",
@@ -629,7 +629,7 @@
         "merchantGreenRevenue":0.0,
         "merchantEnergyRevenue":0.0,
         "monthlyGeneration":8359.162853003,
-        "opex":3.2073063622,
+        "opex":0.3467916667,
         "capex":52.5910714286,
         "equity_capex":18.8625,
         "debt_capex":33.7285714286,
@@ -638,10 +638,10 @@
         "interest":0.691092157,
         "principal":0.4415554785,
         "ending_balance":241.4093307216,
-        "cfads":-1.4228999431,
-        "equity_cash_flow":-2.5555475786,
+        "cfads":1.4376147525,
+        "equity_cash_flow":-18.557532883,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2026-07-01T00:00:00.000000Z",
@@ -652,7 +652,7 @@
         "merchantGreenRevenue":0.0,
         "merchantEnergyRevenue":0.0,
         "monthlyGeneration":8347.9347231208,
-        "opex":3.2073063622,
+        "opex":0.3467916667,
         "capex":52.5910714286,
         "equity_capex":18.8625,
         "debt_capex":33.7285714286,
@@ -661,10 +661,10 @@
         "interest":0.689068361,
         "principal":0.4435792744,
         "ending_balance":274.6943228758,
-        "cfads":-1.4216261317,
-        "equity_cash_flow":-2.5542737671,
+        "cfads":1.4388885639,
+        "equity_cash_flow":-18.5562590716,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2026-08-01T00:00:00.000000Z",
@@ -675,7 +675,7 @@
         "merchantGreenRevenue":0.0,
         "merchantEnergyRevenue":0.0,
         "monthlyGeneration":8336.721675,
-        "opex":3.2073063622,
+        "opex":0.3467916667,
         "capex":66.7148809524,
         "equity_capex":32.9863095238,
         "debt_capex":33.7285714286,
@@ -684,10 +684,10 @@
         "interest":0.6870352894,
         "principal":0.4456123461,
         "ending_balance":307.9772819582,
-        "cfads":-1.4203514109,
-        "equity_cash_flow":-2.5529990464,
+        "cfads":1.4401632846,
+        "equity_cash_flow":-32.6787938746,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2026-09-01T00:00:00.000000Z",
@@ -698,7 +698,7 @@
         "merchantGreenRevenue":0.0,
         "merchantEnergyRevenue":0.0,
         "monthlyGeneration":8325.5236883828,
-        "opex":3.2073063622,
+        "opex":0.3467916667,
         "capex":66.7148809524,
         "equity_capex":32.9863095238,
         "debt_capex":33.7285714286,
@@ -707,10 +707,10 @@
         "interest":0.6849928995,
         "principal":0.447654736,
         "ending_balance":341.2581986508,
-        "cfads":-1.4190757802,
-        "equity_cash_flow":-2.5517234157,
+        "cfads":1.4414389153,
+        "equity_cash_flow":-32.6775182439,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2026-10-01T00:00:00.000000Z",
@@ -721,7 +721,7 @@
         "merchantGreenRevenue":0.0,
         "merchantEnergyRevenue":0.0,
         "monthlyGeneration":8314.3407430382,
-        "opex":3.2073063622,
+        "opex":0.3467916667,
         "capex":66.7148809524,
         "equity_capex":32.9863095238,
         "debt_capex":33.7285714286,
@@ -730,10 +730,10 @@
         "interest":0.6829411486,
         "principal":0.4497064869,
         "ending_balance":374.5370635925,
-        "cfads":-1.4177992389,
-        "equity_cash_flow":-2.5504468743,
+        "cfads":1.4427154567,
+        "equity_cash_flow":-32.6762417026,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2026-11-01T00:00:00.000000Z",
@@ -744,7 +744,7 @@
         "merchantGreenRevenue":0.0,
         "merchantEnergyRevenue":0.0,
         "monthlyGeneration":8303.1728187628,
-        "opex":3.2073063622,
+        "opex":0.3467916667,
         "capex":78.4672619048,
         "equity_capex":44.7386904762,
         "debt_capex":33.7285714286,
@@ -753,10 +753,10 @@
         "interest":0.6808799938,
         "principal":0.4517676416,
         "ending_balance":407.8138673794,
-        "cfads":-1.4165217863,
-        "equity_cash_flow":-2.5491694218,
+        "cfads":1.4439929093,
+        "equity_cash_flow":-44.4273452024,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2026-12-01T00:00:00.000000Z",
@@ -767,7 +767,7 @@
         "merchantGreenRevenue":0.0,
         "merchantEnergyRevenue":0.0,
         "monthlyGeneration":8292.01989538,
-        "opex":3.2073063622,
+        "opex":0.3467916667,
         "capex":78.4672619048,
         "equity_capex":44.7386904762,
         "debt_capex":33.7285714286,
@@ -776,10 +776,10 @@
         "interest":0.6788093922,
         "principal":0.4538382433,
         "ending_balance":441.0886005647,
-        "cfads":-1.4152434218,
-        "equity_cash_flow":-2.5478910572,
+        "cfads":1.4452712738,
+        "equity_cash_flow":-44.4260668379,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2027-01-01T00:00:00.000000Z",
@@ -790,7 +790,7 @@
         "merchantGreenRevenue":0.0,
         "merchantEnergyRevenue":0.0,
         "monthlyGeneration":8280.8819527404,
-        "opex":3.2874890213,
+        "opex":0.3554614583,
         "capex":90.2589285714,
         "equity_capex":45.2128571429,
         "debt_capex":45.0460714286,
@@ -799,10 +799,10 @@
         "interest":0.6767293002,
         "principal":0.4559183353,
         "ending_balance":485.678753658,
-        "cfads":-1.4941468037,
-        "equity_cash_flow":-2.6267944392,
+        "cfads":1.4378807592,
+        "equity_cash_flow":-44.9076240191,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2027-02-01T00:00:00.000000Z",
@@ -813,7 +813,7 @@
         "merchantGreenRevenue":0.0,
         "merchantEnergyRevenue":0.0,
         "monthlyGeneration":8269.7589707217,
-        "opex":3.2874890213,
+        "opex":0.3554614583,
         "capex":90.2589285714,
         "equity_capex":37.6678571429,
         "debt_capex":52.5910714286,
@@ -822,10 +822,10 @@
         "interest":0.6746396745,
         "principal":0.458007961,
         "ending_balance":537.8118171257,
-        "cfads":-1.4928666134,
-        "equity_cash_flow":-2.6255142489,
+        "cfads":1.4391609495,
+        "equity_cash_flow":-37.3613438288,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2027-03-01T00:00:00.000000Z",
@@ -836,7 +836,7 @@
         "merchantGreenRevenue":0.0,
         "merchantEnergyRevenue":0.0,
         "monthlyGeneration":8258.6509292286,
-        "opex":3.2874890213,
+        "opex":0.3554614583,
         "capex":90.2589285714,
         "equity_capex":28.4873809524,
         "debt_capex":61.771547619,
@@ -845,10 +845,10 @@
         "interest":0.6725404713,
         "principal":0.4601071641,
         "ending_balance":599.1232575806,
-        "cfads":-1.4915855093,
-        "equity_cash_flow":-2.6242331447,
+        "cfads":1.4404420537,
+        "equity_cash_flow":-28.1795865341,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2027-04-01T00:00:00.000000Z",
@@ -859,7 +859,7 @@
         "merchantGreenRevenue":0.0,
         "merchantEnergyRevenue":0.0,
         "monthlyGeneration":8247.5578081929,
-        "opex":3.2874890213,
+        "opex":0.3554614583,
         "capex":90.2589285714,
         "equity_capex":18.8273809524,
         "debt_capex":71.431547619,
@@ -868,10 +868,10 @@
         "interest":0.6704316468,
         "principal":0.4622159886,
         "ending_balance":670.092589211,
-        "cfads":-1.4903034905,
-        "equity_cash_flow":-2.622951126,
+        "cfads":1.4417240724,
+        "equity_cash_flow":-18.5183045154,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2027-05-01T00:00:00.000000Z",
@@ -882,7 +882,7 @@
         "merchantGreenRevenue":0.0,
         "merchantEnergyRevenue":0.0,
         "monthlyGeneration":8236.4795875732,
-        "opex":3.2874890213,
+        "opex":0.3554614583,
         "capex":90.2589285714,
         "equity_capex":11.7523809524,
         "debt_capex":78.506547619,
@@ -891,10 +891,10 @@
         "interest":0.6683131569,
         "principal":0.4643344786,
         "ending_balance":748.1348023515,
-        "cfads":-1.4890205567,
-        "equity_cash_flow":-2.6216681921,
+        "cfads":1.4430070063,
+        "equity_cash_flow":-11.4420215815,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2027-06-01T00:00:00.000000Z",
@@ -905,7 +905,7 @@
         "merchantGreenRevenue":0.0,
         "merchantEnergyRevenue":0.0,
         "monthlyGeneration":8225.416247355,
-        "opex":3.2874890213,
+        "opex":0.3554614583,
         "capex":90.2589285714,
         "equity_capex":4.1133333333,
         "debt_capex":86.1455952381,
@@ -914,10 +914,10 @@
         "interest":0.6661849572,
         "principal":0.4664626783,
         "ending_balance":833.8139349114,
-        "cfads":-1.4877367069,
-        "equity_cash_flow":-2.6203843424,
+        "cfads":1.444290856,
+        "equity_cash_flow":-3.8016901128,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2027-07-01T00:00:00.000000Z",
@@ -928,7 +928,7 @@
         "merchantGreenRevenue":0.0,
         "merchantEnergyRevenue":0.0,
         "monthlyGeneration":65366.5737675508,
-        "opex":3.2874890213,
+        "opex":1.4604614583,
         "capex":56.5303571429,
         "equity_capex":0.0,
         "debt_capex":56.5303571429,
@@ -937,10 +937,10 @@
         "interest":2.9365095033,
         "principal":1.8171196535,
         "ending_balance":888.5271724007,
-        "cfads":4.7563050993,
-        "equity_cash_flow":0.0026759425,
+        "cfads":6.5833326622,
+        "equity_cash_flow":1.8297035055,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2027-08-01T00:00:00.000000Z",
@@ -951,7 +951,7 @@
         "merchantGreenRevenue":0.0,
         "merchantEnergyRevenue":0.0,
         "monthlyGeneration":65313.7451892319,
-        "opex":3.2874890213,
+        "opex":1.4604614583,
         "capex":80.9446428571,
         "equity_capex":24.4142857143,
         "debt_capex":56.5303571429,
@@ -960,10 +960,10 @@
         "interest":2.9281810382,
         "principal":1.8254481186,
         "ending_balance":943.232081425,
-        "cfads":4.7637994519,
-        "equity_cash_flow":0.0101702952,
+        "cfads":6.5908270149,
+        "equity_cash_flow":-22.5770878562,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2027-09-01T00:00:00.000000Z",
@@ -974,7 +974,7 @@
         "merchantGreenRevenue":0.0,
         "merchantEnergyRevenue":0.0,
         "monthlyGeneration":65260.9729654869,
-        "opex":3.2874890213,
+        "opex":1.4604614583,
         "capex":80.9446428571,
         "equity_capex":24.4142857143,
         "debt_capex":56.5303571429,
@@ -983,10 +983,10 @@
         "interest":2.919814401,
         "principal":1.8338147558,
         "ending_balance":997.9286238121,
-        "cfads":4.7713020305,
-        "equity_cash_flow":0.0176728738,
+        "cfads":6.5983295935,
+        "equity_cash_flow":-22.5695852776,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2027-10-01T00:00:00.000000Z",
@@ -997,7 +997,7 @@
         "merchantGreenRevenue":0.0,
         "merchantEnergyRevenue":0.0,
         "monthlyGeneration":75052.664917344,
-        "opex":3.2874890213,
+        "opex":1.4604614583,
         "capex":80.9446428571,
         "equity_capex":24.4142857143,
         "debt_capex":56.5303571429,
@@ -1006,10 +1006,10 @@
         "interest":2.9114094167,
         "principal":1.8422197401,
         "ending_balance":1052.6167612149,
-        "cfads":5.2740811901,
-        "equity_cash_flow":0.5204520334,
+        "cfads":7.1011087531,
+        "equity_cash_flow":-22.066806118,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2027-11-01T00:00:00.000000Z",
@@ -1020,7 +1020,7 @@
         "merchantGreenRevenue":0.0,
         "merchantEnergyRevenue":0.0,
         "monthlyGeneration":74995.8939272467,
-        "opex":3.2874890213,
+        "opex":1.4604614583,
         "capex":80.9446428571,
         "equity_capex":24.4142857143,
         "debt_capex":56.5303571429,
@@ -1029,10 +1029,10 @@
         "interest":2.9029659095,
         "principal":1.8506632472,
         "ending_balance":1107.2964551105,
-        "cfads":5.2824131618,
-        "equity_cash_flow":0.528784005,
+        "cfads":7.1094407247,
+        "equity_cash_flow":-22.0584741463,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2027-12-01T00:00:00.000000Z",
@@ -1043,7 +1043,7 @@
         "merchantGreenRevenue":0.0,
         "merchantEnergyRevenue":0.0,
         "monthlyGeneration":74939.1808001723,
-        "opex":3.2874890213,
+        "opex":1.4604614583,
         "capex":80.9446428571,
         "equity_capex":24.4142857143,
         "debt_capex":56.5303571429,
@@ -1052,10 +1052,10 @@
         "interest":2.894483703,
         "principal":1.8591454538,
         "ending_balance":1161.9676667996,
-        "cfads":5.2907547254,
-        "equity_cash_flow":0.5371255687,
+        "cfads":7.1177822884,
+        "equity_cash_flow":-22.0501325826,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2028-01-01T00:00:00.000000Z",
@@ -1066,7 +1066,7 @@
         "merchantGreenRevenue":0.0,
         "merchantEnergyRevenue":0.0,
         "monthlyGeneration":84391.9633378806,
-        "opex":3.3696762468,
+        "opex":1.6803063281,
         "capex":69.1529761905,
         "equity_capex":24.4142857143,
         "debt_capex":44.7386904762,
@@ -1075,10 +1075,10 @@
         "interest":3.3399417863,
         "principal":2.1370657204,
         "ending_balance":1204.5692915555,
-        "cfads":6.429811486,
-        "equity_cash_flow":0.9528039793,
+        "cfads":8.1191814047,
+        "equity_cash_flow":-21.7721118163,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2028-02-01T00:00:00.000000Z",
@@ -1089,7 +1089,7 @@
         "merchantGreenRevenue":0.0,
         "merchantEnergyRevenue":0.0,
         "monthlyGeneration":84331.9158431731,
-        "opex":3.3696762468,
+        "opex":1.6803063281,
         "capex":69.1529761905,
         "equity_capex":24.4142857143,
         "debt_capex":44.7386904762,
@@ -1098,10 +1098,10 @@
         "interest":3.3301469018,
         "principal":2.1468606049,
         "ending_balance":1247.1611214267,
-        "cfads":6.4402508466,
-        "equity_cash_flow":0.9632433399,
+        "cfads":8.1296207653,
+        "equity_cash_flow":-21.7616724557,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2028-03-01T00:00:00.000000Z",
@@ -1112,7 +1112,7 @@
         "merchantGreenRevenue":0.0,
         "merchantEnergyRevenue":0.0,
         "monthlyGeneration":84271.9272682437,
-        "opex":3.3696762468,
+        "opex":1.6803063281,
         "capex":69.1529761905,
         "equity_capex":8.545,
         "debt_capex":60.6079761905,
@@ -1121,10 +1121,10 @@
         "interest":3.320307124,
         "principal":2.1567003827,
         "ending_balance":1305.6123972345,
-        "cfads":6.4507034009,
-        "equity_cash_flow":0.9736958942,
+        "cfads":8.1400733196,
+        "equity_cash_flow":-5.8819341871,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2028-04-01T00:00:00.000000Z",
@@ -1135,7 +1135,7 @@
         "merchantGreenRevenue":0.0,
         "merchantEnergyRevenue":0.0,
         "monthlyGeneration":74392.2315128798,
-        "opex":3.3696762468,
+        "opex":1.6803063281,
         "capex":69.1529761905,
         "equity_capex":0.0,
         "debt_capex":69.1529761905,
@@ -1144,10 +1144,10 @@
         "interest":3.3104222472,
         "principal":2.1665852594,
         "ending_balance":1372.5987881656,
-        "cfads":5.9610033091,
-        "equity_cash_flow":0.4839958024,
+        "cfads":7.6503732278,
+        "equity_cash_flow":2.1733657211,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2028-05-01T00:00:00.000000Z",
@@ -1158,7 +1158,7 @@
         "merchantGreenRevenue":0.0,
         "merchantEnergyRevenue":0.0,
         "monthlyGeneration":109643.9615426325,
-        "opex":3.3696762468,
+        "opex":2.6086396615,
         "capex":36.1666666667,
         "equity_capex":0.0,
         "debt_capex":36.1666666667,
@@ -1167,10 +1167,10 @@
         "interest":5.5327816481,
         "principal":3.5011951513,
         "ending_balance":1405.2642596809,
-        "cfads":11.2594813599,
-        "equity_cash_flow":2.2255045604,
+        "cfads":12.0205179452,
+        "equity_cash_flow":2.9865411458,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2028-06-01T00:00:00.000000Z",
@@ -1181,7 +1181,7 @@
         "merchantGreenRevenue":0.0,
         "merchantEnergyRevenue":0.0,
         "monthlyGeneration":109576.4577702735,
-        "opex":3.3696762468,
+        "opex":2.6086396615,
         "capex":36.1666666667,
         "equity_capex":0.0,
         "debt_capex":36.1666666667,
@@ -1190,10 +1190,10 @@
         "interest":5.5167345037,
         "principal":3.5172422957,
         "ending_balance":1437.9136840519,
-        "cfads":11.2782755988,
-        "equity_cash_flow":2.2442987994,
+        "cfads":12.0393121842,
+        "equity_cash_flow":3.0053353847,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2028-07-01T00:00:00.000000Z",
@@ -1204,7 +1204,7 @@
         "merchantGreenRevenue":0.0,
         "merchantEnergyRevenue":0.0,
         "monthlyGeneration":106239.8587828146,
-        "opex":3.3696762468,
+        "opex":2.6086396615,
         "capex":36.1666666667,
         "equity_capex":0.0,
         "debt_capex":36.1666666667,
@@ -1213,10 +1213,10 @@
         "interest":5.5006138098,
         "principal":3.5333629896,
         "ending_balance":1470.5469877289,
-        "cfads":11.1295532501,
-        "equity_cash_flow":2.0955764506,
+        "cfads":11.8905898354,
+        "equity_cash_flow":2.856613036,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2028-08-01T00:00:00.000000Z",
@@ -1227,7 +1227,7 @@
         "merchantGreenRevenue":0.0,
         "merchantEnergyRevenue":0.0,
         "monthlyGeneration":118957.591949743,
-        "opex":3.3696762468,
+        "opex":2.8778063281,
         "capex":24.4142857143,
         "equity_capex":0.0,
         "debt_capex":24.4142857143,
@@ -1236,10 +1236,10 @@
         "interest":6.2196775628,
         "principal":3.9858727338,
         "ending_balance":1490.9754007094,
-        "cfads":12.6821778569,
-        "equity_cash_flow":2.4766275603,
+        "cfads":13.1740477756,
+        "equity_cash_flow":2.968497479,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2028-09-01T00:00:00.000000Z",
@@ -1250,7 +1250,7 @@
         "merchantGreenRevenue":0.0,
         "merchantEnergyRevenue":0.0,
         "monthlyGeneration":118887.3661882171,
-        "opex":3.3696762468,
+        "opex":2.8778063281,
         "capex":24.4142857143,
         "equity_capex":0.0,
         "debt_capex":24.4142857143,
@@ -1259,10 +1259,10 @@
         "interest":6.2014089794,
         "principal":4.0041413172,
         "ending_balance":1511.3855451065,
-        "cfads":12.7034263087,
-        "equity_cash_flow":2.497876012,
+        "cfads":13.1952962274,
+        "equity_cash_flow":2.9897459307,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2028-10-01T00:00:00.000000Z",
@@ -1273,7 +1273,7 @@
         "merchantGreenRevenue":0.0,
         "merchantEnergyRevenue":0.0,
         "monthlyGeneration":128612.3877873077,
-        "opex":3.3696762468,
+        "opex":2.8778063281,
         "capex":24.4142857143,
         "equity_capex":0.0,
         "debt_capex":24.4142857143,
@@ -1282,10 +1282,10 @@
         "interest":6.1830566651,
         "principal":4.0224936316,
         "ending_balance":1531.7773371892,
-        "cfads":13.2298184708,
-        "equity_cash_flow":3.0242681741,
+        "cfads":13.7216883895,
+        "equity_cash_flow":3.5161380928,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2028-11-01T00:00:00.000000Z",
@@ -1296,7 +1296,7 @@
         "merchantGreenRevenue":0.0,
         "merchantEnergyRevenue":0.0,
         "monthlyGeneration":128538.1942637589,
-        "opex":3.3696762468,
+        "opex":2.8778063281,
         "capex":24.4142857143,
         "equity_capex":0.0,
         "debt_capex":24.4142857143,
@@ -1305,10 +1305,10 @@
         "interest":6.1646202359,
         "principal":4.0409300607,
         "ending_balance":1552.1506928428,
-        "cfads":13.251959855,
-        "equity_cash_flow":3.0464095583,
+        "cfads":13.7438297737,
+        "equity_cash_flow":3.538279477,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2028-12-01T00:00:00.000000Z",
@@ -1319,7 +1319,7 @@
         "merchantGreenRevenue":0.0,
         "merchantEnergyRevenue":0.0,
         "monthlyGeneration":128464.0638172361,
-        "opex":3.3696762468,
+        "opex":2.8778063281,
         "capex":24.4142857143,
         "equity_capex":0.0,
         "debt_capex":24.4142857143,
@@ -1328,10 +1328,10 @@
         "interest":6.1460993065,
         "principal":4.0594509901,
         "ending_balance":1572.5055275669,
-        "cfads":13.2741346104,
-        "equity_cash_flow":3.0685843138,
+        "cfads":13.7660045291,
+        "equity_cash_flow":3.5604542325,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2029-01-01T00:00:00.000000Z",
@@ -1342,7 +1342,7 @@
         "merchantGreenRevenue":0.0,
         "merchantEnergyRevenue":0.0,
         "monthlyGeneration":131650.9693248275,
-        "opex":3.453918153,
+        "opex":2.9497514863,
         "capex":24.4142857143,
         "equity_capex":0.0,
         "debt_capex":24.4142857143,
@@ -1351,10 +1351,10 @@
         "interest":6.1274934894,
         "principal":4.0780568072,
         "ending_balance":1592.841756474,
-        "cfads":13.3813019131,
-        "equity_cash_flow":3.1757516165,
+        "cfads":13.8854685798,
+        "equity_cash_flow":3.6799182831,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2029-02-01T00:00:00.000000Z",
@@ -1365,7 +1365,7 @@
         "merchantGreenRevenue":0.0,
         "merchantEnergyRevenue":0.0,
         "monthlyGeneration":131575.6029570232,
-        "opex":3.453918153,
+        "opex":2.9497514863,
         "capex":24.4142857143,
         "equity_capex":0.0,
         "debt_capex":24.4142857143,
@@ -1374,10 +1374,10 @@
         "interest":6.1088023957,
         "principal":4.0967479009,
         "ending_balance":1613.1592942874,
-        "cfads":13.4038212908,
-        "equity_cash_flow":3.1982709942,
+        "cfads":13.9079879575,
+        "equity_cash_flow":3.7024376609,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2029-03-01T00:00:00.000000Z",
@@ -1388,7 +1388,7 @@
         "merchantGreenRevenue":0.0,
         "merchantEnergyRevenue":0.0,
         "monthlyGeneration":131500.3000223267,
-        "opex":3.453918153,
+        "opex":2.9497514863,
         "capex":24.4142857143,
         "equity_capex":0.0,
         "debt_capex":24.4142857143,
@@ -1397,10 +1397,10 @@
         "interest":6.0900256345,
         "principal":4.1155246621,
         "ending_balance":1633.4580553396,
-        "cfads":13.4263746573,
-        "equity_cash_flow":3.2208243607,
+        "cfads":13.930541324,
+        "equity_cash_flow":3.7249910273,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2029-04-01T00:00:00.000000Z",
@@ -1411,7 +1411,7 @@
         "merchantGreenRevenue":0.0,
         "merchantEnergyRevenue":0.0,
         "monthlyGeneration":121654.3932499688,
-        "opex":3.453918153,
+        "opex":2.9497514863,
         "capex":24.4142857143,
         "equity_capex":0.0,
         "debt_capex":24.4142857143,
@@ -1420,10 +1420,10 @@
         "interest":6.0711628132,
         "principal":4.1343874835,
         "ending_balance":1653.7379535704,
-        "cfads":12.9388554121,
-        "equity_cash_flow":2.7333051154,
+        "cfads":13.4430220787,
+        "equity_cash_flow":3.2374717821,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2029-05-01T00:00:00.000000Z",
@@ -1446,7 +1446,7 @@
         "cfads":16.0287396564,
         "equity_cash_flow":3.3893735898,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2029-06-01T00:00:00.000000Z",
@@ -1469,7 +1469,7 @@
         "cfads":16.0558497734,
         "equity_cash_flow":3.4164837068,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2029-07-01T00:00:00.000000Z",
@@ -1492,7 +1492,7 @@
         "cfads":15.9121276631,
         "equity_cash_flow":3.2727615966,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2029-08-01T00:00:00.000000Z",
@@ -1515,7 +1515,7 @@
         "cfads":15.9390413118,
         "equity_cash_flow":3.2996752452,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2029-09-01T00:00:00.000000Z",
@@ -1538,7 +1538,7 @@
         "cfads":15.9659966014,
         "equity_cash_flow":3.3266305348,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2029-10-01T00:00:00.000000Z",
@@ -1561,7 +1561,7 @@
         "cfads":16.5081445,
         "equity_cash_flow":3.8687784335,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2029-11-01T00:00:00.000000Z",
@@ -1584,7 +1584,7 @@
         "cfads":16.5360288198,
         "equity_cash_flow":3.8966627533,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2029-12-01T00:00:00.000000Z",
@@ -1607,7 +1607,7 @@
         "cfads":16.5639563733,
         "equity_cash_flow":3.9245903067,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2030-01-01T00:00:00.000000Z",
@@ -1630,7 +1630,7 @@
         "cfads":16.6781431762,
         "equity_cash_flow":4.0387771097,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2030-02-01T00:00:00.000000Z",
@@ -1653,7 +1653,7 @@
         "cfads":16.7064406474,
         "equity_cash_flow":4.0670745809,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2030-03-01T00:00:00.000000Z",
@@ -1676,7 +1676,7 @@
         "cfads":16.7347820299,
         "equity_cash_flow":4.0954159633,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2030-04-01T00:00:00.000000Z",
@@ -1699,7 +1699,7 @@
         "cfads":16.2429223705,
         "equity_cash_flow":3.6035563039,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2030-05-01T00:00:00.000000Z",
@@ -1722,7 +1722,7 @@
         "cfads":16.2704978864,
         "equity_cash_flow":3.6311318198,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2030-06-01T00:00:00.000000Z",
@@ -1745,7 +1745,7 @@
         "cfads":16.2981161281,
         "equity_cash_flow":3.6587500615,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2030-07-01T00:00:00.000000Z",
@@ -1768,7 +1768,7 @@
         "cfads":16.1515068499,
         "equity_cash_flow":3.5121407834,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2030-08-01T00:00:00.000000Z",
@@ -1791,7 +1791,7 @@
         "cfads":16.1789247144,
         "equity_cash_flow":3.5395586479,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2030-09-01T00:00:00.000000Z",
@@ -1814,7 +1814,7 @@
         "cfads":16.2063850455,
         "equity_cash_flow":3.567018979,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2030-10-01T00:00:00.000000Z",
@@ -1837,7 +1837,7 @@
         "cfads":16.7592774367,
         "equity_cash_flow":4.1199113702,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2030-11-01T00:00:00.000000Z",
@@ -1860,7 +1860,7 @@
         "cfads":16.7876852586,
         "equity_cash_flow":4.148319192,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2030-12-01T00:00:00.000000Z",
@@ -1883,7 +1883,7 @@
         "cfads":16.8161371714,
         "equity_cash_flow":4.1767711049,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2031-01-01T00:00:00.000000Z",
@@ -1906,7 +1906,7 @@
         "cfads":16.9321202013,
         "equity_cash_flow":4.2927541347,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2031-02-01T00:00:00.000000Z",
@@ -1929,7 +1929,7 @@
         "cfads":16.9609493804,
         "equity_cash_flow":4.3215833138,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2031-03-01T00:00:00.000000Z",
@@ -1952,7 +1952,7 @@
         "cfads":16.9898233416,
         "equity_cash_flow":4.3504572751,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2031-04-01T00:00:00.000000Z",
@@ -1975,7 +1975,7 @@
         "cfads":16.4881572636,
         "equity_cash_flow":3.848791197,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2031-05-01T00:00:00.000000Z",
@@ -1998,7 +1998,7 @@
         "cfads":16.5162501332,
         "equity_cash_flow":3.8768840667,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2031-06-01T00:00:00.000000Z",
@@ -2021,7 +2021,7 @@
         "cfads":16.5443865761,
         "equity_cash_flow":3.9050205096,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2031-07-01T00:00:00.000000Z",
@@ -2044,7 +2044,7 @@
         "cfads":16.3948327256,
         "equity_cash_flow":3.7554666591,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2031-08-01T00:00:00.000000Z",
@@ -2067,7 +2067,7 @@
         "cfads":16.4227648056,
         "equity_cash_flow":3.783398739,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2031-09-01T00:00:00.000000Z",
@@ -2090,7 +2090,7 @@
         "cfads":16.4507401945,
         "equity_cash_flow":3.811374128,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2031-10-01T00:00:00.000000Z",
@@ -2113,7 +2113,7 @@
         "cfads":17.0145906043,
         "equity_cash_flow":4.3752245378,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2031-11-01T00:00:00.000000Z",
@@ -2136,7 +2136,7 @@
         "cfads":17.0435323124,
         "equity_cash_flow":4.4041662458,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2031-12-01T00:00:00.000000Z",
@@ -2159,7 +2159,7 @@
         "cfads":17.0725189863,
         "equity_cash_flow":4.4331529197,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2032-01-01T00:00:00.000000Z",
@@ -2182,7 +2182,7 @@
         "cfads":17.19032286,
         "equity_cash_flow":4.5509567935,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2032-02-01T00:00:00.000000Z",
@@ -2205,7 +2205,7 @@
         "cfads":17.2196942954,
         "equity_cash_flow":4.5803282289,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2032-03-01T00:00:00.000000Z",
@@ -2228,7 +2228,7 @@
         "cfads":17.2491114017,
         "equity_cash_flow":4.6097453351,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2032-04-01T00:00:00.000000Z",
@@ -2251,7 +2251,7 @@
         "cfads":16.737443984,
         "equity_cash_flow":4.0980779174,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2032-05-01T00:00:00.000000Z",
@@ -2274,7 +2274,7 @@
         "cfads":16.7660644718,
         "equity_cash_flow":4.1266984052,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2032-06-01T00:00:00.000000Z",
@@ -2297,7 +2297,7 @@
         "cfads":16.7947293976,
         "equity_cash_flow":4.155363331,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2032-07-01T00:00:00.000000Z",
@@ -2320,7 +2320,7 @@
         "cfads":16.6421724341,
         "equity_cash_flow":4.0028063676,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2032-08-01T00:00:00.000000Z",
@@ -2343,7 +2343,7 @@
         "cfads":16.6706289327,
         "equity_cash_flow":4.0312628662,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2032-09-01T00:00:00.000000Z",
@@ -2366,7 +2366,7 @@
         "cfads":16.6991296,
         "equity_cash_flow":4.0597635335,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2032-10-01T00:00:00.000000Z",
@@ -2389,7 +2389,7 @@
         "cfads":17.274155803,
         "equity_cash_flow":4.6347897364,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2032-11-01T00:00:00.000000Z",
@@ -2412,7 +2412,7 @@
         "cfads":17.3036419927,
         "equity_cash_flow":4.6642759261,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2032-12-01T00:00:00.000000Z",
@@ -2435,7 +2435,7 @@
         "cfads":17.3331740409,
         "equity_cash_flow":4.6938079743,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2033-01-01T00:00:00.000000Z",
@@ -2458,7 +2458,7 @@
         "cfads":17.4528235932,
         "equity_cash_flow":4.8134575267,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2033-02-01T00:00:00.000000Z",
@@ -2481,7 +2481,7 @@
         "cfads":17.482748048,
         "equity_cash_flow":4.8433819814,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2033-03-01T00:00:00.000000Z",
@@ -2504,7 +2504,7 @@
         "cfads":17.5127190804,
         "equity_cash_flow":4.8733530138,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2033-04-01T00:00:00.000000Z",
@@ -2527,7 +2527,7 @@
         "cfads":16.990851533,
         "equity_cash_flow":4.3514854664,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2033-05-01T00:00:00.000000Z",
@@ -2550,7 +2550,7 @@
         "cfads":17.0200101123,
         "equity_cash_flow":4.3806440457,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2033-06-01T00:00:00.000000Z",
@@ -2573,7 +2573,7 @@
         "cfads":17.0492140119,
         "equity_cash_flow":4.4098479454,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2033-07-01T00:00:00.000000Z",
@@ -2596,7 +2596,7 @@
         "cfads":16.8935942365,
         "equity_cash_flow":4.2542281699,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2033-08-01T00:00:00.000000Z",
@@ -2619,7 +2619,7 @@
         "cfads":16.9225855649,
         "equity_cash_flow":4.2832194984,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2033-09-01T00:00:00.000000Z",
@@ -2642,7 +2642,7 @@
         "cfads":16.951621939,
         "equity_cash_flow":4.3122558725,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2033-10-01T00:00:00.000000Z",
@@ -2665,7 +2665,7 @@
         "cfads":17.5380460432,
         "equity_cash_flow":4.8986799767,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2033-11-01T00:00:00.000000Z",
@@ -2688,7 +2688,7 @@
         "cfads":17.5680875257,
         "equity_cash_flow":4.9287214591,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2033-12-01T00:00:00.000000Z",
@@ -2711,7 +2711,7 @@
         "cfads":17.5981757774,
         "equity_cash_flow":4.9588097109,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2034-01-01T00:00:00.000000Z",
@@ -2734,7 +2734,7 @@
         "cfads":17.7196960582,
         "equity_cash_flow":5.0803299916,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2034-02-01T00:00:00.000000Z",
@@ -2757,7 +2757,7 @@
         "cfads":17.7501845144,
         "equity_cash_flow":5.1108184479,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2034-03-01T00:00:00.000000Z",
@@ -2780,7 +2780,7 @@
         "cfads":17.7807204735,
         "equity_cash_flow":5.1413544069,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2034-04-01T00:00:00.000000Z",
@@ -2803,7 +2803,7 @@
         "cfads":17.2484500604,
         "equity_cash_flow":4.6090839939,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2034-05-01T00:00:00.000000Z",
@@ -2826,7 +2826,7 @@
         "cfads":17.2781574179,
         "equity_cash_flow":4.6387913514,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2034-06-01T00:00:00.000000Z",
@@ -2849,7 +2849,7 @@
         "cfads":17.3079109961,
         "equity_cash_flow":4.6685449296,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2034-07-01T00:00:00.000000Z",
@@ -2872,7 +2872,7 @@
         "cfads":17.1491675283,
         "equity_cash_flow":4.5098014617,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2034-08-01T00:00:00.000000Z",
@@ -2895,7 +2895,7 @@
         "cfads":17.1787043096,
         "equity_cash_flow":4.5393382431,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2034-09-01T00:00:00.000000Z",
@@ -2918,7 +2918,7 @@
         "cfads":17.2082870317,
         "equity_cash_flow":4.5689209652,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2034-10-01T00:00:00.000000Z",
@@ -2941,7 +2941,7 @@
         "cfads":17.8063355646,
         "equity_cash_flow":5.1669694981,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2034-11-01T00:00:00.000000Z",
@@ -2964,7 +2964,7 @@
         "cfads":17.836943371,
         "equity_cash_flow":5.1975773045,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2034-12-01T00:00:00.000000Z",
@@ -2987,7 +2987,7 @@
         "cfads":17.867598876,
         "equity_cash_flow":5.2282328095,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2035-01-01T00:00:00.000000Z",
@@ -3010,7 +3010,7 @@
         "cfads":17.9910151476,
         "equity_cash_flow":5.351649081,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2035-02-01T00:00:00.000000Z",
@@ -3033,7 +3033,7 @@
         "cfads":18.0220788109,
         "equity_cash_flow":5.3827127443,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2035-03-01T00:00:00.000000Z",
@@ -3056,7 +3056,7 @@
         "cfads":18.053190921,
         "equity_cash_flow":5.4138248545,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2035-04-01T00:00:00.000000Z",
@@ -3079,7 +3079,7 @@
         "cfads":17.5103108824,
         "equity_cash_flow":4.8709448159,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2035-05-01T00:00:00.000000Z",
@@ -3102,7 +3102,7 @@
         "cfads":17.5405779225,
         "equity_cash_flow":4.9012118559,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2035-06-01T00:00:00.000000Z",
@@ -3125,7 +3125,7 @@
         "cfads":17.5708921019,
         "equity_cash_flow":4.9315260354,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2035-07-01T00:00:00.000000Z",
@@ -3148,7 +3148,7 @@
         "cfads":17.4089628566,
         "equity_cash_flow":4.76959679,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2035-08-01T00:00:00.000000Z",
@@ -3171,7 +3171,7 @@
         "cfads":16.9202274263,
         "equity_cash_flow":4.2808613598,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2035-09-01T00:00:00.000000Z",
@@ -3194,7 +3194,7 @@
         "cfads":16.9470938603,
         "equity_cash_flow":4.3077277938,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2035-10-01T00:00:00.000000Z",
@@ -3217,7 +3217,7 @@
         "cfads":17.5537259261,
         "equity_cash_flow":4.9143598595,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2035-11-01T00:00:00.000000Z",
@@ -3240,7 +3240,7 @@
         "cfads":17.5816409397,
         "equity_cash_flow":4.9422748731,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2035-12-01T00:00:00.000000Z",
@@ -3263,7 +3263,7 @@
         "cfads":17.6096061546,
         "equity_cash_flow":4.9702400881,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2036-01-01T00:00:00.000000Z",
@@ -3286,7 +3286,7 @@
         "cfads":18.0087909726,
         "equity_cash_flow":5.3694249061,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2036-02-01T00:00:00.000000Z",
@@ -3309,7 +3309,7 @@
         "cfads":18.0368033318,
         "equity_cash_flow":5.3974372653,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2036-03-01T00:00:00.000000Z",
@@ -3332,7 +3332,7 @@
         "cfads":18.0648671432,
         "equity_cash_flow":5.4255010767,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2036-04-01T00:00:00.000000Z",
@@ -3355,7 +3355,7 @@
         "cfads":17.5075327496,
         "equity_cash_flow":4.8681666831,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2036-05-01T00:00:00.000000Z",
@@ -3378,7 +3378,7 @@
         "cfads":17.534738766,
         "equity_cash_flow":4.8953726995,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2036-06-01T00:00:00.000000Z",
@@ -3401,7 +3401,7 @@
         "cfads":17.5619948869,
         "equity_cash_flow":4.9226288203,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2036-07-01T00:00:00.000000Z",
@@ -3424,7 +3424,7 @@
         "cfads":17.3931887685,
         "equity_cash_flow":4.7538227019,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2036-08-01T00:00:00.000000Z",
@@ -3447,7 +3447,7 @@
         "cfads":17.4202234318,
         "equity_cash_flow":4.7808573653,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2036-09-01T00:00:00.000000Z",
@@ -3470,7 +3470,7 @@
         "cfads":17.4473078945,
         "equity_cash_flow":4.8079418279,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2036-10-01T00:00:00.000000Z",
@@ -3493,7 +3493,7 @@
         "cfads":18.0656812464,
         "equity_cash_flow":5.4263151799,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2036-11-01T00:00:00.000000Z",
@@ -3516,7 +3516,7 @@
         "cfads":18.09383596,
         "equity_cash_flow":5.4544698935,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2036-12-01T00:00:00.000000Z",
@@ -3539,7 +3539,7 @@
         "cfads":18.1220422874,
         "equity_cash_flow":5.4826762208,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2037-01-01T00:00:00.000000Z",
@@ -3562,7 +3562,7 @@
         "cfads":18.2265704864,
         "equity_cash_flow":5.5872044199,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2037-02-01T00:00:00.000000Z",
@@ -3585,7 +3585,7 @@
         "cfads":18.2552310546,
         "equity_cash_flow":5.6158649881,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2037-03-01T00:00:00.000000Z",
@@ -3608,7 +3608,7 @@
         "cfads":18.2839439664,
         "equity_cash_flow":5.6445778999,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2037-04-01T00:00:00.000000Z",
@@ -3631,7 +3631,7 @@
         "cfads":17.7156237529,
         "equity_cash_flow":5.0762576864,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2037-05-01T00:00:00.000000Z",
@@ -3654,7 +3654,7 @@
         "cfads":17.7434615592,
         "equity_cash_flow":5.1040954927,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2037-06-01T00:00:00.000000Z",
@@ -3677,7 +3677,7 @@
         "cfads":17.7713503354,
         "equity_cash_flow":5.1319842688,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2037-07-01T00:00:00.000000Z",
@@ -3700,7 +3700,7 @@
         "cfads":18.9879529373,
         "equity_cash_flow":6.3485868708,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2037-08-01T00:00:00.000000Z",
@@ -3723,7 +3723,7 @@
         "cfads":17.2160330782,
         "equity_cash_flow":4.5766670116,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2037-09-01T00:00:00.000000Z",
@@ -3746,7 +3746,7 @@
         "cfads":15.7688166914,
         "equity_cash_flow":3.1294506248,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2037-10-01T00:00:00.000000Z",
@@ -3769,7 +3769,7 @@
         "cfads":15.7009651443,
         "equity_cash_flow":3.0615990778,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2037-11-01T00:00:00.000000Z",
@@ -3792,7 +3792,7 @@
         "cfads":15.5213895308,
         "equity_cash_flow":2.8820234643,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2037-12-01T00:00:00.000000Z",
@@ -3815,7 +3815,7 @@
         "cfads":16.5809789763,
         "equity_cash_flow":3.9416129097,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2038-01-01T00:00:00.000000Z",
@@ -3838,7 +3838,7 @@
         "cfads":17.8397598399,
         "equity_cash_flow":5.2003937734,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2038-02-01T00:00:00.000000Z",
@@ -3861,7 +3861,7 @@
         "cfads":17.4358375929,
         "equity_cash_flow":4.7964715263,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2038-03-01T00:00:00.000000Z",
@@ -3884,7 +3884,7 @@
         "cfads":20.8219094412,
         "equity_cash_flow":8.1825433747,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2038-04-01T00:00:00.000000Z",
@@ -3907,7 +3907,7 @@
         "cfads":18.0464692425,
         "equity_cash_flow":5.407103176,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2038-05-01T00:00:00.000000Z",
@@ -3930,7 +3930,7 @@
         "cfads":16.3255145756,
         "equity_cash_flow":3.6861485091,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2038-06-01T00:00:00.000000Z",
@@ -3953,7 +3953,7 @@
         "cfads":18.8906341448,
         "equity_cash_flow":6.2512680783,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2038-07-01T00:00:00.000000Z",
@@ -3976,7 +3976,7 @@
         "cfads":18.3203686805,
         "equity_cash_flow":5.681002614,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2038-08-01T00:00:00.000000Z",
@@ -3999,7 +3999,7 @@
         "cfads":17.4696723866,
         "equity_cash_flow":4.8303063201,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2038-09-01T00:00:00.000000Z",
@@ -4022,7 +4022,7 @@
         "cfads":16.124482926,
         "equity_cash_flow":3.4851168594,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2038-10-01T00:00:00.000000Z",
@@ -4045,7 +4045,7 @@
         "cfads":16.0340985704,
         "equity_cash_flow":3.3947325039,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2038-11-01T00:00:00.000000Z",
@@ -4068,7 +4068,7 @@
         "cfads":15.7817720697,
         "equity_cash_flow":3.1424060032,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2038-12-01T00:00:00.000000Z",
@@ -4091,7 +4091,7 @@
         "cfads":16.5869674627,
         "equity_cash_flow":3.9476013962,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2039-01-01T00:00:00.000000Z",
@@ -4114,7 +4114,7 @@
         "cfads":17.6796916457,
         "equity_cash_flow":5.0403255791,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2039-02-01T00:00:00.000000Z",
@@ -4137,7 +4137,7 @@
         "cfads":17.1266250162,
         "equity_cash_flow":4.4872589497,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2039-03-01T00:00:00.000000Z",
@@ -4160,7 +4160,7 @@
         "cfads":20.4407585718,
         "equity_cash_flow":7.8013925053,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2039-04-01T00:00:00.000000Z",
@@ -4183,7 +4183,7 @@
         "cfads":17.6235762301,
         "equity_cash_flow":4.9842101636,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2039-05-01T00:00:00.000000Z",
@@ -4206,7 +4206,7 @@
         "cfads":16.2213070476,
         "equity_cash_flow":3.5819409811,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2039-06-01T00:00:00.000000Z",
@@ -4229,7 +4229,7 @@
         "cfads":18.8436752255,
         "equity_cash_flow":6.2043091589,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2039-07-01T00:00:00.000000Z",
@@ -4252,7 +4252,7 @@
         "cfads":18.6943014302,
         "equity_cash_flow":6.0549353636,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2039-08-01T00:00:00.000000Z",
@@ -4275,7 +4275,7 @@
         "cfads":17.2690920166,
         "equity_cash_flow":4.6297259501,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2039-09-01T00:00:00.000000Z",
@@ -4298,7 +4298,7 @@
         "cfads":15.571348,
         "equity_cash_flow":2.9319819334,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2039-10-01T00:00:00.000000Z",
@@ -4321,7 +4321,7 @@
         "cfads":15.554077877,
         "equity_cash_flow":2.9147118104,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2039-11-01T00:00:00.000000Z",
@@ -4344,7 +4344,7 @@
         "cfads":15.4211545577,
         "equity_cash_flow":2.7817884911,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2039-12-01T00:00:00.000000Z",
@@ -4367,7 +4367,7 @@
         "cfads":16.3358730252,
         "equity_cash_flow":3.6965069587,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2040-01-01T00:00:00.000000Z",
@@ -4390,7 +4390,7 @@
         "cfads":18.7765435545,
         "equity_cash_flow":6.137177488,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2040-02-01T00:00:00.000000Z",
@@ -4413,7 +4413,7 @@
         "cfads":17.9981209341,
         "equity_cash_flow":5.3587548676,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2040-03-01T00:00:00.000000Z",
@@ -4436,7 +4436,7 @@
         "cfads":21.3306006886,
         "equity_cash_flow":8.691234622,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2040-04-01T00:00:00.000000Z",
@@ -4459,7 +4459,7 @@
         "cfads":18.331828235,
         "equity_cash_flow":5.6924621684,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2040-05-01T00:00:00.000000Z",
@@ -4482,7 +4482,7 @@
         "cfads":16.9861445548,
         "equity_cash_flow":4.3467784882,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2040-06-01T00:00:00.000000Z",
@@ -4505,7 +4505,7 @@
         "cfads":19.8375377791,
         "equity_cash_flow":7.1981717126,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2040-07-01T00:00:00.000000Z",
@@ -4528,7 +4528,7 @@
         "cfads":19.1732728028,
         "equity_cash_flow":6.5339067362,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2040-08-01T00:00:00.000000Z",
@@ -4551,7 +4551,7 @@
         "cfads":17.9283126955,
         "equity_cash_flow":5.2889466289,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2040-09-01T00:00:00.000000Z",
@@ -4574,7 +4574,7 @@
         "cfads":16.2068840315,
         "equity_cash_flow":3.5675179649,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2040-10-01T00:00:00.000000Z",
@@ -4597,7 +4597,7 @@
         "cfads":16.3284934515,
         "equity_cash_flow":3.689127385,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2040-11-01T00:00:00.000000Z",
@@ -4620,7 +4620,7 @@
         "cfads":15.9685897077,
         "equity_cash_flow":3.3292236412,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2040-12-01T00:00:00.000000Z",
@@ -4643,7 +4643,7 @@
         "cfads":16.9808932848,
         "equity_cash_flow":4.3415272183,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2041-01-01T00:00:00.000000Z",
@@ -4666,7 +4666,7 @@
         "cfads":17.2648638949,
         "equity_cash_flow":4.6254978283,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2041-02-01T00:00:00.000000Z",
@@ -4689,7 +4689,7 @@
         "cfads":16.9335033165,
         "equity_cash_flow":4.29413725,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2041-03-01T00:00:00.000000Z",
@@ -4712,7 +4712,7 @@
         "cfads":20.3877706307,
         "equity_cash_flow":7.7484045642,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2041-04-01T00:00:00.000000Z",
@@ -4735,7 +4735,7 @@
         "cfads":17.4720974376,
         "equity_cash_flow":4.8327313711,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2041-05-01T00:00:00.000000Z",
@@ -4758,7 +4758,7 @@
         "cfads":15.8155531548,
         "equity_cash_flow":3.1761870882,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2041-06-01T00:00:00.000000Z",
@@ -4781,7 +4781,7 @@
         "cfads":18.5421990333,
         "equity_cash_flow":5.9028329668,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2041-07-01T00:00:00.000000Z",
@@ -4804,7 +4804,7 @@
         "cfads":17.3475616226,
         "equity_cash_flow":4.708195556,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2041-08-01T00:00:00.000000Z",
@@ -4827,7 +4827,7 @@
         "cfads":16.6941488886,
         "equity_cash_flow":4.054782822,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2041-09-01T00:00:00.000000Z",
@@ -4850,7 +4850,7 @@
         "cfads":14.9361854505,
         "equity_cash_flow":2.296819384,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2041-10-01T00:00:00.000000Z",
@@ -4873,7 +4873,7 @@
         "cfads":14.9908219125,
         "equity_cash_flow":2.3514558459,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2041-11-01T00:00:00.000000Z",
@@ -4896,7 +4896,7 @@
         "cfads":14.7397858097,
         "equity_cash_flow":2.1004197432,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2041-12-01T00:00:00.000000Z",
@@ -4919,7 +4919,7 @@
         "cfads":15.7166155005,
         "equity_cash_flow":3.077249434,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2042-01-01T00:00:00.000000Z",
@@ -4942,7 +4942,7 @@
         "cfads":16.582620798,
         "equity_cash_flow":3.9432547315,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2042-02-01T00:00:00.000000Z",
@@ -4965,7 +4965,7 @@
         "cfads":15.9506398358,
         "equity_cash_flow":3.3112737692,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2042-03-01T00:00:00.000000Z",
@@ -4988,7 +4988,7 @@
         "cfads":19.2985367381,
         "equity_cash_flow":6.6591706716,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2042-04-01T00:00:00.000000Z",
@@ -5011,7 +5011,7 @@
         "cfads":16.8736938645,
         "equity_cash_flow":4.234327798,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2042-05-01T00:00:00.000000Z",
@@ -5034,7 +5034,7 @@
         "cfads":15.4205196284,
         "equity_cash_flow":2.7811535619,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2042-06-01T00:00:00.000000Z",
@@ -5057,7 +5057,7 @@
         "cfads":17.8825577454,
         "equity_cash_flow":5.2431916789,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2042-07-01T00:00:00.000000Z",
@@ -5080,7 +5080,7 @@
         "cfads":17.0934873021,
         "equity_cash_flow":4.4541212356,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2042-08-01T00:00:00.000000Z",
@@ -5103,7 +5103,7 @@
         "cfads":16.0829981772,
         "equity_cash_flow":3.4436321107,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2042-09-01T00:00:00.000000Z",
@@ -5126,7 +5126,7 @@
         "cfads":14.4955528355,
         "equity_cash_flow":1.8561867689,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2042-10-01T00:00:00.000000Z",
@@ -5149,7 +5149,7 @@
         "cfads":14.5924968124,
         "equity_cash_flow":1.9531307459,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2042-11-01T00:00:00.000000Z",
@@ -5172,7 +5172,7 @@
         "cfads":14.307980694,
         "equity_cash_flow":1.6686146275,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2042-12-01T00:00:00.000000Z",
@@ -5195,7 +5195,7 @@
         "cfads":15.1570235017,
         "equity_cash_flow":2.5176574351,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2043-01-01T00:00:00.000000Z",
@@ -5218,7 +5218,7 @@
         "cfads":15.6317808222,
         "equity_cash_flow":2.9924147557,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2043-02-01T00:00:00.000000Z",
@@ -5241,7 +5241,7 @@
         "cfads":14.8620435088,
         "equity_cash_flow":2.2226774422,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2043-03-01T00:00:00.000000Z",
@@ -5264,7 +5264,7 @@
         "cfads":18.7538988521,
         "equity_cash_flow":6.1145327855,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2043-04-01T00:00:00.000000Z",
@@ -5287,7 +5287,7 @@
         "cfads":18.9008796673,
         "equity_cash_flow":6.2615136008,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2043-05-01T00:00:00.000000Z",
@@ -5310,7 +5310,7 @@
         "cfads":14.711317505,
         "equity_cash_flow":2.0719514385,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2043-06-01T00:00:00.000000Z",
@@ -5333,7 +5333,7 @@
         "cfads":17.2750914061,
         "equity_cash_flow":4.6357253396,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2043-07-01T00:00:00.000000Z",
@@ -5356,7 +5356,7 @@
         "cfads":15.9834945923,
         "equity_cash_flow":3.3441285257,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2043-08-01T00:00:00.000000Z",
@@ -5379,7 +5379,7 @@
         "cfads":15.3305686536,
         "equity_cash_flow":3.8238502225,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2043-09-01T00:00:00.000000Z",
@@ -5402,7 +5402,7 @@
         "cfads":14.3785374646,
         "equity_cash_flow":2.8718190335,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2043-10-01T00:00:00.000000Z",
@@ -5425,7 +5425,7 @@
         "cfads":13.9177786259,
         "equity_cash_flow":2.4110601948,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2043-11-01T00:00:00.000000Z",
@@ -5448,7 +5448,7 @@
         "cfads":13.7929818255,
         "equity_cash_flow":2.2862633945,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2043-12-01T00:00:00.000000Z",
@@ -5471,7 +5471,7 @@
         "cfads":14.5546171575,
         "equity_cash_flow":3.0478987265,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2044-01-01T00:00:00.000000Z",
@@ -5494,7 +5494,7 @@
         "cfads":15.6181235128,
         "equity_cash_flow":4.1114050817,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2044-02-01T00:00:00.000000Z",
@@ -5517,7 +5517,7 @@
         "cfads":14.7487214115,
         "equity_cash_flow":3.2420029804,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2044-03-01T00:00:00.000000Z",
@@ -5540,7 +5540,7 @@
         "cfads":18.0867176729,
         "equity_cash_flow":6.5799992418,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2044-04-01T00:00:00.000000Z",
@@ -5563,7 +5563,7 @@
         "cfads":15.8101368948,
         "equity_cash_flow":4.3034184638,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2044-05-01T00:00:00.000000Z",
@@ -5586,7 +5586,7 @@
         "cfads":14.8885975947,
         "equity_cash_flow":3.3818791636,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2044-06-01T00:00:00.000000Z",
@@ -5609,7 +5609,7 @@
         "cfads":17.5258457968,
         "equity_cash_flow":6.0191273657,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2044-07-01T00:00:00.000000Z",
@@ -5632,7 +5632,7 @@
         "cfads":16.4408278089,
         "equity_cash_flow":4.9341093778,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2044-08-01T00:00:00.000000Z",
@@ -5655,7 +5655,7 @@
         "cfads":15.3951695035,
         "equity_cash_flow":3.8884510724,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2044-09-01T00:00:00.000000Z",
@@ -5678,7 +5678,7 @@
         "cfads":14.0106297337,
         "equity_cash_flow":2.5039113026,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2044-10-01T00:00:00.000000Z",
@@ -5701,7 +5701,7 @@
         "cfads":14.10292222,
         "equity_cash_flow":2.5962037889,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2044-11-01T00:00:00.000000Z",
@@ -5724,7 +5724,7 @@
         "cfads":13.8865416338,
         "equity_cash_flow":2.3798232027,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2044-12-01T00:00:00.000000Z",
@@ -5747,7 +5747,7 @@
         "cfads":14.5653357205,
         "equity_cash_flow":3.0586172895,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2045-01-01T00:00:00.000000Z",
@@ -5770,7 +5770,7 @@
         "cfads":14.3812601177,
         "equity_cash_flow":2.8745416866,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2045-02-01T00:00:00.000000Z",
@@ -5793,7 +5793,7 @@
         "cfads":13.6848199448,
         "equity_cash_flow":2.1781015137,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2045-03-01T00:00:00.000000Z",
@@ -5816,7 +5816,7 @@
         "cfads":17.2864657512,
         "equity_cash_flow":5.7797473201,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2045-04-01T00:00:00.000000Z",
@@ -5839,7 +5839,7 @@
         "cfads":14.7936791955,
         "equity_cash_flow":3.2869607644,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2045-05-01T00:00:00.000000Z",
@@ -5862,7 +5862,7 @@
         "cfads":13.6708318538,
         "equity_cash_flow":2.1641134227,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2045-06-01T00:00:00.000000Z",
@@ -5885,7 +5885,7 @@
         "cfads":16.246827004,
         "equity_cash_flow":4.7401085729,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2045-07-01T00:00:00.000000Z",
@@ -5908,7 +5908,7 @@
         "cfads":15.1154546227,
         "equity_cash_flow":7.2297177129,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2045-08-01T00:00:00.000000Z",
@@ -5931,7 +5931,7 @@
         "cfads":14.410549984,
         "equity_cash_flow":6.5248130742,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2045-09-01T00:00:00.000000Z",
@@ -5954,7 +5954,7 @@
         "cfads":12.8541942234,
         "equity_cash_flow":4.9684573136,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2045-10-01T00:00:00.000000Z",
@@ -5977,7 +5977,7 @@
         "cfads":12.9900638808,
         "equity_cash_flow":5.104326971,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2045-11-01T00:00:00.000000Z",
@@ -6000,7 +6000,7 @@
         "cfads":12.7059257544,
         "equity_cash_flow":4.8201888447,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2045-12-01T00:00:00.000000Z",
@@ -6023,7 +6023,7 @@
         "cfads":13.6948150045,
         "equity_cash_flow":5.8090780947,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2046-01-01T00:00:00.000000Z",
@@ -6046,7 +6046,7 @@
         "cfads":14.0659962256,
         "equity_cash_flow":6.9036376657,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2046-02-01T00:00:00.000000Z",
@@ -6069,7 +6069,7 @@
         "cfads":13.7257771729,
         "equity_cash_flow":6.5634186131,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2046-03-01T00:00:00.000000Z",
@@ -6092,7 +6092,7 @@
         "cfads":17.3511289425,
         "equity_cash_flow":10.1887703827,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2046-04-01T00:00:00.000000Z",
@@ -6115,7 +6115,7 @@
         "cfads":14.5863328298,
         "equity_cash_flow":7.42397427,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2046-05-01T00:00:00.000000Z",
@@ -6138,7 +6138,7 @@
         "cfads":13.5327043529,
         "equity_cash_flow":9.9273150858,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2046-06-01T00:00:00.000000Z",
@@ -6161,7 +6161,7 @@
         "cfads":16.2751697994,
         "equity_cash_flow":12.6697805323,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2046-07-01T00:00:00.000000Z",
@@ -6184,7 +6184,7 @@
         "cfads":14.6676073836,
         "equity_cash_flow":11.0622181165,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2046-08-01T00:00:00.000000Z",
@@ -6207,7 +6207,7 @@
         "cfads":14.0419445242,
         "equity_cash_flow":11.6081287543,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2046-09-01T00:00:00.000000Z",
@@ -6230,7 +6230,7 @@
         "cfads":12.7028844972,
         "equity_cash_flow":10.2690687273,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2046-10-01T00:00:00.000000Z",
@@ -6253,7 +6253,7 @@
         "cfads":12.7401267778,
         "equity_cash_flow":10.3063110079,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2046-11-01T00:00:00.000000Z",
@@ -6276,7 +6276,7 @@
         "cfads":12.8509968187,
         "equity_cash_flow":10.4171810488,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2046-12-01T00:00:00.000000Z",
@@ -6299,7 +6299,7 @@
         "cfads":13.2427223467,
         "equity_cash_flow":10.8089065767,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2047-01-01T00:00:00.000000Z",
@@ -6322,7 +6322,7 @@
         "cfads":14.0817349713,
         "equity_cash_flow":11.6479192014,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2047-02-01T00:00:00.000000Z",
@@ -6345,7 +6345,7 @@
         "cfads":13.3507226015,
         "equity_cash_flow":10.9169068316,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2047-03-01T00:00:00.000000Z",
@@ -6368,7 +6368,7 @@
         "cfads":17.8947780379,
         "equity_cash_flow":15.460962268,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2047-04-01T00:00:00.000000Z",
@@ -6391,7 +6391,7 @@
         "cfads":14.5273265361,
         "equity_cash_flow":12.0935107662,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2047-05-01T00:00:00.000000Z",
@@ -6414,7 +6414,7 @@
         "cfads":13.4082563838,
         "equity_cash_flow":13.4082563838,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2047-06-01T00:00:00.000000Z",
@@ -6437,7 +6437,7 @@
         "cfads":16.0737922585,
         "equity_cash_flow":16.0737922585,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2047-07-01T00:00:00.000000Z",
@@ -6460,7 +6460,7 @@
         "cfads":14.7985260432,
         "equity_cash_flow":14.7985260432,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2047-08-01T00:00:00.000000Z",
@@ -6483,7 +6483,7 @@
         "cfads":14.0596868558,
         "equity_cash_flow":14.0596868558,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2047-09-01T00:00:00.000000Z",
@@ -6506,7 +6506,7 @@
         "cfads":12.5769631159,
         "equity_cash_flow":12.5769631159,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2047-10-01T00:00:00.000000Z",
@@ -6529,7 +6529,7 @@
         "cfads":12.519592609,
         "equity_cash_flow":12.519592609,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2047-11-01T00:00:00.000000Z",
@@ -6552,7 +6552,7 @@
         "cfads":12.3459557456,
         "equity_cash_flow":12.3459557456,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2047-12-01T00:00:00.000000Z",
@@ -6575,7 +6575,7 @@
         "cfads":13.1229102774,
         "equity_cash_flow":13.1229102774,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2048-01-01T00:00:00.000000Z",
@@ -6598,7 +6598,7 @@
         "cfads":13.8639322198,
         "equity_cash_flow":13.8639322198,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2048-02-01T00:00:00.000000Z",
@@ -6621,7 +6621,7 @@
         "cfads":13.1222170365,
         "equity_cash_flow":13.1222170365,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2048-03-01T00:00:00.000000Z",
@@ -6644,7 +6644,7 @@
         "cfads":16.1002372247,
         "equity_cash_flow":16.1002372247,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2048-04-01T00:00:00.000000Z",
@@ -6667,7 +6667,7 @@
         "cfads":14.4256352645,
         "equity_cash_flow":14.4256352645,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2048-05-01T00:00:00.000000Z",
@@ -6690,7 +6690,7 @@
         "cfads":14.1143771324,
         "equity_cash_flow":14.1143771324,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2048-06-01T00:00:00.000000Z",
@@ -6713,7 +6713,7 @@
         "cfads":16.0259890449,
         "equity_cash_flow":16.0259890449,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2048-07-01T00:00:00.000000Z",
@@ -6736,7 +6736,7 @@
         "cfads":14.4005373903,
         "equity_cash_flow":14.4005373903,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2048-08-01T00:00:00.000000Z",
@@ -6759,7 +6759,7 @@
         "cfads":13.7804754999,
         "equity_cash_flow":13.7804754999,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2048-09-01T00:00:00.000000Z",
@@ -6782,7 +6782,7 @@
         "cfads":12.4099586563,
         "equity_cash_flow":12.4099586563,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2048-10-01T00:00:00.000000Z",
@@ -6805,7 +6805,7 @@
         "cfads":12.4860835687,
         "equity_cash_flow":12.4860835687,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2048-11-01T00:00:00.000000Z",
@@ -6828,7 +6828,7 @@
         "cfads":12.2570177583,
         "equity_cash_flow":12.2570177583,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2048-12-01T00:00:00.000000Z",
@@ -6851,7 +6851,7 @@
         "cfads":12.9139296554,
         "equity_cash_flow":12.9139296554,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2049-01-01T00:00:00.000000Z",
@@ -6874,7 +6874,7 @@
         "cfads":13.3340928776,
         "equity_cash_flow":13.3340928776,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2049-02-01T00:00:00.000000Z",
@@ -6897,7 +6897,7 @@
         "cfads":12.4776798992,
         "equity_cash_flow":12.4776798992,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2049-03-01T00:00:00.000000Z",
@@ -6920,7 +6920,7 @@
         "cfads":15.8021992759,
         "equity_cash_flow":15.8021992759,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2049-04-01T00:00:00.000000Z",
@@ -6943,7 +6943,7 @@
         "cfads":13.7245597321,
         "equity_cash_flow":13.7245597321,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2049-05-01T00:00:00.000000Z",
@@ -6966,7 +6966,7 @@
         "cfads":12.7564118749,
         "equity_cash_flow":12.7564118749,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2049-06-01T00:00:00.000000Z",
@@ -6989,7 +6989,7 @@
         "cfads":16.0464796783,
         "equity_cash_flow":16.0464796783,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2049-07-01T00:00:00.000000Z",
@@ -7012,7 +7012,7 @@
         "cfads":13.883358552,
         "equity_cash_flow":13.883358552,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2049-08-01T00:00:00.000000Z",
@@ -7035,7 +7035,7 @@
         "cfads":13.2499010738,
         "equity_cash_flow":13.2499010738,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2049-09-01T00:00:00.000000Z",
@@ -7058,7 +7058,7 @@
         "cfads":11.8697544717,
         "equity_cash_flow":11.8697544717,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2049-10-01T00:00:00.000000Z",
@@ -7081,7 +7081,7 @@
         "cfads":11.8073619373,
         "equity_cash_flow":11.8073619373,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2049-11-01T00:00:00.000000Z",
@@ -7104,7 +7104,7 @@
         "cfads":11.6821572529,
         "equity_cash_flow":11.6821572529,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2049-12-01T00:00:00.000000Z",
@@ -7127,7 +7127,7 @@
         "cfads":12.1659176824,
         "equity_cash_flow":12.1659176824,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2050-01-01T00:00:00.000000Z",
@@ -7150,7 +7150,7 @@
         "cfads":12.7782419688,
         "equity_cash_flow":12.7782419688,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2050-02-01T00:00:00.000000Z",
@@ -7173,7 +7173,7 @@
         "cfads":11.8127379406,
         "equity_cash_flow":11.8127379406,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2050-03-01T00:00:00.000000Z",
@@ -7196,7 +7196,7 @@
         "cfads":15.0300846638,
         "equity_cash_flow":15.0300846638,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2050-04-01T00:00:00.000000Z",
@@ -7219,7 +7219,7 @@
         "cfads":13.0875297685,
         "equity_cash_flow":13.0875297685,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2050-05-01T00:00:00.000000Z",
@@ -7242,7 +7242,7 @@
         "cfads":12.1575372292,
         "equity_cash_flow":12.1575372292,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2050-06-01T00:00:00.000000Z",
@@ -7265,7 +7265,7 @@
         "cfads":14.7468272853,
         "equity_cash_flow":14.7468272853,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2050-07-01T00:00:00.000000Z",
@@ -7288,7 +7288,7 @@
         "cfads":13.1722143264,
         "equity_cash_flow":13.1722143264,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2050-08-01T00:00:00.000000Z",
@@ -7311,7 +7311,7 @@
         "cfads":12.5490342592,
         "equity_cash_flow":12.5490342592,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2050-09-01T00:00:00.000000Z",
@@ -7334,7 +7334,7 @@
         "cfads":11.1627074226,
         "equity_cash_flow":11.1627074226,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2050-10-01T00:00:00.000000Z",
@@ -7357,7 +7357,7 @@
         "cfads":11.1366823695,
         "equity_cash_flow":11.1366823695,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2050-11-01T00:00:00.000000Z",
@@ -7380,7 +7380,7 @@
         "cfads":10.8683690675,
         "equity_cash_flow":10.8683690675,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2050-12-01T00:00:00.000000Z",
@@ -7403,7 +7403,7 @@
         "cfads":11.5280679001,
         "equity_cash_flow":11.5280679001,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2051-01-01T00:00:00.000000Z",
@@ -7426,7 +7426,7 @@
         "cfads":12.5575701117,
         "equity_cash_flow":12.5575701117,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2051-02-01T00:00:00.000000Z",
@@ -7449,7 +7449,7 @@
         "cfads":11.6421959666,
         "equity_cash_flow":11.6421959666,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2051-03-01T00:00:00.000000Z",
@@ -7472,7 +7472,7 @@
         "cfads":14.8615826017,
         "equity_cash_flow":14.8615826017,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2051-04-01T00:00:00.000000Z",
@@ -7495,7 +7495,7 @@
         "cfads":12.8040732233,
         "equity_cash_flow":12.8040732233,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2051-05-01T00:00:00.000000Z",
@@ -7518,7 +7518,7 @@
         "cfads":11.9808560827,
         "equity_cash_flow":11.9808560827,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2051-06-01T00:00:00.000000Z",
@@ -7541,7 +7541,7 @@
         "cfads":14.6082379305,
         "equity_cash_flow":14.6082379305,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2051-07-01T00:00:00.000000Z",
@@ -7564,7 +7564,7 @@
         "cfads":13.8213698738,
         "equity_cash_flow":13.8213698738,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2051-08-01T00:00:00.000000Z",
@@ -7587,7 +7587,7 @@
         "cfads":12.4810133327,
         "equity_cash_flow":12.4810133327,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2051-09-01T00:00:00.000000Z",
@@ -7610,7 +7610,7 @@
         "cfads":10.8505566189,
         "equity_cash_flow":10.8505566189,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2051-10-01T00:00:00.000000Z",
@@ -7633,7 +7633,7 @@
         "cfads":10.9020043663,
         "equity_cash_flow":10.9020043663,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2051-11-01T00:00:00.000000Z",
@@ -7656,7 +7656,7 @@
         "cfads":10.7489553947,
         "equity_cash_flow":10.7489553947,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2051-12-01T00:00:00.000000Z",
@@ -7679,7 +7679,7 @@
         "cfads":11.2283282828,
         "equity_cash_flow":11.2283282828,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2052-01-01T00:00:00.000000Z",
@@ -7702,7 +7702,7 @@
         "cfads":12.7154007071,
         "equity_cash_flow":12.7154007071,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2052-02-01T00:00:00.000000Z",
@@ -7725,7 +7725,7 @@
         "cfads":11.7591260732,
         "equity_cash_flow":11.7591260732,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2052-03-01T00:00:00.000000Z",
@@ -7748,7 +7748,7 @@
         "cfads":14.745963061,
         "equity_cash_flow":14.745963061,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2052-04-01T00:00:00.000000Z",
@@ -7771,7 +7771,7 @@
         "cfads":12.7706622914,
         "equity_cash_flow":12.7706622914,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2052-05-01T00:00:00.000000Z",
@@ -7794,7 +7794,7 @@
         "cfads":12.2956842712,
         "equity_cash_flow":12.2956842712,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2052-06-01T00:00:00.000000Z",
@@ -7817,7 +7817,7 @@
         "cfads":14.7970434498,
         "equity_cash_flow":14.7970434498,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2052-07-01T00:00:00.000000Z",
@@ -7840,7 +7840,7 @@
         "cfads":13.729141088,
         "equity_cash_flow":13.729141088,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2052-08-01T00:00:00.000000Z",
@@ -7863,7 +7863,7 @@
         "cfads":12.6450361329,
         "equity_cash_flow":12.6450361329,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2052-09-01T00:00:00.000000Z",
@@ -7886,7 +7886,7 @@
         "cfads":11.255420241,
         "equity_cash_flow":11.255420241,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2052-10-01T00:00:00.000000Z",
@@ -7909,7 +7909,7 @@
         "cfads":11.2853602664,
         "equity_cash_flow":11.2853602664,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2052-11-01T00:00:00.000000Z",
@@ -7932,7 +7932,7 @@
         "cfads":10.9730877204,
         "equity_cash_flow":10.9730877204,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2052-12-01T00:00:00.000000Z",
@@ -7955,7 +7955,7 @@
         "cfads":11.5376673303,
         "equity_cash_flow":11.5376673303,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2053-01-01T00:00:00.000000Z",
@@ -7978,7 +7978,7 @@
         "cfads":11.6748469747,
         "equity_cash_flow":11.6748469747,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2053-02-01T00:00:00.000000Z",
@@ -8001,7 +8001,7 @@
         "cfads":11.060048369,
         "equity_cash_flow":11.060048369,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2053-03-01T00:00:00.000000Z",
@@ -8024,7 +8024,7 @@
         "cfads":14.1937280382,
         "equity_cash_flow":14.1937280382,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2053-04-01T00:00:00.000000Z",
@@ -8047,7 +8047,7 @@
         "cfads":12.2523447953,
         "equity_cash_flow":12.2523447953,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2053-05-01T00:00:00.000000Z",
@@ -8070,7 +8070,7 @@
         "cfads":11.5384905445,
         "equity_cash_flow":11.5384905445,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2053-06-01T00:00:00.000000Z",
@@ -8093,7 +8093,7 @@
         "cfads":14.1108915695,
         "equity_cash_flow":14.1108915695,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2053-07-01T00:00:00.000000Z",
@@ -8116,7 +8116,7 @@
         "cfads":12.4507233896,
         "equity_cash_flow":12.4507233896,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2053-08-01T00:00:00.000000Z",
@@ -8139,7 +8139,7 @@
         "cfads":12.1552703715,
         "equity_cash_flow":12.1552703715,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2053-09-01T00:00:00.000000Z",
@@ -8162,7 +8162,7 @@
         "cfads":10.4748275596,
         "equity_cash_flow":10.4748275596,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2053-10-01T00:00:00.000000Z",
@@ -8185,7 +8185,7 @@
         "cfads":10.4507819006,
         "equity_cash_flow":10.4507819006,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2053-11-01T00:00:00.000000Z",
@@ -8208,7 +8208,7 @@
         "cfads":10.2200229551,
         "equity_cash_flow":10.2200229551,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2053-12-01T00:00:00.000000Z",
@@ -8231,7 +8231,7 @@
         "cfads":10.8449718988,
         "equity_cash_flow":10.8449718988,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2054-01-01T00:00:00.000000Z",
@@ -8254,7 +8254,7 @@
         "cfads":11.5217299098,
         "equity_cash_flow":11.5217299098,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2054-02-01T00:00:00.000000Z",
@@ -8277,7 +8277,7 @@
         "cfads":10.9456305256,
         "equity_cash_flow":10.9456305256,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2054-03-01T00:00:00.000000Z",
@@ -8300,7 +8300,7 @@
         "cfads":14.0992372569,
         "equity_cash_flow":14.0992372569,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2054-04-01T00:00:00.000000Z",
@@ -8323,7 +8323,7 @@
         "cfads":12.1248293944,
         "equity_cash_flow":12.1248293944,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2054-05-01T00:00:00.000000Z",
@@ -8346,7 +8346,7 @@
         "cfads":11.4109090176,
         "equity_cash_flow":11.4109090176,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2054-06-01T00:00:00.000000Z",
@@ -8369,7 +8369,7 @@
         "cfads":14.070885569,
         "equity_cash_flow":14.070885569,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2054-07-01T00:00:00.000000Z",
@@ -8392,7 +8392,7 @@
         "cfads":12.4037231425,
         "equity_cash_flow":12.4037231425,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2054-08-01T00:00:00.000000Z",
@@ -8415,7 +8415,7 @@
         "cfads":11.8688577827,
         "equity_cash_flow":11.8688577827,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2054-09-01T00:00:00.000000Z",
@@ -8438,7 +8438,7 @@
         "cfads":10.3023550655,
         "equity_cash_flow":10.3023550655,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2054-10-01T00:00:00.000000Z",
@@ -8461,7 +8461,7 @@
         "cfads":10.3794369189,
         "equity_cash_flow":10.3794369189,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2054-11-01T00:00:00.000000Z",
@@ -8484,7 +8484,7 @@
         "cfads":10.2286949153,
         "equity_cash_flow":10.2286949153,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2054-12-01T00:00:00.000000Z",
@@ -8507,7 +8507,7 @@
         "cfads":10.6843261618,
         "equity_cash_flow":10.6843261618,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2055-01-01T00:00:00.000000Z",
@@ -8530,7 +8530,7 @@
         "cfads":11.4674218583,
         "equity_cash_flow":11.4674218583,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2055-02-01T00:00:00.000000Z",
@@ -8553,7 +8553,7 @@
         "cfads":10.8896188812,
         "equity_cash_flow":10.8896188812,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2055-03-01T00:00:00.000000Z",
@@ -8576,7 +8576,7 @@
         "cfads":14.0184441621,
         "equity_cash_flow":14.0184441621,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2055-04-01T00:00:00.000000Z",
@@ -8599,7 +8599,7 @@
         "cfads":12.1748407156,
         "equity_cash_flow":12.1748407156,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2055-05-01T00:00:00.000000Z",
@@ -8622,7 +8622,7 @@
         "cfads":11.367847859,
         "equity_cash_flow":11.367847859,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2055-06-01T00:00:00.000000Z",
@@ -8645,7 +8645,7 @@
         "cfads":14.4499936761,
         "equity_cash_flow":14.4499936761,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2055-07-01T00:00:00.000000Z",
@@ -8668,7 +8668,7 @@
         "cfads":12.8939101687,
         "equity_cash_flow":12.8939101687,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2055-08-01T00:00:00.000000Z",
@@ -8691,7 +8691,7 @@
         "cfads":11.7705315058,
         "equity_cash_flow":11.7705315058,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2055-09-01T00:00:00.000000Z",
@@ -8714,7 +8714,7 @@
         "cfads":10.1165842815,
         "equity_cash_flow":10.1165842815,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2055-10-01T00:00:00.000000Z",
@@ -8737,7 +8737,7 @@
         "cfads":10.0644324296,
         "equity_cash_flow":10.0644324296,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2055-11-01T00:00:00.000000Z",
@@ -8760,7 +8760,7 @@
         "cfads":10.0177407079,
         "equity_cash_flow":10.0177407079,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2055-12-01T00:00:00.000000Z",
@@ -8783,7 +8783,7 @@
         "cfads":10.6734629166,
         "equity_cash_flow":10.6734629166,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2056-01-01T00:00:00.000000Z",
@@ -8806,7 +8806,7 @@
         "cfads":11.9676947039,
         "equity_cash_flow":11.9676947039,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2056-02-01T00:00:00.000000Z",
@@ -8829,7 +8829,7 @@
         "cfads":10.6068408094,
         "equity_cash_flow":10.6068408094,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2056-03-01T00:00:00.000000Z",
@@ -8852,7 +8852,7 @@
         "cfads":13.4508280743,
         "equity_cash_flow":13.4508280743,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2056-04-01T00:00:00.000000Z",
@@ -8875,7 +8875,7 @@
         "cfads":11.6972212621,
         "equity_cash_flow":11.6972212621,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2056-05-01T00:00:00.000000Z",
@@ -8898,7 +8898,7 @@
         "cfads":11.4771269533,
         "equity_cash_flow":11.4771269533,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2056-06-01T00:00:00.000000Z",
@@ -8921,7 +8921,7 @@
         "cfads":13.6305012512,
         "equity_cash_flow":13.6305012512,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2056-07-01T00:00:00.000000Z",
@@ -8944,7 +8944,7 @@
         "cfads":12.6959650949,
         "equity_cash_flow":12.6959650949,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2056-08-01T00:00:00.000000Z",
@@ -8967,7 +8967,7 @@
         "cfads":11.5061939537,
         "equity_cash_flow":11.5061939537,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2056-09-01T00:00:00.000000Z",
@@ -8990,7 +8990,7 @@
         "cfads":9.9289409215,
         "equity_cash_flow":9.9289409215,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2056-10-01T00:00:00.000000Z",
@@ -9013,7 +9013,7 @@
         "cfads":9.9347765725,
         "equity_cash_flow":9.9347765725,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2056-11-01T00:00:00.000000Z",
@@ -9036,7 +9036,7 @@
         "cfads":9.7236289084,
         "equity_cash_flow":9.7236289084,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2056-12-01T00:00:00.000000Z",
@@ -9059,7 +9059,7 @@
         "cfads":10.2197426609,
         "equity_cash_flow":10.2197426609,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2057-01-01T00:00:00.000000Z",
@@ -9082,7 +9082,7 @@
         "cfads":11.9353894082,
         "equity_cash_flow":11.9353894082,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2057-02-01T00:00:00.000000Z",
@@ -9105,7 +9105,7 @@
         "cfads":10.4014783808,
         "equity_cash_flow":10.4014783808,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2057-03-01T00:00:00.000000Z",
@@ -9128,7 +9128,7 @@
         "cfads":13.446541329,
         "equity_cash_flow":13.446541329,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2057-04-01T00:00:00.000000Z",
@@ -9151,7 +9151,7 @@
         "cfads":11.7321339212,
         "equity_cash_flow":11.7321339212,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2057-05-01T00:00:00.000000Z",
@@ -9174,7 +9174,7 @@
         "cfads":10.8766969362,
         "equity_cash_flow":10.8766969362,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2057-06-01T00:00:00.000000Z",
@@ -9197,7 +9197,7 @@
         "cfads":13.4792602064,
         "equity_cash_flow":13.4792602064,
         "terminal_value":0.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     },
     {
         "date":"2057-07-01T00:00:00.000000Z",
@@ -9220,6 +9220,6 @@
         "cfads":11.9045122688,
         "equity_cash_flow":535.9045122688,
         "terminal_value":524.0,
-        "irr":0.0394995009
+        "irr":0.0044759318
     }
 ]

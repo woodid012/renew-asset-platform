@@ -17,7 +17,42 @@ const Test3Page = () => {
   const [timeAggregation, setTimeAggregation] = useState('monthly'); // monthly, quarterly, fiscalYear, calendarYear
   const [availableAssetIds, setAvailableAssetIds] = useState([]);
   const [equityIrr, setEquityIrr] = useState('N/A');
+  const [clientSideIrr, setClientSideIrr] = useState('N/A');
   const [assetInputsSummary, setAssetInputsSummary] = useState([]);
+
+  // Function to calculate IRR (simplified for client-side)
+  const calculateClientIRR = (cashFlows) => {
+    if (!cashFlows || cashFlows.length < 2) {
+      return NaN;
+    }
+
+    // Simple Newton-Raphson method for IRR
+    const npv = (rate) => {
+      let sum = 0;
+      for (let i = 0; i < cashFlows.length; i++) {
+        sum += cashFlows[i] / Math.pow(1 + rate, i);
+      }
+      return sum;
+    };
+
+    let irr = 0.1; // Initial guess
+    let financial_accuracy = 0.00001;
+    let max_iterations = 1000;
+
+    for (let i = 0; i < max_iterations; i++) {
+      let y0 = npv(irr);
+      let y1 = npv(irr + financial_accuracy);
+      let slope = (y1 - y0) / financial_accuracy;
+      if (slope === 0) {
+        break; // Avoid division by zero
+      }
+      irr = irr - y0 / slope;
+      if (Math.abs(y0) < financial_accuracy) {
+        break;
+      }
+    }
+    return irr;
+  };
 
   useEffect(() => {
     const fetchAllAssetData = async () => {
@@ -76,6 +111,15 @@ const Test3Page = () => {
     fetchAssetInputsSummary();
   }, []);
 
+  useEffect(() => {
+    if (selectedAsset !== null && data.length > 0) {
+      const filteredData = data.filter(item => item.asset_id === selectedAsset);
+      const equityCashFlows = filteredData.map(item => item.equity_cash_flow);
+      const irr = calculateClientIRR(equityCashFlows);
+      setClientSideIrr(isNaN(irr) ? 'N/A' : (irr * 100).toFixed(2) + '%');
+    }
+  }, [data, selectedAsset, calculateClientIRR]);
+
   const processData = useMemo(() => {
     if (!data || data.length === 0 || selectedAsset === null) return [];
 
@@ -103,7 +147,7 @@ const Test3Page = () => {
         }
 
         if (!aggregated[periodKey]) {
-          aggregated[periodKey] = { date: periodKey, revenue: 0, opex: 0, capex: 0, equity_capex: 0, debt_capex: 0, cfads: 0, equity_cash_flow: 0, terminal_value: 0, period_type: '' };
+          aggregated[periodKey] = { date: periodKey, revenue: 0, opex: 0, capex: 0, equity_capex: 0, debt_capex: 0, cfads: 0, equity_cash_flow: 0, terminal_value: 0, dscr: 0, period_type: '' };
         }
 
         aggregated[periodKey].revenue += item.revenue || 0;
@@ -114,6 +158,7 @@ const Test3Page = () => {
         aggregated[periodKey].cfads += item.cfads || 0;
         aggregated[periodKey].equity_cash_flow += item.equity_cash_flow || 0;
         aggregated[periodKey].terminal_value += item.terminal_value || 0;
+        aggregated[periodKey].dscr = item.dscr || 0;
         // For period_type, if aggregating, we might need a more sophisticated logic
         // For now, we'll just take the last one or assume it's consistent within a period
         aggregated[periodKey].period_type = item.period_type || '';
@@ -155,8 +200,14 @@ const Test3Page = () => {
   }, [data, selectedAsset, equityIrr]);
 
   const selectedAssetInputs = useMemo(() => {
-    return assetInputsSummary.find(asset => asset.id === selectedAsset);
+    if (!assetInputsSummary || !assetInputsSummary.asset_inputs) return null;
+    return assetInputsSummary.asset_inputs.find(asset => asset.id === selectedAsset);
   }, [assetInputsSummary, selectedAsset]);
+
+  const generalConfig = useMemo(() => {
+    if (!assetInputsSummary || !assetInputsSummary.general_config) return null;
+    return assetInputsSummary.general_config;
+  }, [assetInputsSummary]);
 
   if (loading) {
     return (
@@ -233,8 +284,15 @@ const Test3Page = () => {
           <div className="flex items-center space-x-3">
             <BarChart3 className="w-6 h-6 text-purple-600" />
             <div>
-              <p className="text-sm font-medium text-gray-600">Project IRR</p>
+              <p className="text-sm font-medium text-gray-600">Backend Project IRR</p>
               <p className="text-lg font-bold text-gray-900">{summaryMetrics.irr}</p>
+            </div>
+          </div>
+          <div className="flex items-center space-x-3">
+            <BarChart3 className="w-6 h-6 text-purple-600" />
+            <div>
+              <p className="text-sm font-medium text-gray-600">Client-Side Project IRR</p>
+              <p className="text-lg font-bold text-gray-900">{clientSideIrr}</p>
             </div>
           </div>
           <div className="flex items-center space-x-3">
@@ -285,6 +343,24 @@ const Test3Page = () => {
             <p><strong>Interest Rate:</strong> {selectedAssetInputs.interestRate * 100}%</p>
             <p><strong>Tenor Years:</strong> {selectedAssetInputs.tenorYears}</p>
             <p><strong>Terminal Value (Input):</strong> ${selectedAssetInputs.terminalValue}M</p>
+          </div>
+        </div>
+      )}
+
+      {/* General Configuration */}
+      {generalConfig && (
+        <div className="bg-white rounded-lg shadow border p-6">
+          <h3 className="text-lg font-semibold mb-4">General Configuration</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
+            <p><strong>Terminal Value Enabled:</strong> {generalConfig.ENABLE_TERMINAL_VALUE ? 'Yes' : 'No'}</p>
+            <p><strong>Default Debt Sizing:</strong> {generalConfig.DEFAULT_DEBT_SIZING_METHOD}</p>
+            <p><strong>DSCR Calculation Frequency:</strong> {generalConfig.DSCR_CALCULATION_FREQUENCY}</p>
+            <p><strong>Default Capex Funding:</strong> {generalConfig.DEFAULT_CAPEX_FUNDING_TYPE}</p>
+            <p><strong>Default Debt Repayment:</strong> {generalConfig.DEFAULT_DEBT_REPAYMENT_FREQUENCY}</p>
+            <p><strong>Default Debt Grace Period:</strong> {generalConfig.DEFAULT_DEBT_GRACE_PERIOD}</p>
+            <p><strong>Terminal Growth Rate:</strong> {(generalConfig.TERMINAL_GROWTH_RATE * 100).toFixed(2)}%</p>
+            <p><strong>User Model Start Date:</strong> {generalConfig.USER_MODEL_START_DATE || 'Not Set'}</p>
+            <p><strong>User Model End Date:</strong> {generalConfig.USER_MODEL_END_DATE || 'Not Set'}</p>
           </div>
         </div>
       )}
@@ -343,6 +419,7 @@ const Test3Page = () => {
                   <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">CFADS ($M)</th>
                   <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Equity Cash Flow ($M)</th>
                   <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Terminal Value ($M)</th>
+                  <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">DSCR</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
@@ -358,6 +435,7 @@ const Test3Page = () => {
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">{row.cfads.toFixed(2)}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">{row.equity_cash_flow.toFixed(2)}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">{row.terminal_value.toFixed(2)}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">{row.dscr.toFixed(2)}</td>
                   </tr>
                 ))}
               </tbody>

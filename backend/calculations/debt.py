@@ -3,9 +3,9 @@ import pandas as pd
 import numpy_financial as npf
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
-from config import DEFAULT_DEBT_REPAYMENT_FREQUENCY, DEFAULT_DEBT_GRACE_PERIOD
+from config import DEFAULT_DEBT_REPAYMENT_FREQUENCY, DEFAULT_DEBT_GRACE_PERIOD, DEFAULT_DEBT_SIZING_METHOD, DSCR_CALCULATION_FREQUENCY
 
-def calculate_debt_schedule(assets, debt_assumptions, capex_schedule, cash_flow_df, start_date, end_date, repayment_frequency=DEFAULT_DEBT_REPAYMENT_FREQUENCY, grace_period=DEFAULT_DEBT_GRACE_PERIOD):
+def calculate_debt_schedule(assets, debt_assumptions, capex_schedule, cash_flow_df, start_date, end_date, repayment_frequency=DEFAULT_DEBT_REPAYMENT_FREQUENCY, grace_period=DEFAULT_DEBT_GRACE_PERIOD, debt_sizing_method=DEFAULT_DEBT_SIZING_METHOD, dscr_calculation_frequency=DSCR_CALCULATION_FREQUENCY):
     """
     Calculates the debt schedule for each asset, including drawdowns, interest, and principal repayment.
 
@@ -28,6 +28,7 @@ def calculate_debt_schedule(assets, debt_assumptions, capex_schedule, cash_flow_
         gearing = asset_assumptions.get('maxGearing', 0.7)
         debt_term = asset_assumptions.get('debtTerm', 18)
         interest_rate_input = asset_assumptions.get('debtRate', 0.055)
+        target_dscr = asset_assumptions.get('targetDSCR', 1.2) # Default target DSCR
 
         # Determine if interest_rate is a fixed value or a time-series
         if isinstance(interest_rate_input, (int, float)):
@@ -55,6 +56,57 @@ def calculate_debt_schedule(assets, debt_assumptions, capex_schedule, cash_flow_
         # Get asset COD (Commercial Operation Date)
         cod = pd.to_datetime(asset['assetStartDate'])
 
+        # Filter cash_flow_df for the current asset and relevant period
+        asset_cash_flow = cash_flow_df[cash_flow_df['asset_id'] == asset['id']].set_index('date')
+        
+        # Determine total_debt_drawn based on sizing method
+        if debt_sizing_method == 'dscr':
+            # Calculate maximum debt based on DSCR
+            # This is a simplified approach. A full DSCR sizing would be iterative.
+            # Here, we calculate the present value of the maximum allowable debt service.
+            
+            # Filter CFADS for operational period
+            operational_cfads = asset_cash_flow[asset_cash_flow.index >= cod]['cfads']
+            
+            if operational_cfads.empty:
+                total_debt_drawn = 0
+            else:
+                # Resample CFADS based on DSCR_CALCULATION_FREQUENCY
+                if dscr_calculation_frequency == 'monthly':
+                    periodic_cfads = operational_cfads
+                    periods_per_year = 12
+                elif dscr_calculation_frequency == 'quarterly':
+                    periodic_cfads = operational_cfads.resample('QS').sum() # Quarter start frequency
+                    periods_per_year = 4
+                else:
+                    raise ValueError(f"Unknown dscr_calculation_frequency: {dscr_calculation_frequency}. Must be 'monthly' or 'quarterly'.")
+
+                # Calculate maximum periodic debt service based on target DSCR
+                max_periodic_debt_service = periodic_cfads / target_dscr
+                
+                # Discount these back to the COD to get debt capacity
+                # Use the first interest rate for discounting for simplicity
+                discount_rate = interest_rate_series.iloc[0] 
+                
+                debt_capacity = 0
+                for period_end_date, periodic_ds in max_periodic_debt_service.items():
+                    # Calculate years from COD to period_end_date
+                    years_from_cod = (period_end_date - cod).days / 365.25
+                    if years_from_cod >= 0: # Only consider future cash flows
+                        debt_capacity += periodic_ds / ((1 + discount_rate) ** years_from_cod)
+                
+                # The actual debt drawn is the minimum of the required capex debt and the debt capacity
+                total_debt_drawn = min(asset_debt_capex['debt_capex'].sum(), debt_capacity)
+                
+        elif debt_sizing_method == 'annuity':
+            total_debt_drawn = asset_debt_capex['debt_capex'].sum()
+        else:
+            raise ValueError(f"Unknown debt_sizing_method: {debt_sizing_method}. Must be 'dscr' or 'annuity'.")
+
+        # If no debt drawn, skip this asset
+        if total_debt_drawn == 0:
+            continue
+
         # Create the schedule DataFrame for the asset
         schedule = pd.DataFrame(index=date_range)
         schedule['asset_id'] = asset['id']
@@ -64,10 +116,15 @@ def calculate_debt_schedule(assets, debt_assumptions, capex_schedule, cash_flow_
         schedule['principal'] = 0.0
         schedule['ending_balance'] = 0.0
 
-        # Populate drawdowns from capex_schedule
+        # Populate drawdowns from capex_schedule (only up to total_debt_drawn)
+        current_drawn = 0
         for idx, row in asset_debt_capex.iterrows():
             if row['date'] in schedule.index:
-                schedule.at[row['date'], 'drawdowns'] = row['debt_capex']
+                drawdown_amount = min(row['debt_capex'], total_debt_drawn - current_drawn)
+                schedule.at[row['date'], 'drawdowns'] = drawdown_amount
+                current_drawn += drawdown_amount
+                if current_drawn >= total_debt_drawn:
+                    break
 
         # Debt repayment calculations
         balance = 0.0
@@ -94,9 +151,6 @@ def calculate_debt_schedule(assets, debt_assumptions, capex_schedule, cash_flow_
         # Calculate total number of payments and period rate
         if repayment_frequency == 'monthly':
             num_payments = debt_term * 12
-            # Use the first value of the interest rate series for the initial fixed payment calculation
-            # This assumes the initial fixed payment is based on the starting interest rate.
-            # If the interest rate changes, the payment amount will effectively change due to interest accrual.
             period_rate_for_pmt = interest_rate_series.iloc[0] / 12
             payment_interval_months = 1
         elif repayment_frequency == 'quarterly':
@@ -148,8 +202,6 @@ def calculate_debt_schedule(assets, debt_assumptions, capex_schedule, cash_flow_
                         # Not a payment month, only interest accrues
                         pass # accrued_interest already updated
             
-            schedule.at[current_date, 'ending_balance'] = balance
-
             schedule.at[current_date, 'ending_balance'] = balance
 
         all_debt_schedules.append(schedule.reset_index().rename(columns={'index': 'date'}))

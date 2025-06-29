@@ -27,11 +27,13 @@ def calculate_opex_timeseries(assets, opex_assumptions, start_date, end_date):
         for date in date_range:
             # Calculate years from the asset's COD
             asset_start_date = pd.to_datetime(asset['assetStartDate'])
-            years_from_cod = (date.year - asset_start_date.year)
             
-            # Apply escalation
-            escalated_opex = base_opex * ((1 + escalation) ** years_from_cod)
-            monthly_opex = escalated_opex / 12
+            monthly_opex = 0
+            if date >= asset_start_date:
+                years_from_cod = (date.year - asset_start_date.year)
+                # Apply escalation
+                escalated_opex = base_opex * ((1 + escalation) ** years_from_cod)
+                monthly_opex = escalated_opex / 12
             opex_values.append(monthly_opex)
 
         asset_opex_df = pd.DataFrame({

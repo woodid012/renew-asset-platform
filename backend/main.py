@@ -9,7 +9,7 @@ import os
 import pandas as pd
 from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
-from config import DATE_FORMAT, OUTPUT_DATE_FORMAT, DEFAULT_CAPEX_FUNDING_TYPE, DEFAULT_DEBT_REPAYMENT_FREQUENCY, DEFAULT_DEBT_GRACE_PERIOD, TERMINAL_GROWTH_RATE, USER_MODEL_START_DATE, USER_MODEL_END_DATE
+from config import DATE_FORMAT, OUTPUT_DATE_FORMAT, DEFAULT_CAPEX_FUNDING_TYPE, DEFAULT_DEBT_REPAYMENT_FREQUENCY, DEFAULT_DEBT_GRACE_PERIOD, TERMINAL_GROWTH_RATE, USER_MODEL_START_DATE, USER_MODEL_END_DATE, DEFAULT_DEBT_SIZING_METHOD, DSCR_CALCULATION_FREQUENCY
 from core.input_processor import load_asset_data, load_price_data
 from calculations.revenue import calculate_revenue_timeseries
 from calculations.expenses import calculate_opex_timeseries, calculate_capex_timeseries
@@ -77,7 +77,7 @@ def run_cashflow_model():
     prelim_cash_flow = pd.merge(revenue_df, opex_df, on=['asset_id', 'date'])
     prelim_cash_flow['cfads'] = prelim_cash_flow['revenue'] - prelim_cash_flow['opex']
 
-    debt_df = calculate_debt_schedule(ASSETS, ASSET_COST_ASSUMPTIONS, capex_df, prelim_cash_flow, start_date, end_date, repayment_frequency=DEFAULT_DEBT_REPAYMENT_FREQUENCY, grace_period=DEFAULT_DEBT_GRACE_PERIOD)
+    debt_df = calculate_debt_schedule(ASSETS, ASSET_COST_ASSUMPTIONS, capex_df, prelim_cash_flow, start_date, end_date, repayment_frequency=DEFAULT_DEBT_REPAYMENT_FREQUENCY, grace_period=DEFAULT_DEBT_GRACE_PERIOD, debt_sizing_method=DEFAULT_DEBT_SIZING_METHOD, dscr_calculation_frequency=DSCR_CALCULATION_FREQUENCY)
 
     # 4. Aggregate into Final Cash Flow
     final_cash_flow = aggregate_cashflows(revenue_df, opex_df, capex_df, debt_df, end_date, ASSETS, ASSET_COST_ASSUMPTIONS)
@@ -155,6 +155,9 @@ def run_cashflow_model():
         "DEFAULT_DEBT_REPAYMENT_FREQUENCY": DEFAULT_DEBT_REPAYMENT_FREQUENCY,
         "DEFAULT_DEBT_GRACE_PERIOD": DEFAULT_DEBT_GRACE_PERIOD,
         "TERMINAL_GROWTH_RATE": TERMINAL_GROWTH_RATE,
+        "ENABLE_TERMINAL_VALUE": ENABLE_TERMINAL_VALUE,
+        "DEFAULT_DEBT_SIZING_METHOD": DEFAULT_DEBT_SIZING_METHOD,
+        "DSCR_CALCULATION_FREQUENCY": DSCR_CALCULATION_FREQUENCY,
         "USER_MODEL_START_DATE": USER_MODEL_START_DATE,
         "USER_MODEL_END_DATE": USER_MODEL_END_DATE
     }

@@ -13,12 +13,7 @@ export async function GET(request) {
       if (assetId === 'assets_combined' || assetId === 'asset_inputs_summary') {
         filePath = path.join(resultsDirectory, `${assetId}.json`);
       } else {
-        let filePath;
-      if (assetId === 'assets_combined' || assetId === 'asset_inputs_summary') {
-        filePath = path.join(resultsDirectory, `${assetId}.json`);
-      } else {
         filePath = path.join(resultsDirectory, `asset_${assetId}.json`);
-      }
       }
       const fileContents = await fs.readFile(filePath, 'utf8');
       return new Response(fileContents, { headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' } });
