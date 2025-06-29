@@ -3,8 +3,8 @@
         {
             "id": 1,
             "name": "Templers BESS",
-            "state": "SA",
-            "assetStartDate": "2025-08-01",
+            "region": "SA",
+            "OperatingStartDate": "2025-08-01",
             "capacity": 111,
             "type": "storage",
             "volumeLossAdjustment": 95,
@@ -50,16 +50,16 @@
             },
             "debtSizingResults": {
                 "total_capex": 238.60000000000002,
-                "debt_amount": "0",
-                "equity_amount": 238.60000000000002,
-                "gearing": 0.0
+                "debt_amount": 119.64714523315428,
+                "equity_amount": 118.95285476684572,
+                "gearing": 0.5014549255371092
             }
         },
         {
             "id": 2,
             "name": "Solar River Solar",
-            "state": "SA",
-            "assetStartDate": "2027-07-01",
+            "region": "SA",
+            "OperatingStartDate": "2027-07-01",
             "capacity": 232,
             "type": "solar",
             "volumeLossAdjustment": 97,
@@ -106,16 +106,16 @@
             },
             "debtSizingResults": {
                 "total_capex": 208.3,
-                "debt_amount": "0",
-                "equity_amount": 208.3,
-                "gearing": 0.0
+                "debt_amount": 145.8094437789917,
+                "equity_amount": 62.49055622100832,
+                "gearing": 0.699997329711914
             }
         },
         {
             "id": 3,
             "name": "Solar River BESS",
-            "state": "SA",
-            "assetStartDate": "2027-07-01",
+            "region": "SA",
+            "OperatingStartDate": "2027-07-01",
             "capacity": 256,
             "type": "storage",
             "volumeLossAdjustment": 97,
@@ -163,16 +163,16 @@
             },
             "debtSizingResults": {
                 "total_capex": 500.0,
-                "debt_amount": "0",
-                "equity_amount": 500.0,
-                "gearing": 0.0
+                "debt_amount": 286.30828857421875,
+                "equity_amount": 213.69171142578125,
+                "gearing": 0.5726165771484375
             }
         },
         {
             "id": 4,
             "name": "Wagga North",
-            "state": "NSW",
-            "assetStartDate": "2028-08-01",
+            "region": "NSW",
+            "OperatingStartDate": "2028-08-01",
             "capacity": 105,
             "type": "storage",
             "volumeLossAdjustment": "100",
@@ -220,16 +220,16 @@
             },
             "debtSizingResults": {
                 "total_capex": 246.8,
-                "debt_amount": "0",
-                "equity_amount": 246.8,
-                "gearing": 0.0
+                "debt_amount": 129.74765487670896,
+                "equity_amount": 117.05234512329105,
+                "gearing": 0.5257198333740233
             }
         },
         {
             "id": 5,
             "name": "Noblevale",
-            "state": "QLD",
-            "assetStartDate": "2028-05-01",
+            "region": "QLD",
+            "OperatingStartDate": "2028-05-01",
             "capacity": 180,
             "type": "storage",
             "volumeLossAdjustment": "100",
@@ -277,16 +277,16 @@
             },
             "debtSizingResults": {
                 "total_capex": 296.6,
-                "debt_amount": "0",
-                "equity_amount": 296.6,
-                "gearing": 0.0
+                "debt_amount": 178.41370712280275,
+                "equity_amount": 118.18629287719727,
+                "gearing": 0.6015296936035156
             }
         },
         {
             "id": 6,
             "name": "Hookey Creek (BESS)",
-            "state": "NSW",
-            "assetStartDate": "2028-05-01",
+            "region": "NSW",
+            "OperatingStartDate": "2028-05-01",
             "capacity": 200,
             "type": "storage",
             "volumeLossAdjustment": "100",
@@ -334,16 +334,16 @@
             },
             "debtSizingResults": {
                 "total_capex": 452.70000000000005,
-                "debt_amount": "0",
-                "equity_amount": 452.70000000000005,
-                "gearing": 0.0
+                "debt_amount": 249.51296061515805,
+                "equity_amount": 203.18703938484197,
+                "gearing": 0.551166248321533
             }
         },
         {
             "id": 7,
             "name": "North Yarragon",
-            "state": "VIC",
-            "assetStartDate": "2029-05-01",
+            "region": "VIC",
+            "OperatingStartDate": "2029-05-01",
             "capacity": 210,
             "type": "storage",
             "volumeLossAdjustment": "100",
@@ -391,16 +391,16 @@
             },
             "debtSizingResults": {
                 "total_capex": 512.7000000000002,
-                "debt_amount": "0",
-                "equity_amount": 512.7000000000002,
-                "gearing": 0.0
+                "debt_amount": 274.3444901275635,
+                "equity_amount": 238.35550987243656,
+                "gearing": 0.5350975036621093
             }
         },
         {
             "id": 8,
             "name": "Yarraville",
-            "state": "VIC",
-            "assetStartDate": "2028-01-01",
+            "region": "VIC",
+            "OperatingStartDate": "2028-01-01",
             "capacity": 70,
             "type": "storage",
             "volumeLossAdjustment": 97.5,
@@ -448,9 +448,9 @@
             },
             "debtSizingResults": {
                 "total_capex": 141.5,
-                "debt_amount": "0",
-                "equity_amount": 141.5,
-                "gearing": 0.0
+                "debt_amount": 80.96403465270996,
+                "equity_amount": 60.535965347290045,
+                "gearing": 0.5721839904785155
             }
         }
     ],
@@ -469,52 +469,52 @@
     "portfolio_debt_summary": {
         "1": {
             "total_capex": 238.60000000000002,
-            "debt_amount": "0",
-            "equity_amount": 238.60000000000002,
-            "gearing": 0.0
+            "debt_amount": 119.64714523315428,
+            "equity_amount": 118.95285476684572,
+            "gearing": 0.5014549255371092
         },
         "2": {
             "total_capex": 208.3,
-            "debt_amount": "0",
-            "equity_amount": 208.3,
-            "gearing": 0.0
+            "debt_amount": 145.8094437789917,
+            "equity_amount": 62.49055622100832,
+            "gearing": 0.699997329711914
         },
         "3": {
             "total_capex": 500.0,
-            "debt_amount": "0",
-            "equity_amount": 500.0,
-            "gearing": 0.0
+            "debt_amount": 286.30828857421875,
+            "equity_amount": 213.69171142578125,
+            "gearing": 0.5726165771484375
         },
         "4": {
             "total_capex": 246.8,
-            "debt_amount": "0",
-            "equity_amount": 246.8,
-            "gearing": 0.0
+            "debt_amount": 129.74765487670896,
+            "equity_amount": 117.05234512329105,
+            "gearing": 0.5257198333740233
         },
         "5": {
             "total_capex": 296.6,
-            "debt_amount": "0",
-            "equity_amount": 296.6,
-            "gearing": 0.0
+            "debt_amount": 178.41370712280275,
+            "equity_amount": 118.18629287719727,
+            "gearing": 0.6015296936035156
         },
         "6": {
             "total_capex": 452.70000000000005,
-            "debt_amount": "0",
-            "equity_amount": 452.70000000000005,
-            "gearing": 0.0
+            "debt_amount": 249.51296061515805,
+            "equity_amount": 203.18703938484197,
+            "gearing": 0.551166248321533
         },
         "7": {
             "total_capex": 512.7000000000002,
-            "debt_amount": "0",
-            "equity_amount": 512.7000000000002,
-            "gearing": 0.0
+            "debt_amount": 274.3444901275635,
+            "equity_amount": 238.35550987243656,
+            "gearing": 0.5350975036621093
         },
         "8": {
             "total_capex": 141.5,
-            "debt_amount": "0",
-            "equity_amount": 141.5,
-            "gearing": 0.0
+            "debt_amount": 80.96403465270996,
+            "equity_amount": 60.535965347290045,
+            "gearing": 0.5721839904785155
         }
     },
-    "equity_irr": 0.06014375776654377
+    "equity_irr": NaN
 }

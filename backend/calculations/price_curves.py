@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 from datetime import datetime
 
-def get_merchant_price(profile, price_type, state, date, monthly_prices, yearly_spreads, constants):
+def get_merchant_price(profile, price_type, region, date, monthly_prices, yearly_spreads, constants):
     # Ensure date is a datetime object
     if isinstance(date, str):
         date = datetime.strptime(date, '%Y-%m-%d')
@@ -11,7 +11,7 @@ def get_merchant_price(profile, price_type, state, date, monthly_prices, yearly_
     if isinstance(price_type, (float, int)):
         # Find the closest duration in yearly_spreads
         duration = float(price_type)
-        relevant_spreads = yearly_spreads[(yearly_spreads['REGION'] == state) & (yearly_spreads['YEAR'] == date.year)]
+        relevant_spreads = yearly_spreads[(yearly_spreads['REGION'] == region) & (yearly_spreads['YEAR'] == date.year)]
 
         if relevant_spreads.empty:
             # Fallback to default if no data for the year/state
@@ -53,7 +53,7 @@ def get_merchant_price(profile, price_type, state, date, monthly_prices, yearly_
         filtered_prices = monthly_prices[
             (monthly_prices['profile'] == profile) &
             (monthly_prices['type'] == price_type) &
-            (monthly_prices['state'] == state) &
+            (monthly_prices['REGION'] == region) &
             (monthly_prices['_time_dt'].dt.year == date.year) &
             (monthly_prices['_time_dt'].dt.month == date.month)
         ]
@@ -73,7 +73,7 @@ def get_merchant_price(profile, price_type, state, date, monthly_prices, yearly_
                 fallback_prices = monthly_prices[
                     (monthly_prices['profile'] == profile) &
                     (monthly_prices['type'] == price_type) &
-                    (monthly_prices['state'] == state) &
+                    (monthly_prices['REGION'] == region) &
                     (monthly_prices['_time_dt'].dt.year == year_to_try) &
                     (monthly_prices['_time_dt'].dt.month == month_to_try)
                 ]

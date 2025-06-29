@@ -11,7 +11,7 @@ DAYS_IN_MONTH = 30.4375 # Average days in a month
 HOURS_IN_MONTH = DAYS_IN_MONTH * 24
 
 def calculate_renewables_revenue(asset, current_date, monthly_prices, yearly_spreads, constants):
-    asset_start_date = datetime.strptime(asset['assetStartDate'], '%Y-%m-%d')
+    asset_start_date = datetime.strptime(asset['OperatingStartDate'], '%Y-%m-%d')
     # Determine capacity factor for the current month/quarter
     capacity_factor = 0.25 # Default fallback
     
@@ -23,18 +23,18 @@ def calculate_renewables_revenue(asset, current_date, monthly_prices, yearly_spr
     elif 'capacityFactor' in asset and asset['capacityFactor'] not in ['', None]:
         capacity_factor = float(asset['capacityFactor']) / 100
     else:
-        # Default capacity factors by technology and state if not specified in asset
+        # Default capacity factors by technology and region if not specified in asset
         default_factors = {
             'solar': {'NSW': 0.28, 'VIC': 0.25, 'QLD': 0.29, 'SA': 0.27, 'WA': 0.26, 'TAS': 0.23},
             'wind': {'NSW': 0.35, 'VIC': 0.38, 'QLD': 0.32, 'SA': 0.40, 'WA': 0.37, 'TAS': 0.42}
         }
-        capacity_factor = default_factors.get(asset['type'], {}).get(asset['state'], 0.25)
+        capacity_factor = default_factors.get(asset['type'], {}).get(asset['region'], 0.25)
 
     capacity = float(asset.get('capacity', 0))
     volume_loss_adjustment = float(asset.get('volumeLossAdjustment', 95)) / 100
 
     # Calculate degradation factor
-    asset_start_date = datetime.strptime(asset['assetStartDate'], '%Y-%m-%d')
+    asset_start_date = datetime.strptime(asset['OperatingStartDate'], '%Y-%m-%d')
     years_since_start = (current_date.year - asset_start_date.year) + (current_date.month - asset_start_date.month) / 12
     degradation = float(asset.get('annualDegradation', 0.5)) / 100
     degradation_factor = (1 - degradation) ** max(0, years_since_start)
@@ -113,8 +113,8 @@ def calculate_renewables_revenue(asset, current_date, monthly_prices, yearly_spr
     }
     profile = profile_map.get(asset['type'], asset['type'])
 
-    merchant_green_price = get_merchant_price(profile, 'green', asset['state'], current_date, monthly_prices, yearly_spreads, constants)
-    merchant_energy_price = get_merchant_price(profile, 'Energy', asset['state'], current_date, monthly_prices, yearly_spreads, constants)
+    merchant_green_price = get_merchant_price(profile, 'green', asset['region'], current_date, monthly_prices, yearly_spreads, constants)
+    merchant_energy_price = get_merchant_price(profile, 'Energy', asset['region'], current_date, monthly_prices, yearly_spreads, constants)
 
     merchant_green = (monthly_generation * green_merchant_percentage * merchant_green_price) / 1_000_000
     merchant_energy = (monthly_generation * energy_merchant_percentage * merchant_energy_price) / 1_000_000
@@ -135,7 +135,7 @@ def calculate_storage_revenue(asset, current_date, monthly_prices, yearly_spread
     capacity = float(asset.get('capacity', 0))
     volume_loss_adjustment = float(asset.get('volumeLossAdjustment', 95)) / 100
     
-    asset_start_date = datetime.strptime(asset['assetStartDate'], '%Y-%m-%d')
+    asset_start_date = datetime.strptime(asset['OperatingStartDate'], '%Y-%m-%d')
     years_since_start = (current_date.year - asset_start_date.year) + (current_date.month - asset_start_date.month) / 12
     degradation = float(asset.get('annualDegradation', 0.5)) / 100
     degradation_factor = (1 - degradation) ** max(0, years_since_start)
@@ -182,7 +182,7 @@ def calculate_storage_revenue(asset, current_date, monthly_prices, yearly_spread
         calculated_duration = volume / capacity if capacity > 0 else 0
         
         # Get merchant price using the helper, passing duration as price_type
-        price_spread = get_merchant_price('storage', calculated_duration, asset['state'], current_date, monthly_prices, yearly_spreads, constants)
+        price_spread = get_merchant_price('storage', calculated_duration, asset['region'], current_date, monthly_prices, yearly_spreads, constants)
         
         revenue = monthly_volume * price_spread * merchant_percentage
         merchant_revenue = revenue / 1_000_000
@@ -219,8 +219,8 @@ def calculate_revenue_timeseries(assets, monthly_prices, yearly_spreads, start_d
         asset_id = asset['id']
         asset_revenues = []
         
-        # Ensure assetStartDate is a datetime object for comparison
-        asset_start_date = datetime.strptime(asset['assetStartDate'], '%Y-%m-%d')
+        # Ensure OperatingStartDate is a datetime object for comparison
+        asset_start_date = datetime.strptime(asset['OperatingStartDate'], '%Y-%m-%d')
         asset_life_end_date = asset_start_date + relativedelta(years=int(asset.get('assetLife', 25)))
 
         for current_date in date_range:

@@ -3,8 +3,8 @@
     "1": {
       "id": "1",
       "name": "Boulder Creek Wind Farm",
-      "state": "QLD",
-      "assetStartDate": "2026-07-01",
+      "region": "QLD",
+      "OperatingStartDate": "2026-07-01",
       "capacity": 228,
       "type": "wind",
       "volumeLossAdjustment": 95,
@@ -36,8 +36,8 @@
     "2": {
       "id": "2",
       "name": "Carmodys Hill Wind Farm",
-      "state": "SA",
-      "assetStartDate": "2028-01-01",
+      "region": "SA",
+      "OperatingStartDate": "2028-01-01",
       "capacity": 192,
       "type": "wind",
       "volumeLossAdjustment": 95,
@@ -69,8 +69,8 @@
     "3": {
       "id": "3",
       "name": "Argoon Wind Farm",
-      "state": "NSW",
-      "assetStartDate": "2029-01-01",
+      "region": "NSW",
+      "OperatingStartDate": "2029-01-01",
       "capacity": 612,
       "type": "wind",
       "volumeLossAdjustment": 95,

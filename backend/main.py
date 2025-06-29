@@ -49,15 +49,19 @@ def run_cashflow_model():
         latest_ops_end = pd.to_datetime('1900-01-01') # Initialize with a past date
 
         for asset in ASSETS:
+            # Ensure 'OperatingStartDate' is set, defaulting to 'assetStartDate' if not present
+            if 'OperatingStartDate' not in asset and 'assetStartDate' in asset:
+                asset['OperatingStartDate'] = asset['assetStartDate']
+
             # Use 'constructionStartDate' for the earliest start
             if 'constructionStartDate' in asset and asset['constructionStartDate']:
                 current_start = pd.to_datetime(asset['constructionStartDate'])
                 if current_start < earliest_construction_start:
                     earliest_construction_start = current_start
             
-            # Calculate end date based on assetStartDate + assetLife
-            if 'assetStartDate' in asset and asset['assetStartDate'] and 'assetLife' in asset and asset['assetLife']:
-                ops_start_date = pd.to_datetime(asset['assetStartDate'])
+            # Calculate end date based on OperatingStartDate + assetLife
+            if 'OperatingStartDate' in asset and asset['OperatingStartDate'] and 'assetLife' in asset and asset['assetLife']:
+                ops_start_date = pd.to_datetime(asset['OperatingStartDate'])
                 asset_life_years = int(asset['assetLife'])
                 current_ops_end = ops_start_date + relativedelta(years=asset_life_years)
                 

@@ -26,7 +26,7 @@ def calculate_opex_timeseries(assets, opex_assumptions, start_date, end_date):
         escalation = asset_assumptions.get('operatingCostEscalation', 0) / 100
 
         opex_values = []
-        asset_start_date = pd.to_datetime(asset['assetStartDate'])
+        asset_start_date = pd.to_datetime(asset['OperatingStartDate'])
         asset_life_end_date = asset_start_date + relativedelta(years=int(asset.get('assetLife', 25)))
 
         for date in date_range:
@@ -73,7 +73,7 @@ def calculate_capex_timeseries(assets, capex_assumptions, start_date, end_date, 
         max_gearing = asset_assumptions.get('maxGearing', 0.7) # Default to 70% gearing
         
         construction_start = pd.to_datetime(asset['constructionStartDate'])
-        construction_end = pd.to_datetime(asset['assetStartDate']) # Assuming assetStartDate is COD
+        construction_end = pd.to_datetime(asset['OperatingStartDate']) # Assuming OperatingStartDate is COD
 
         capex_values = []
         equity_capex_values = []

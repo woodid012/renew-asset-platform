@@ -6,8 +6,8 @@
     "1": {
       "id": "1",
       "name": "Templers BESS",
-      "state": "SA",
-      "assetStartDate": "2025-07-01",
+      "region": "SA",
+      "OperatingStartDate": "2025-07-01",
       "capacity": 111,
       "type": "storage",
       "volumeLossAdjustment": 95,

@@ -39,7 +39,7 @@ def aggregate_cashflows(revenue, opex, capex, debt_schedule, end_date, assets_da
         for asset_info in assets_data:
             asset_id = asset_info['id']
             asset_name = asset_info['name']
-            asset_start_date = pd.to_datetime(asset_info['assetStartDate'])
+            asset_start_date = pd.to_datetime(asset_info['OperatingStartDate'])
             asset_life_years = int(asset_info.get('assetLife', 25))
             
             # Calculate the exact end date of the asset's life

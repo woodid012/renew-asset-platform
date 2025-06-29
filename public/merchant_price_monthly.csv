@@ -1,4 +1,4 @@
-profile,type,state,time,price
+profile,type,REGION,time,price
 baseload,Energy,NSW,1/07/2024,143.6
 baseload,Energy,QLD,1/07/2024,99.2
 baseload,Energy,SA,1/07/2024,125.6
