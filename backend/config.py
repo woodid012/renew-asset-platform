@@ -33,3 +33,7 @@ ENABLE_TERMINAL_VALUE = True # Enable or disable terminal value calculation
 # 'annuity': Debt is sized based on a fixed annuity payment (traditional approach).
 DEFAULT_DEBT_SIZING_METHOD = 'dscr'
 DSCR_CALCULATION_FREQUENCY = 'quarterly' # 'monthly' or 'quarterly'
+
+# Merchant Price Escalation Settings
+MERCHANT_PRICE_ESCALATION_RATE = 0.025  # 2.5% annual escalation
+MERCHANT_PRICE_ESCALATION_REFERENCE_DATE = '2025-01-01'  # Reference date for escalation calculation

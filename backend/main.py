@@ -11,7 +11,7 @@ import os
 import pandas as pd
 from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
-from config import DATE_FORMAT, OUTPUT_DATE_FORMAT, DEFAULT_CAPEX_FUNDING_TYPE, DEFAULT_DEBT_REPAYMENT_FREQUENCY, DEFAULT_DEBT_GRACE_PERIOD, USER_MODEL_START_DATE, USER_MODEL_END_DATE, DEFAULT_DEBT_SIZING_METHOD, DSCR_CALCULATION_FREQUENCY, ENABLE_TERMINAL_VALUE
+from config import DATE_FORMAT, OUTPUT_DATE_FORMAT, DEFAULT_CAPEX_FUNDING_TYPE, DEFAULT_DEBT_REPAYMENT_FREQUENCY, DEFAULT_DEBT_GRACE_PERIOD, USER_MODEL_START_DATE, USER_MODEL_END_DATE, DEFAULT_DEBT_SIZING_METHOD, DSCR_CALCULATION_FREQUENCY, ENABLE_TERMINAL_VALUE, MERCHANT_PRICE_ESCALATION_RATE, MERCHANT_PRICE_ESCALATION_REFERENCE_DATE
 from core.input_processor import load_asset_data, load_price_data
 from calculations.revenue import calculate_revenue_timeseries
 from calculations.expenses import calculate_opex_timeseries, calculate_capex_timeseries
@@ -40,6 +40,9 @@ def run_cashflow_model():
     Returns:
         str: JSON representation of the final cash flow DataFrame.
     """
+    print("=== STARTING CASHFLOW MODEL ===")
+    print(f"Merchant Price Escalation: {MERCHANT_PRICE_ESCALATION_RATE:.1%} annually from {MERCHANT_PRICE_ESCALATION_REFERENCE_DATE}")
+    
     # Determine model start and end dates
     if USER_MODEL_START_DATE and USER_MODEL_END_DATE:
         start_date = datetime.strptime(USER_MODEL_START_DATE, DATE_FORMAT)
@@ -78,21 +81,29 @@ def run_cashflow_model():
         if start_date == pd.to_datetime('2050-01-01') or end_date == pd.to_datetime('1900-01-01'):
             raise ValueError("Could not determine valid model start or end dates from asset data. Please check 'constructionStartDate', 'assetStartDate' and 'assetLife' (or 'operationsEndDate') in your asset data, or set USER_MODEL_START_DATE and USER_MODEL_END_DATE in config.py.")
 
+    print(f"Model period: {start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}")
+
     # 1. Calculate Revenue
-    revenue_df = calculate_revenue_timeseries(ASSETS, MONTHLY_PRICES, YEARLY_SPREADS, start_date, end_date)
+    print("\n=== CALCULATING REVENUE ===")
+    output_directory = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'results')
+    revenue_df = calculate_revenue_timeseries(ASSETS, MONTHLY_PRICES, YEARLY_SPREADS, start_date, end_date, output_directory)
 
     # 2. Calculate Expenses (initial CAPEX with assumed funding split)
+    print("\n=== CALCULATING EXPENSES ===")
     opex_df = calculate_opex_timeseries(ASSETS, ASSET_COST_ASSUMPTIONS, start_date, end_date)
     initial_capex_df = calculate_capex_timeseries(ASSETS, ASSET_COST_ASSUMPTIONS, start_date, end_date, capex_funding_type=DEFAULT_CAPEX_FUNDING_TYPE)
 
     # 3. Calculate preliminary CFADS for debt sizing
+    print("\n=== CALCULATING PRELIMINARY CASH FLOWS ===")
     prelim_cash_flow = pd.merge(revenue_df, opex_df, on=['asset_id', 'date'])
     prelim_cash_flow['cfads'] = prelim_cash_flow['revenue'] - prelim_cash_flow['opex']
 
     # 4. Size debt based on operational cash flows and update CAPEX funding
+    print("\n=== DEBT SIZING ===")
     debt_df, updated_capex_df = calculate_debt_schedule(ASSETS, ASSET_COST_ASSUMPTIONS, initial_capex_df, prelim_cash_flow, start_date, end_date, repayment_frequency=DEFAULT_DEBT_REPAYMENT_FREQUENCY, grace_period=DEFAULT_DEBT_GRACE_PERIOD, debt_sizing_method=DEFAULT_DEBT_SIZING_METHOD, dscr_calculation_frequency=DSCR_CALCULATION_FREQUENCY)
 
     # 5. Aggregate into Final Cash Flow using updated CAPEX with correct debt/equity split
+    print("\n=== AGGREGATING FINAL CASH FLOWS ===")
     final_cash_flow = aggregate_cashflows(revenue_df, opex_df, updated_capex_df, debt_df, end_date, ASSETS, ASSET_COST_ASSUMPTIONS)
 
     # Assign period type (Construction or Operations)
@@ -147,7 +158,8 @@ def run_cashflow_model():
     print("========================\n")
     
     # Calculate Equity IRR - ONLY for Construction + Operations + Terminal periods
-    print("Calculating Equity XIRR for Construction + Operations + Terminal periods...")
+    print("=== CALCULATING EQUITY XIRR ===")
+    print("Including Construction + Operations + Terminal periods...")
     
     # Filter cash flows to include only Construction ('C') and Operations ('O') periods
     equity_irr_df = final_cash_flow[
@@ -171,13 +183,14 @@ def run_cashflow_model():
         print("Warning: No equity cash flows found for Construction + Operations periods")
 
     # Generate summary data
+    print("\n=== GENERATING SUMMARY DATA ===")
     summary_data = generate_summary_data(final_cash_flow)
     print("Generated summary data:")
     for key, df in summary_data.items():
-        print(f"  {key}:\n{df.head()}") # Print head of each summary for verification
+        print(f"  {key}: {len(df)} periods")
 
     # Save to JSON file
-    output_directory = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'results')
+    print("\n=== SAVING OUTPUTS ===")
     generate_asset_and_platform_output(final_cash_flow, irr, output_directory)
 
     def generate_asset_inputs_summary(assets, asset_cost_assumptions, config_values, debt_summary, output_dir):
@@ -236,10 +249,15 @@ def run_cashflow_model():
         "USER_MODEL_END_DATE": USER_MODEL_END_DATE,
         "DEFAULT_DEBT_SIZING_METHOD": DEFAULT_DEBT_SIZING_METHOD,
         "DSCR_CALCULATION_FREQUENCY": DSCR_CALCULATION_FREQUENCY,
-        "ENABLE_TERMINAL_VALUE": ENABLE_TERMINAL_VALUE
+        "ENABLE_TERMINAL_VALUE": ENABLE_TERMINAL_VALUE,
+        "MERCHANT_PRICE_ESCALATION_RATE": MERCHANT_PRICE_ESCALATION_RATE,
+        "MERCHANT_PRICE_ESCALATION_REFERENCE_DATE": MERCHANT_PRICE_ESCALATION_REFERENCE_DATE
     }
     generate_asset_inputs_summary(ASSETS, ASSET_COST_ASSUMPTIONS, config_values, debt_summary, output_directory)
 
+    print("\n=== CASHFLOW MODEL COMPLETE ===")
+    print(f"Equity XIRR: {irr:.2%}" if not pd.isna(irr) else "Equity XIRR: Could not calculate")
+    
     return "Cash flow model run complete. Outputs saved and summaries generated."
 
 import sys

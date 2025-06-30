@@ -1,7 +1,9 @@
-# utils/revenue.py
+# backend/calculations/revenue.py
 
 import pandas as pd
 import numpy as np
+import os
+import json
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
 from .price_curves import get_merchant_price
@@ -198,7 +200,47 @@ def calculate_storage_revenue(asset, current_date, monthly_prices, yearly_spread
         'monthlyGeneration': monthly_volume
     }
 
-def calculate_revenue_timeseries(assets, monthly_prices, yearly_spreads, start_date, end_date):
+def export_detailed_revenue(revenue_data_list, output_dir='results'):
+    """
+    Export detailed revenue breakdown to JSON files.
+    
+    Args:
+        revenue_data_list (list): List of revenue data dictionaries
+        output_dir (str): Output directory path
+    """
+    detailed_output_dir = os.path.join(output_dir, 'detailed-revenue')
+    
+    # Ensure output directory exists
+    os.makedirs(detailed_output_dir, exist_ok=True)
+    
+    # Convert to DataFrame for easier manipulation
+    df = pd.DataFrame(revenue_data_list)
+    
+    if df.empty:
+        print("No revenue data to export")
+        return
+    
+    # Convert date to string for JSON serialization
+    df['date'] = df['date'].dt.strftime('%Y-%m-%d')
+    
+    # Export by asset
+    for asset_id in df['asset_id'].unique():
+        asset_data = df[df['asset_id'] == asset_id].to_dict('records')
+        asset_file = os.path.join(detailed_output_dir, f'asset_{asset_id}_revenue.json')
+        
+        with open(asset_file, 'w') as f:
+            json.dump(asset_data, f, indent=2)
+        
+        print(f"Exported detailed revenue for asset {asset_id} to {asset_file}")
+    
+    # Export combined data
+    combined_file = os.path.join(detailed_output_dir, 'all_assets_revenue.json')
+    with open(combined_file, 'w') as f:
+        json.dump(df.to_dict('records'), f, indent=2)
+    
+    print(f"Exported combined detailed revenue to {combined_file}")
+
+def calculate_revenue_timeseries(assets, monthly_prices, yearly_spreads, start_date, end_date, output_dir='results'):
     """
     Calculates monthly revenue for each asset over a specified time period.
 
@@ -208,11 +250,13 @@ def calculate_revenue_timeseries(assets, monthly_prices, yearly_spreads, start_d
         yearly_spreads (pd.DataFrame): A DataFrame with yearly spread information.
         start_date (datetime): The start date of the analysis period.
         end_date (datetime): The end date of the analysis period.
+        output_dir (str): Output directory for detailed revenue export.
 
     Returns:
         pd.DataFrame: A DataFrame with columns for asset_id, date, and revenue.
     """
     all_revenue_data = []
+    detailed_revenue_data = []
     date_range = pd.date_range(start=start_date, end=end_date, freq='MS')
 
     for asset in assets:
@@ -245,6 +289,7 @@ def calculate_revenue_timeseries(assets, monthly_prices, yearly_spreads, start_d
                     }
             # If current_date < asset_start_date, revenue_breakdown remains the initialized zero-revenue dict
 
+            # Store for main output
             asset_revenues.append({
                 'asset_id': asset_id,
                 'date': current_date,
@@ -255,7 +300,28 @@ def calculate_revenue_timeseries(assets, monthly_prices, yearly_spreads, start_d
                 'merchantEnergyRevenue': revenue_breakdown['merchantEnergy'],
                 'monthlyGeneration': revenue_breakdown['monthlyGeneration']
             })
+            
+            # Store for detailed export
+            detailed_revenue_data.append({
+                'asset_id': asset_id,
+                'asset_name': asset.get('name', f'Asset_{asset_id}'),
+                'asset_type': asset.get('type', 'unknown'),
+                'asset_region': asset.get('region', 'unknown'),
+                'date': current_date,
+                'total_revenue': revenue_breakdown['total'],
+                'contracted_green_revenue': revenue_breakdown['contractedGreen'],
+                'contracted_energy_revenue': revenue_breakdown['contractedEnergy'],
+                'merchant_green_revenue': revenue_breakdown['merchantGreen'],
+                'merchant_energy_revenue': revenue_breakdown['merchantEnergy'],
+                'green_percentage_contracted': revenue_breakdown['greenPercentage'],
+                'energy_percentage_contracted': revenue_breakdown['EnergyPercentage'],
+                'monthly_generation_mwh': revenue_breakdown['monthlyGeneration']
+            })
+            
         all_revenue_data.append(pd.DataFrame(asset_revenues))
+
+    # Export detailed revenue data
+    export_detailed_revenue(detailed_revenue_data, output_dir)
 
     if not all_revenue_data:
         return pd.DataFrame(columns=['asset_id', 'date', 'revenue', 'contractedGreenRevenue', 'contractedEnergyRevenue', 'merchantGreenRevenue', 'merchantEnergyRevenue', 'monthlyGeneration'])

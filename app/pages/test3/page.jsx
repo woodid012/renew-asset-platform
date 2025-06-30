@@ -82,27 +82,24 @@ const Test3Page = () => {
     return NaN;
   };
 
-  // Calculate client-side IRR using XIRR
-  const calculateClientIRR = (assetData, assetInputs) => {
-    if (!assetData || assetData.length < 2 || !assetInputs) {
+  // Calculate simple IRR from operations cash flows only
+  const calculateSimpleIRR = (assetData) => {
+    if (!assetData || assetData.length < 2) {
       return NaN;
     }
 
-    // Get construction start date
-    const constructionStartDate = new Date(assetInputs.constructionStartDate);
-    
-    // Filter data from construction start onwards and sort by date
-    const filteredData = assetData
-      .filter(item => new Date(item.date) >= constructionStartDate)
+    // Filter to only operational periods (where revenue > 0)
+    const operationalData = assetData
+      .filter(item => item.revenue > 0 || item.cfads > 0)
       .sort((a, b) => new Date(a.date) - new Date(b.date));
 
-    if (filteredData.length < 2) {
+    if (operationalData.length < 2) {
       return NaN;
     }
 
-    // Extract dates and cash flows
-    const dates = filteredData.map(item => item.date);
-    const cashFlows = filteredData.map(item => item.equity_cash_flow || 0);
+    // Extract dates and cash flows for operations only
+    const dates = operationalData.map(item => item.date);
+    const cashFlows = operationalData.map(item => item.equity_cash_flow || 0);
 
     // Check if all cash flows are zero
     if (cashFlows.every(cf => cf === 0)) {
@@ -139,7 +136,7 @@ const Test3Page = () => {
         const response = await fetch('/api/results?assetId=assets_combined');
         if (response.ok) {
           const combinedData = await response.json();
-          if (combinedData && combinedData.length > 0 && combinedData[0].irr !== undefined) {
+          if (combinedData && combinedData.length > 0 && combinedData[0].irr !== undefined && combinedData[0].irr !== null) {
             setEquityIrr((combinedData[0].irr * 100).toFixed(2) + '%');
           }
         } else {
@@ -207,7 +204,9 @@ const Test3Page = () => {
             dscr: 0, 
             period_type: '',
             interest: 0,
-            principal: 0
+            principal: 0,
+            debt_service: 0,
+            dscr_count: 0
           };
         }
 
@@ -221,10 +220,34 @@ const Test3Page = () => {
         aggregated[periodKey].terminal_value += item.terminal_value || 0;
         aggregated[periodKey].interest += item.interest || 0;
         aggregated[periodKey].principal += item.principal || 0;
+        aggregated[periodKey].debt_service += (item.interest || 0) + (item.principal || 0);
+        
+        // Handle DSCR averaging
+        if (item.dscr && item.dscr > 0 && isFinite(item.dscr)) {
+          aggregated[periodKey].dscr += item.dscr;
+          aggregated[periodKey].dscr_count += 1;
+        }
+        
         aggregated[periodKey].period_type = item.period_type || '';
       });
 
-      return Object.values(aggregated).sort((a, b) => a.date.localeCompare(b.date));
+      return Object.values(aggregated).map(period => {
+        // Calculate average DSCR for the period
+        if (period.dscr_count > 0) {
+          period.dscr = period.dscr / period.dscr_count;
+        } else if (period.debt_service > 0 && period.cfads > 0) {
+          // Fallback: calculate DSCR from aggregated values
+          period.dscr = period.cfads / period.debt_service;
+        } else {
+          period.dscr = 0;
+        }
+        
+        // Clean up temporary field
+        delete period.dscr_count;
+        delete period.debt_service;
+        
+        return period;
+      }).sort((a, b) => a.date.localeCompare(b.date));
     };
 
     return aggregate(filteredData, timeAggregation);
@@ -238,9 +261,11 @@ const Test3Page = () => {
     const totalCapex = assetData.reduce((sum, item) => sum + (item.capex || 0), 0);
     const totalEquityCapex = assetData.reduce((sum, item) => sum + (item.equity_capex || 0), 0);
     const totalDebtCapex = assetData.reduce((sum, item) => sum + (item.debt_capex || 0), 0);
-    const totalRevenue = assetData.reduce((sum, item) => sum + (item.revenue || 0), 0);
     const totalOpex = assetData.reduce((sum, item) => sum + (item.opex || 0), 0);
     const totalEquityCashFlow = assetData.reduce((sum, item) => sum + (item.equity_cash_flow || 0), 0);
+
+    // Calculate gearing from the asset data
+    const gearing = totalCapex > 0 ? ((totalDebtCapex / totalCapex) * 100).toFixed(1) : '0.0';
 
     const consStart = assetData.length > 0 ? new Date(assetData[0].date).toLocaleDateString() : 'N/A';
     const consEnd = assetData.length > 0 ? new Date(assetData[assetData.length - 1].date).toLocaleDateString() : 'N/A';
@@ -253,7 +278,7 @@ const Test3Page = () => {
       totalCapex: totalCapex.toFixed(2),
       totalEquity: totalEquityCapex.toFixed(2),
       totalDebt: totalDebtCapex.toFixed(2),
-      totalRevenue: totalRevenue.toFixed(2),
+      gearing,
       totalOpex: totalOpex.toFixed(2),
       totalEquityCashFlow: totalEquityCashFlow.toFixed(2),
       consStart,
@@ -268,18 +293,18 @@ const Test3Page = () => {
     return assetInputsSummary.asset_inputs.find(asset => asset.id === selectedAsset);
   }, [assetInputsSummary, selectedAsset]);
 
-  // Calculate client-side IRR when data changes
+  // Calculate simple IRR when data changes
   useEffect(() => {
-    if (data.length > 0 && selectedAsset !== null && selectedAssetInputs) {
+    if (data.length > 0 && selectedAsset !== null) {
       const assetData = data.filter(item => item.asset_id === selectedAsset);
-      const irr = calculateClientIRR(assetData, selectedAssetInputs);
+      const irr = calculateSimpleIRR(assetData);
       if (!isNaN(irr)) {
         setClientSideIrr((irr * 100).toFixed(2) + '%');
       } else {
         setClientSideIrr('N/A');
       }
     }
-  }, [data, selectedAsset, selectedAssetInputs]);
+  }, [data, selectedAsset]);
 
   const exportToCSV = () => {
     if (processData.length === 0) return;
@@ -287,6 +312,9 @@ const Test3Page = () => {
     const headers = [
       'Period',
       'Type',
+      'Capex ($M)',
+      'Debt ($M)',
+      'Equity ($M)',
       'Revenue ($M)',
       'Opex ($M)',
       'Capex ($M)',
@@ -305,6 +333,9 @@ const Test3Page = () => {
       ...processData.map(row => [
         row.date,
         row.period_type,
+        row.capex.toFixed(2),
+        row.debt_capex.toFixed(2),
+        row.equity_capex.toFixed(2),
         row.revenue.toFixed(2),
         row.opex.toFixed(2),
         row.capex.toFixed(2),
@@ -405,10 +436,10 @@ const Test3Page = () => {
             </div>
           </div>
           <div className="flex items-center space-x-3">
-            <DollarSign className="w-6 h-6 text-red-600" />
+            <BarChart3 className="w-6 h-6 text-indigo-600" />
             <div>
-              <p className="text-sm font-medium text-gray-600">Total Revenue</p>
-              <p className="text-lg font-bold text-gray-900">${summaryMetrics.totalRevenue}M</p>
+              <p className="text-sm font-medium text-gray-600">Gearing %</p>
+              <p className="text-lg font-bold text-gray-900">{summaryMetrics.gearing}%</p>
             </div>
           </div>
           <div className="flex items-center space-x-3">
@@ -437,8 +468,10 @@ const Test3Page = () => {
           <p className="text-sm text-gray-600">
             <strong>Total Equity Cash Flow:</strong> ${summaryMetrics.totalEquityCashFlow}M | 
             <strong> Construction Start:</strong> {selectedAssetInputs?.constructionStartDate || 'N/A'} | 
+            <strong> Operations Start:</strong> {selectedAssetInputs?.OperatingStartDate || selectedAssetInputs?.assetStartDate || 'N/A'} | 
+            <strong> Debt Period:</strong> {selectedAssetInputs?.costAssumptions?.tenorYears || 'N/A'} years | 
             <strong> Periods from Construction:</strong> {
-              selectedAssetInputs ? 
+              selectedAssetInputs?.constructionStartDate ? 
               data.filter(item => item.asset_id === selectedAsset && new Date(item.date) >= new Date(selectedAssetInputs.constructionStartDate)).length : 
               'N/A'
             }
@@ -490,9 +523,13 @@ const Test3Page = () => {
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Period</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
+                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Capex</th>
+                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Debt</th>
+                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Equity</th>
                   <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Revenue</th>
                   <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Opex</th>
                   <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">CFADS</th>
+                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Avg DSCR</th>
                   <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Interest</th>
                   <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Principal</th>
                   <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Equity CF</th>
@@ -504,9 +541,13 @@ const Test3Page = () => {
                   <tr key={index} className={row.equity_cash_flow < 0 ? 'bg-red-50' : row.equity_cash_flow > 0 ? 'bg-green-50' : ''}>
                     <td className="px-4 py-2 text-sm font-medium text-gray-900">{row.date}</td>
                     <td className="px-4 py-2 text-sm text-gray-500">{row.period_type}</td>
+                    <td className="px-4 py-2 text-sm text-gray-500 text-right">{row.capex.toFixed(1)}</td>
+                    <td className="px-4 py-2 text-sm text-gray-500 text-right">{row.debt_capex.toFixed(1)}</td>
+                    <td className="px-4 py-2 text-sm text-gray-500 text-right">{row.equity_capex.toFixed(1)}</td>
                     <td className="px-4 py-2 text-sm text-gray-500 text-right">{row.revenue.toFixed(1)}</td>
                     <td className="px-4 py-2 text-sm text-gray-500 text-right">{row.opex.toFixed(1)}</td>
                     <td className="px-4 py-2 text-sm text-gray-500 text-right">{row.cfads.toFixed(1)}</td>
+                    <td className="px-4 py-2 text-sm text-gray-500 text-right">{row.dscr && row.dscr !== 0 && isFinite(row.dscr) ? row.dscr.toFixed(2) : '-'}</td>
                     <td className="px-4 py-2 text-sm text-gray-500 text-right">{row.interest.toFixed(1)}</td>
                     <td className="px-4 py-2 text-sm text-gray-500 text-right">{row.principal.toFixed(1)}</td>
                     <td className="px-4 py-2 text-sm font-medium text-right">{row.equity_cash_flow.toFixed(1)}</td>
