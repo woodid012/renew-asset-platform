@@ -2,7 +2,7 @@
 
 # Date and Time Settings
 DATE_FORMAT = '%Y-%m-%d'
-OUTPUT_DATE_FORMAT = '%Y-%m-%dT%H:%M:%S.%fZ' # ISO 8601 format for JSON output
+OUTPUT_DATE_FORMAT = '%Y-%m-%dT%H:%MZ' # ISO 8601 format for JSON output
 
 # CAPEX Funding Options
 # 'equity_first': Equity is used first until exhausted, then debt.

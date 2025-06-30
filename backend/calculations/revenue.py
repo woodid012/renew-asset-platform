@@ -121,6 +121,13 @@ def calculate_renewables_revenue(asset, current_date, monthly_prices, yearly_spr
     merchant_green = (monthly_generation * green_merchant_percentage * merchant_green_price) / 1_000_000
     merchant_energy = (monthly_generation * energy_merchant_percentage * merchant_energy_price) / 1_000_000
 
+    # Calculate average prices (Revenue / Volume)
+    green_volume = monthly_generation * (total_green_percentage + green_merchant_percentage * 100) / 100
+    energy_volume = monthly_generation * (total_energy_percentage + energy_merchant_percentage * 100) / 100
+    
+    avg_green_price = ((contracted_green + merchant_green) * 1_000_000 / green_volume) if green_volume > 0 else 0
+    avg_energy_price = ((contracted_energy + merchant_energy) * 1_000_000 / energy_volume) if energy_volume > 0 else 0
+
     return {
         'total': contracted_green + contracted_energy + merchant_green + merchant_energy,
         'contractedGreen': contracted_green,
@@ -129,7 +136,9 @@ def calculate_renewables_revenue(asset, current_date, monthly_prices, yearly_spr
         'merchantEnergy': merchant_energy,
         'greenPercentage': total_green_percentage,
         'EnergyPercentage': total_energy_percentage,
-        'monthlyGeneration': monthly_generation
+        'monthlyGeneration': monthly_generation,
+        'avgGreenPrice': avg_green_price,
+        'avgEnergyPrice': avg_energy_price
     }
 
 def calculate_storage_revenue(asset, current_date, monthly_prices, yearly_spreads, constants):
@@ -189,6 +198,13 @@ def calculate_storage_revenue(asset, current_date, monthly_prices, yearly_spread
         revenue = monthly_volume * price_spread * merchant_percentage
         merchant_revenue = revenue / 1_000_000
 
+    # Calculate average prices (Revenue / Volume) - for storage, this is typically energy price
+    contracted_volume = monthly_volume * total_contracted_percentage / 100
+    merchant_volume = monthly_volume * merchant_percentage
+    total_volume = contracted_volume + merchant_volume
+    
+    avg_energy_price = ((contracted_revenue + merchant_revenue) * 1_000_000 / total_volume) if total_volume > 0 else 0
+
     return {
         'total': contracted_revenue + merchant_revenue,
         'contractedGreen': 0, # Storage typically doesn't have green revenue
@@ -197,7 +213,9 @@ def calculate_storage_revenue(asset, current_date, monthly_prices, yearly_spread
         'merchantEnergy': merchant_revenue,
         'greenPercentage': 0,
         'EnergyPercentage': total_contracted_percentage,
-        'monthlyGeneration': monthly_volume
+        'monthlyGeneration': monthly_volume,
+        'avgGreenPrice': 0,
+        'avgEnergyPrice': avg_energy_price
     }
 
 def export_detailed_revenue(revenue_data_list, output_dir='results'):
@@ -271,7 +289,7 @@ def calculate_revenue_timeseries(assets, monthly_prices, yearly_spreads, start_d
             revenue_breakdown = {
                 'total': 0, 'contractedGreen': 0, 'contractedEnergy': 0,
                 'merchantGreen': 0, 'merchantEnergy': 0, 'greenPercentage': 0,
-                'EnergyPercentage': 0, 'monthlyGeneration': 0
+                'EnergyPercentage': 0, 'monthlyGeneration': 0, 'avgGreenPrice': 0, 'avgEnergyPrice': 0
             }
 
             # Only calculate revenue if the asset is operational and within its asset life
@@ -285,7 +303,7 @@ def calculate_revenue_timeseries(assets, monthly_prices, yearly_spreads, start_d
                     revenue_breakdown = {
                         'total': 0, 'contractedGreen': 0, 'contractedEnergy': 0,
                         'merchantGreen': 0, 'merchantEnergy': 0, 'greenPercentage': 0,
-                        'EnergyPercentage': 0, 'monthlyGeneration': 0
+                        'EnergyPercentage': 0, 'monthlyGeneration': 0, 'avgGreenPrice': 0, 'avgEnergyPrice': 0
                     }
             # If current_date < asset_start_date, revenue_breakdown remains the initialized zero-revenue dict
 
@@ -298,7 +316,9 @@ def calculate_revenue_timeseries(assets, monthly_prices, yearly_spreads, start_d
                 'contractedEnergyRevenue': revenue_breakdown['contractedEnergy'],
                 'merchantGreenRevenue': revenue_breakdown['merchantGreen'],
                 'merchantEnergyRevenue': revenue_breakdown['merchantEnergy'],
-                'monthlyGeneration': revenue_breakdown['monthlyGeneration']
+                'monthlyGeneration': revenue_breakdown['monthlyGeneration'],
+                'avgGreenPrice': revenue_breakdown['avgGreenPrice'],
+                'avgEnergyPrice': revenue_breakdown['avgEnergyPrice']
             })
             
             # Store for detailed export
@@ -315,7 +335,9 @@ def calculate_revenue_timeseries(assets, monthly_prices, yearly_spreads, start_d
                 'merchant_energy_revenue': revenue_breakdown['merchantEnergy'],
                 'green_percentage_contracted': revenue_breakdown['greenPercentage'],
                 'energy_percentage_contracted': revenue_breakdown['EnergyPercentage'],
-                'monthly_generation_mwh': revenue_breakdown['monthlyGeneration']
+                'monthly_generation_mwh': revenue_breakdown['monthlyGeneration'],
+                'avg_green_price_mwh': revenue_breakdown['avgGreenPrice'],
+                'avg_energy_price_mwh': revenue_breakdown['avgEnergyPrice']
             })
             
         all_revenue_data.append(pd.DataFrame(asset_revenues))
@@ -324,6 +346,6 @@ def calculate_revenue_timeseries(assets, monthly_prices, yearly_spreads, start_d
     export_detailed_revenue(detailed_revenue_data, output_dir)
 
     if not all_revenue_data:
-        return pd.DataFrame(columns=['asset_id', 'date', 'revenue', 'contractedGreenRevenue', 'contractedEnergyRevenue', 'merchantGreenRevenue', 'merchantEnergyRevenue', 'monthlyGeneration'])
+        return pd.DataFrame(columns=['asset_id', 'date', 'revenue', 'contractedGreenRevenue', 'contractedEnergyRevenue', 'merchantGreenRevenue', 'merchantEnergyRevenue', 'monthlyGeneration', 'avgGreenPrice', 'avgEnergyPrice'])
         
     return pd.concat(all_revenue_data, ignore_index=True)

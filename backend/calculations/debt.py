@@ -178,11 +178,11 @@ def solve_maximum_debt(capex, cash_flows, target_dscrs, max_gearing, interest_ra
     
     if debug:
         if best_debt > 0:
-            print(f"\n✓ SOLUTION: ${best_debt:,.2f}M ({actual_gearing:.1%} gearing)")
+            print(f"SOLUTION: ${best_debt:,.2f}M ({actual_gearing:.1%} gearing)")
             print(f"  Average debt service: ${best_schedule['metrics']['avg_debt_service']:,.2f}M")
             print(f"  Minimum DSCR: {best_schedule['metrics']['min_dscr']:.2f}")
         else:
-            print(f"\nX SOLUTION: No debt viable (100% equity)")
+            print(f"[FAILURE] SOLUTION: No debt viable (100% equity)")
         print("=" * 50)
     
     return {
@@ -288,7 +288,7 @@ def size_debt_for_asset(asset, asset_assumptions, revenue_df, opex_df):
     annual_data = prepare_annual_cash_flows_from_operations_start(asset, revenue_df, opex_df)
     
     if annual_data.empty:
-        print(f"  WARNING: No operational cash flows found for {asset.get('name', asset['id'])}")
+        print(f"WARNING: No operational cash flows found for {asset.get('name', asset['id'])}")
         return {
             'optimal_debt': 0,
             'gearing': 0,
@@ -529,7 +529,7 @@ def calculate_debt_schedule(assets, debt_assumptions, capex_schedule, cash_flow_
             else:
                 asset_capex['debt_capex'] = 0
                 asset_capex['equity_capex'] = asset_capex['capex']
-                print(f"✓ {asset_name}: 100% equity funding")
+                print(f"[SUCCESS] {asset_name}: 100% equity funding")
             
             updated_capex_schedules.append(asset_capex)
             

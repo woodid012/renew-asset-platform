@@ -12,7 +12,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 0.0
+    "monthly_generation_mwh": 0.0,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 0.0
   },
   {
     "asset_id": 5,
@@ -27,7 +29,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 0.0
+    "monthly_generation_mwh": 0.0,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 0.0
   },
   {
     "asset_id": 5,
@@ -42,7 +46,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 0.0
+    "monthly_generation_mwh": 0.0,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 0.0
   },
   {
     "asset_id": 5,
@@ -57,7 +63,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 0.0
+    "monthly_generation_mwh": 0.0,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 0.0
   },
   {
     "asset_id": 5,
@@ -72,7 +80,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 0.0
+    "monthly_generation_mwh": 0.0,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 0.0
   },
   {
     "asset_id": 5,
@@ -87,7 +97,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 0.0
+    "monthly_generation_mwh": 0.0,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 0.0
   },
   {
     "asset_id": 5,
@@ -102,7 +114,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 0.0
+    "monthly_generation_mwh": 0.0,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 0.0
   },
   {
     "asset_id": 5,
@@ -117,7 +131,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 0.0
+    "monthly_generation_mwh": 0.0,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 0.0
   },
   {
     "asset_id": 5,
@@ -132,7 +148,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 0.0
+    "monthly_generation_mwh": 0.0,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 0.0
   },
   {
     "asset_id": 5,
@@ -147,7 +165,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 0.0
+    "monthly_generation_mwh": 0.0,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 0.0
   },
   {
     "asset_id": 5,
@@ -162,7 +182,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 0.0
+    "monthly_generation_mwh": 0.0,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 0.0
   },
   {
     "asset_id": 5,
@@ -177,7 +199,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 0.0
+    "monthly_generation_mwh": 0.0,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 0.0
   },
   {
     "asset_id": 5,
@@ -192,7 +216,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 0.0
+    "monthly_generation_mwh": 0.0,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 0.0
   },
   {
     "asset_id": 5,
@@ -207,7 +233,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 0.0
+    "monthly_generation_mwh": 0.0,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 0.0
   },
   {
     "asset_id": 5,
@@ -222,7 +250,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 0.0
+    "monthly_generation_mwh": 0.0,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 0.0
   },
   {
     "asset_id": 5,
@@ -237,7 +267,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 0.0
+    "monthly_generation_mwh": 0.0,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 0.0
   },
   {
     "asset_id": 5,
@@ -252,7 +284,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 0.0
+    "monthly_generation_mwh": 0.0,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 0.0
   },
   {
     "asset_id": 5,
@@ -267,7 +301,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 0.0
+    "monthly_generation_mwh": 0.0,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 0.0
   },
   {
     "asset_id": 5,
@@ -282,7 +318,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 0.0
+    "monthly_generation_mwh": 0.0,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 0.0
   },
   {
     "asset_id": 5,
@@ -297,7 +335,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 0.0
+    "monthly_generation_mwh": 0.0,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 0.0
   },
   {
     "asset_id": 5,
@@ -312,7 +352,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 0.0
+    "monthly_generation_mwh": 0.0,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 0.0
   },
   {
     "asset_id": 5,
@@ -327,7 +369,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 0.0
+    "monthly_generation_mwh": 0.0,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 0.0
   },
   {
     "asset_id": 5,
@@ -342,7 +386,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 0.0
+    "monthly_generation_mwh": 0.0,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 0.0
   },
   {
     "asset_id": 5,
@@ -357,7 +403,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 0.0
+    "monthly_generation_mwh": 0.0,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 0.0
   },
   {
     "asset_id": 5,
@@ -372,7 +420,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 0.0
+    "monthly_generation_mwh": 0.0,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 0.0
   },
   {
     "asset_id": 5,
@@ -387,7 +437,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 0.0
+    "monthly_generation_mwh": 0.0,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 0.0
   },
   {
     "asset_id": 5,
@@ -402,7 +454,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 0.0
+    "monthly_generation_mwh": 0.0,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 0.0
   },
   {
     "asset_id": 5,
@@ -417,7 +471,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 0.0
+    "monthly_generation_mwh": 0.0,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 0.0
   },
   {
     "asset_id": 5,
@@ -432,7 +488,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 0.0
+    "monthly_generation_mwh": 0.0,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 0.0
   },
   {
     "asset_id": 5,
@@ -447,7 +505,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 0.0
+    "monthly_generation_mwh": 0.0,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 0.0
   },
   {
     "asset_id": 5,
@@ -462,7 +522,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 0.0
+    "monthly_generation_mwh": 0.0,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 0.0
   },
   {
     "asset_id": 5,
@@ -477,7 +539,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 0.0
+    "monthly_generation_mwh": 0.0,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 0.0
   },
   {
     "asset_id": 5,
@@ -492,7 +556,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 0.0
+    "monthly_generation_mwh": 0.0,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 0.0
   },
   {
     "asset_id": 5,
@@ -507,7 +573,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 0.0
+    "monthly_generation_mwh": 0.0,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 0.0
   },
   {
     "asset_id": 5,
@@ -522,7 +590,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 0.0
+    "monthly_generation_mwh": 0.0,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 0.0
   },
   {
     "asset_id": 5,
@@ -537,7 +607,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 0.0
+    "monthly_generation_mwh": 0.0,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 0.0
   },
   {
     "asset_id": 5,
@@ -552,7 +624,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 0.0
+    "monthly_generation_mwh": 0.0,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 0.0
   },
   {
     "asset_id": 5,
@@ -567,7 +641,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 0.0
+    "monthly_generation_mwh": 0.0,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 0.0
   },
   {
     "asset_id": 5,
@@ -582,7 +658,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 0.0
+    "monthly_generation_mwh": 0.0,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 0.0
   },
   {
     "asset_id": 5,
@@ -597,7 +675,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 0.0
+    "monthly_generation_mwh": 0.0,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 0.0
   },
   {
     "asset_id": 5,
@@ -612,7 +692,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 0.0
+    "monthly_generation_mwh": 0.0,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 0.0
   },
   {
     "asset_id": 5,
@@ -627,7 +709,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 0.0
+    "monthly_generation_mwh": 0.0,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 0.0
   },
   {
     "asset_id": 5,
@@ -642,7 +726,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 0.0
+    "monthly_generation_mwh": 0.0,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 0.0
   },
   {
     "asset_id": 5,
@@ -657,7 +743,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 0.0
+    "monthly_generation_mwh": 0.0,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 0.0
   },
   {
     "asset_id": 5,
@@ -672,7 +760,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 0.0
+    "monthly_generation_mwh": 0.0,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 0.0
   },
   {
     "asset_id": 5,
@@ -687,7 +777,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 0.0
+    "monthly_generation_mwh": 0.0,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 0.0
   },
   {
     "asset_id": 5,
@@ -702,7 +794,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 0.0
+    "monthly_generation_mwh": 0.0,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 0.0
   },
   {
     "asset_id": 5,
@@ -717,7 +811,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 0.0
+    "monthly_generation_mwh": 0.0,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 0.0
   },
   {
     "asset_id": 5,
@@ -732,7 +828,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 0.0
+    "monthly_generation_mwh": 0.0,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 0.0
   },
   {
     "asset_id": 5,
@@ -747,7 +845,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 0.0
+    "monthly_generation_mwh": 0.0,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 0.0
   },
   {
     "asset_id": 5,
@@ -762,7 +862,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10957.5
+    "monthly_generation_mwh": 10957.5,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 216.0
   },
   {
     "asset_id": 5,
@@ -777,7 +879,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10953.840786587292
+    "monthly_generation_mwh": 10953.840786587292,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 216.44492463428602
   },
   {
     "asset_id": 5,
@@ -792,7 +896,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10950.182795154305
+    "monthly_generation_mwh": 10950.182795154305,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 216.89076574047115
   },
   {
     "asset_id": 5,
@@ -807,7 +913,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10946.526025292966
+    "monthly_generation_mwh": 10946.526025292966,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 217.3375252063374
   },
   {
     "asset_id": 5,
@@ -822,7 +930,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10942.870476595335
+    "monthly_generation_mwh": 10942.870476595335,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 217.78520492355528
   },
   {
     "asset_id": 5,
@@ -837,7 +947,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10939.216148653608
+    "monthly_generation_mwh": 10939.216148653608,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 218.233806787692
   },
   {
     "asset_id": 5,
@@ -852,7 +964,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10935.563041060117
+    "monthly_generation_mwh": 10935.563041060117,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 218.68333269821912
   },
   {
     "asset_id": 5,
@@ -867,7 +981,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10931.911153407334
+    "monthly_generation_mwh": 10931.911153407334,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 219.13378455852109
   },
   {
     "asset_id": 5,
@@ -882,7 +998,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10928.260485287867
+    "monthly_generation_mwh": 10928.260485287867,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 219.58516427590257
   },
   {
     "asset_id": 5,
@@ -897,7 +1015,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10924.611036294453
+    "monthly_generation_mwh": 10924.611036294453,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 220.03747376159748
   },
   {
     "asset_id": 5,
@@ -912,7 +1032,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10920.962806019972
+    "monthly_generation_mwh": 10920.962806019972,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 220.49071493077622
   },
   {
     "asset_id": 5,
@@ -927,7 +1049,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10917.315794057438
+    "monthly_generation_mwh": 10917.315794057438,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 220.94488970255426
   },
   {
     "asset_id": 5,
@@ -942,7 +1066,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10913.67
+    "monthly_generation_mwh": 10913.67,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 221.4
   },
   {
     "asset_id": 5,
@@ -957,7 +1083,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10910.025423440942
+    "monthly_generation_mwh": 10910.025423440942,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 221.85604775014318
   },
   {
     "asset_id": 5,
@@ -972,7 +1100,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10906.38206397369
+    "monthly_generation_mwh": 10906.38206397369,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 222.31303488398288
   },
   {
     "asset_id": 5,
@@ -987,7 +1117,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10902.739921191795
+    "monthly_generation_mwh": 10902.739921191795,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 222.77096333649578
   },
   {
     "asset_id": 5,
@@ -1002,7 +1134,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10899.098994688953
+    "monthly_generation_mwh": 10899.098994688953,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 223.22983504664413
   },
   {
     "asset_id": 5,
@@ -1017,7 +1151,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10895.459284058992
+    "monthly_generation_mwh": 10895.459284058992,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 223.68965195738423
   },
   {
     "asset_id": 5,
@@ -1032,7 +1168,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10891.820788895877
+    "monthly_generation_mwh": 10891.820788895877,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 224.15041601567458
   },
   {
     "asset_id": 5,
@@ -1047,7 +1185,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10888.183508793705
+    "monthly_generation_mwh": 10888.183508793705,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 224.61212917248406
   },
   {
     "asset_id": 5,
@@ -1062,7 +1202,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10884.547443346715
+    "monthly_generation_mwh": 10884.547443346715,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 225.07479338280024
   },
   {
     "asset_id": 5,
@@ -1077,7 +1219,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10880.912592149276
+    "monthly_generation_mwh": 10880.912592149276,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 225.5384106056374
   },
   {
     "asset_id": 5,
@@ -1092,7 +1236,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10877.278954795893
+    "monthly_generation_mwh": 10877.278954795893,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 226.00298280404564
   },
   {
     "asset_id": 5,
@@ -1107,7 +1253,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10873.64653088121
+    "monthly_generation_mwh": 10873.64653088121,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 226.46851194511808
   },
   {
     "asset_id": 5,
@@ -1122,7 +1270,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10870.01532
+    "monthly_generation_mwh": 10870.01532,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 226.93499999999995
   },
   {
     "asset_id": 5,
@@ -1137,7 +1287,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10866.385321747179
+    "monthly_generation_mwh": 10866.385321747179,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 227.40244894389673
   },
   {
     "asset_id": 5,
@@ -1152,7 +1304,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10862.756535717794
+    "monthly_generation_mwh": 10862.756535717794,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 227.8708607560825
   },
   {
     "asset_id": 5,
@@ -1167,7 +1321,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10859.128961507029
+    "monthly_generation_mwh": 10859.128961507029,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 228.3402374199081
   },
   {
     "asset_id": 5,
@@ -1182,7 +1338,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10855.502598710198
+    "monthly_generation_mwh": 10855.502598710198,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 228.81058092281017
   },
   {
     "asset_id": 5,
@@ -1197,7 +1355,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10851.877446922756
+    "monthly_generation_mwh": 10851.877446922756,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 229.28189325631885
   },
   {
     "asset_id": 5,
@@ -1212,7 +1372,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10848.253505740295
+    "monthly_generation_mwh": 10848.253505740295,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 229.75417641606643
   },
   {
     "asset_id": 5,
@@ -1227,7 +1389,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10844.630774758532
+    "monthly_generation_mwh": 10844.630774758532,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 230.22743240179608
   },
   {
     "asset_id": 5,
@@ -1242,7 +1406,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10841.009253573327
+    "monthly_generation_mwh": 10841.009253573327,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 230.70166321737017
   },
   {
     "asset_id": 5,
@@ -1257,7 +1423,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10837.388941780679
+    "monthly_generation_mwh": 10837.388941780679,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 231.17687087077834
   },
   {
     "asset_id": 5,
@@ -1272,7 +1440,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10833.769838976708
+    "monthly_generation_mwh": 10833.769838976708,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 231.65305737414675
   },
   {
     "asset_id": 5,
@@ -1287,7 +1457,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10830.151944757685
+    "monthly_generation_mwh": 10830.151944757685,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 232.13022474374603
   },
   {
     "asset_id": 5,
@@ -1302,7 +1474,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10826.53525872
+    "monthly_generation_mwh": 10826.53525872,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 232.6083749999999
   },
   {
     "asset_id": 5,
@@ -1317,7 +1491,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10822.919780460192
+    "monthly_generation_mwh": 10822.919780460192,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 233.08751016749414
   },
   {
     "asset_id": 5,
@@ -1332,7 +1508,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10819.305509574924
+    "monthly_generation_mwh": 10819.305509574924,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 233.56763227498456
   },
   {
     "asset_id": 5,
@@ -1347,7 +1525,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10815.692445660998
+    "monthly_generation_mwh": 10815.692445660998,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 234.04874335540583
   },
   {
     "asset_id": 5,
@@ -1362,7 +1542,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10812.080588315357
+    "monthly_generation_mwh": 10812.080588315357,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 234.53084544588046
   },
   {
     "asset_id": 5,
@@ -1377,7 +1559,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10808.469937135063
+    "monthly_generation_mwh": 10808.469937135063,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 235.0139405877268
   },
   {
     "asset_id": 5,
@@ -1392,7 +1576,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10804.860491717332
+    "monthly_generation_mwh": 10804.860491717332,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 235.4980308264681
   },
   {
     "asset_id": 5,
@@ -1407,7 +1593,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10801.252251659496
+    "monthly_generation_mwh": 10801.252251659496,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 235.98311821184106
   },
   {
     "asset_id": 5,
@@ -1422,7 +1610,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10797.645216559034
+    "monthly_generation_mwh": 10797.645216559034,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 236.4692047978044
   },
   {
     "asset_id": 5,
@@ -1437,7 +1627,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10794.039386013554
+    "monthly_generation_mwh": 10794.039386013554,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 236.95629264254785
   },
   {
     "asset_id": 5,
@@ -1452,7 +1644,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10790.434759620803
+    "monthly_generation_mwh": 10790.434759620803,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 237.4443838085004
   },
   {
     "asset_id": 5,
@@ -1467,7 +1661,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10786.831336978652
+    "monthly_generation_mwh": 10786.831336978652,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 237.93348036233957
   },
   {
     "asset_id": 5,
@@ -1482,7 +1678,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10783.22911768512
+    "monthly_generation_mwh": 10783.22911768512,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 238.4235843749999
   },
   {
     "asset_id": 5,
@@ -1497,7 +1695,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10779.62810133835
+    "monthly_generation_mwh": 10779.62810133835,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 238.91469792168144
   },
   {
     "asset_id": 5,
@@ -1512,7 +1712,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10776.028287536623
+    "monthly_generation_mwh": 10776.028287536623,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 239.4068230818591
   },
   {
     "asset_id": 5,
@@ -1527,7 +1729,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10772.429675878355
+    "monthly_generation_mwh": 10772.429675878355,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 239.89996193929105
   },
   {
     "asset_id": 5,
@@ -1542,7 +1746,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10768.832265962095
+    "monthly_generation_mwh": 10768.832265962095,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 240.39411658202744
   },
   {
     "asset_id": 5,
@@ -1557,7 +1763,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10765.236057386524
+    "monthly_generation_mwh": 10765.236057386524,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 240.88928910241995
   },
   {
     "asset_id": 5,
@@ -1572,7 +1780,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10761.641049750462
+    "monthly_generation_mwh": 10761.641049750462,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 241.38548159712977
   },
   {
     "asset_id": 5,
@@ -1587,7 +1797,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10758.047242652858
+    "monthly_generation_mwh": 10758.047242652858,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 241.88269616713697
   },
   {
     "asset_id": 5,
@@ -1602,7 +1814,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10754.454635692799
+    "monthly_generation_mwh": 10754.454635692799,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 242.3809349177495
   },
   {
     "asset_id": 5,
@@ -1617,7 +1831,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10750.8632284695
+    "monthly_generation_mwh": 10750.8632284695,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 242.88019995861146
   },
   {
     "asset_id": 5,
@@ -1632,7 +1848,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10747.273020582319
+    "monthly_generation_mwh": 10747.273020582319,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 243.38049340371282
   },
   {
     "asset_id": 5,
@@ -1647,7 +1865,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10743.684011630738
+    "monthly_generation_mwh": 10743.684011630738,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 243.88181737139809
   },
   {
     "asset_id": 5,
@@ -1662,7 +1882,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10740.09620121438
+    "monthly_generation_mwh": 10740.09620121438,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 244.38417398437488
   },
   {
     "asset_id": 5,
@@ -1677,7 +1899,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10736.509588932997
+    "monthly_generation_mwh": 10736.509588932997,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 244.8875653697235
   },
   {
     "asset_id": 5,
@@ -1692,7 +1916,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10732.924174386477
+    "monthly_generation_mwh": 10732.924174386477,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 245.39199365890556
   },
   {
     "asset_id": 5,
@@ -1707,7 +1933,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10729.339957174841
+    "monthly_generation_mwh": 10729.339957174841,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 245.89746098777334
   },
   {
     "asset_id": 5,
@@ -1722,7 +1950,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10725.756936898248
+    "monthly_generation_mwh": 10725.756936898248,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 246.4039694965781
   },
   {
     "asset_id": 5,
@@ -1737,7 +1967,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10722.175113156978
+    "monthly_generation_mwh": 10722.175113156978,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 246.91152132998045
   },
   {
     "asset_id": 5,
@@ -1752,7 +1984,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10718.59448555146
+    "monthly_generation_mwh": 10718.59448555146,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 247.42011863705798
   },
   {
     "asset_id": 5,
@@ -1767,7 +2001,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10715.015053682246
+    "monthly_generation_mwh": 10715.015053682246,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 247.92976357131542
   },
   {
     "asset_id": 5,
@@ -1782,7 +2018,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10711.436817150028
+    "monthly_generation_mwh": 10711.436817150028,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 248.44045829069316
   },
   {
     "asset_id": 5,
@@ -1797,7 +2035,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10707.859775555624
+    "monthly_generation_mwh": 10707.859775555624,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 248.95220495757673
   },
   {
     "asset_id": 5,
@@ -1812,7 +2052,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10704.28392849999
+    "monthly_generation_mwh": 10704.28392849999,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 249.46500573880567
   },
   {
     "asset_id": 5,
@@ -1827,7 +2069,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10700.709275584215
+    "monthly_generation_mwh": 10700.709275584215,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 249.97886280568312
   },
   {
     "asset_id": 5,
@@ -1842,7 +2086,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10697.135816409522
+    "monthly_generation_mwh": 10697.135816409522,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 250.4937783339842
   },
   {
     "asset_id": 5,
@@ -1857,7 +2103,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10693.563550577264
+    "monthly_generation_mwh": 10693.563550577264,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 251.00975450396658
   },
   {
     "asset_id": 5,
@@ -1872,7 +2120,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10689.992477688931
+    "monthly_generation_mwh": 10689.992477688931,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 251.52679350037818
   },
   {
     "asset_id": 5,
@@ -1887,7 +2137,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10686.422597346143
+    "monthly_generation_mwh": 10686.422597346143,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 252.0448975124675
   },
   {
     "asset_id": 5,
@@ -1902,7 +2154,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10682.853909150654
+    "monthly_generation_mwh": 10682.853909150654,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 252.56406873399249
   },
   {
     "asset_id": 5,
@@ -1917,7 +2171,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10679.28641270435
+    "monthly_generation_mwh": 10679.28641270435,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 253.0843093632299
   },
   {
     "asset_id": 5,
@@ -1932,7 +2188,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10675.720107609255
+    "monthly_generation_mwh": 10675.720107609255,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 253.60562160298443
   },
   {
     "asset_id": 5,
@@ -1947,7 +2205,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10672.154993467519
+    "monthly_generation_mwh": 10672.154993467519,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 254.12800766059826
   },
   {
     "asset_id": 5,
@@ -1962,7 +2222,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10668.591069881428
+    "monthly_generation_mwh": 10668.591069881428,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 254.65146974796048
   },
   {
     "asset_id": 5,
@@ -1977,7 +2239,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10665.0283364534
+    "monthly_generation_mwh": 10665.0283364534,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 255.17601008151613
   },
   {
     "asset_id": 5,
@@ -1992,7 +2256,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10661.46679278599
+    "monthly_generation_mwh": 10661.46679278599,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 255.7016308822757
   },
   {
     "asset_id": 5,
@@ -2007,7 +2273,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10657.906438481878
+    "monthly_generation_mwh": 10657.906438481878,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 256.2283343758251
   },
   {
     "asset_id": 5,
@@ -2022,7 +2290,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10654.347273143883
+    "monthly_generation_mwh": 10654.347273143883,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 256.7561227923338
   },
   {
     "asset_id": 5,
@@ -2037,7 +2307,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10650.789296374955
+    "monthly_generation_mwh": 10650.789296374955,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 257.2849983665657
   },
   {
     "asset_id": 5,
@@ -2052,7 +2324,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10647.232507778177
+    "monthly_generation_mwh": 10647.232507778177,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 257.8149633378875
   },
   {
     "asset_id": 5,
@@ -2067,7 +2341,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10643.676906956758
+    "monthly_generation_mwh": 10643.676906956758,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 258.34601995027924
   },
   {
     "asset_id": 5,
@@ -2082,7 +2358,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10640.122493514049
+    "monthly_generation_mwh": 10640.122493514049,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 258.87817045234243
   },
   {
     "asset_id": 5,
@@ -2097,7 +2375,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10636.569267053534
+    "monthly_generation_mwh": 10636.569267053534,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 259.41141709731056
   },
   {
     "asset_id": 5,
@@ -2112,7 +2392,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10633.017227178818
+    "monthly_generation_mwh": 10633.017227178818,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 259.9457621430591
   },
   {
     "asset_id": 5,
@@ -2127,7 +2409,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10629.466373493648
+    "monthly_generation_mwh": 10629.466373493648,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 260.4812078521132
   },
   {
     "asset_id": 5,
@@ -2142,7 +2426,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10625.916705601901
+    "monthly_generation_mwh": 10625.916705601901,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 261.01775649165944
   },
   {
     "asset_id": 5,
@@ -2157,7 +2443,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10622.368223107587
+    "monthly_generation_mwh": 10622.368223107587,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 261.555410333554
   },
   {
     "asset_id": 5,
@@ -2172,7 +2460,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10618.820925614846
+    "monthly_generation_mwh": 10618.820925614846,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 262.0941716543327
   },
   {
     "asset_id": 5,
@@ -2187,7 +2477,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10615.27481272795
+    "monthly_generation_mwh": 10615.27481272795,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 262.6340427352207
   },
   {
     "asset_id": 5,
@@ -2202,7 +2494,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10611.729884051309
+    "monthly_generation_mwh": 10611.729884051309,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 263.1750258621422
   },
   {
     "asset_id": 5,
@@ -2217,7 +2511,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10608.186139189456
+    "monthly_generation_mwh": 10608.186139189456,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 263.7171233257298
   },
   {
     "asset_id": 5,
@@ -2232,7 +2528,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10604.643577747061
+    "monthly_generation_mwh": 10604.643577747061,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 264.2603374213347
   },
   {
     "asset_id": 5,
@@ -2247,7 +2545,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10601.10219932893
+    "monthly_generation_mwh": 10601.10219932893,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 264.80467044903617
   },
   {
     "asset_id": 5,
@@ -2262,7 +2562,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10597.562003539995
+    "monthly_generation_mwh": 10597.562003539995,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 265.3501247136508
   },
   {
     "asset_id": 5,
@@ -2277,7 +2579,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10594.02298998532
+    "monthly_generation_mwh": 10594.02298998532,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 265.8967025247433
   },
   {
     "asset_id": 5,
@@ -2292,7 +2596,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10590.485158270101
+    "monthly_generation_mwh": 10590.485158270101,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 266.4444061966355
   },
   {
     "asset_id": 5,
@@ -2307,7 +2613,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10586.948507999674
+    "monthly_generation_mwh": 10586.948507999674,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 266.993238048416
   },
   {
     "asset_id": 5,
@@ -2322,7 +2630,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10583.413038779494
+    "monthly_generation_mwh": 10583.413038779494,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 267.54320040395095
   },
   {
     "asset_id": 5,
@@ -2337,7 +2647,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10579.878750215157
+    "monthly_generation_mwh": 10579.878750215157,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 268.09429559189283
   },
   {
     "asset_id": 5,
@@ -2352,7 +2664,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10576.345641912387
+    "monthly_generation_mwh": 10576.345641912387,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 268.64652594569094
   },
   {
     "asset_id": 5,
@@ -2367,7 +2681,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10572.813713477039
+    "monthly_generation_mwh": 10572.813713477039,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 269.1998938036011
   },
   {
     "asset_id": 5,
@@ -2382,7 +2698,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10569.282964515103
+    "monthly_generation_mwh": 10569.282964515103,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 269.7544015086957
   },
   {
     "asset_id": 5,
@@ -2397,7 +2715,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10565.753394632697
+    "monthly_generation_mwh": 10565.753394632697,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 270.3100514088731
   },
   {
     "asset_id": 5,
@@ -2412,7 +2732,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10562.225003436075
+    "monthly_generation_mwh": 10562.225003436075,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 270.86684585686805
   },
   {
     "asset_id": 5,
@@ -2427,7 +2749,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10558.697790531614
+    "monthly_generation_mwh": 10558.697790531614,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 271.424787210262
   },
   {
     "asset_id": 5,
@@ -2442,7 +2766,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10555.171755525835
+    "monthly_generation_mwh": 10555.171755525835,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 271.98387783149207
   },
   {
     "asset_id": 5,
@@ -2457,7 +2783,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10551.646898025378
+    "monthly_generation_mwh": 10551.646898025378,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 272.5441200878619
   },
   {
     "asset_id": 5,
@@ -2472,7 +2800,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10548.123217637021
+    "monthly_generation_mwh": 10548.123217637021,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 273.10551635155133
   },
   {
     "asset_id": 5,
@@ -2487,7 +2817,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10544.600713967675
+    "monthly_generation_mwh": 10544.600713967675,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 273.66806899962637
   },
   {
     "asset_id": 5,
@@ -2502,7 +2834,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10541.079386624375
+    "monthly_generation_mwh": 10541.079386624375,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 274.2317804140497
   },
   {
     "asset_id": 5,
@@ -2517,7 +2851,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10537.559235214296
+    "monthly_generation_mwh": 10537.559235214296,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 274.79665298169016
   },
   {
     "asset_id": 5,
@@ -2532,7 +2868,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10534.040259344736
+    "monthly_generation_mwh": 10534.040259344736,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 275.3626890943333
   },
   {
     "asset_id": 5,
@@ -2547,7 +2885,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 100.0,
-    "monthly_generation_mwh": 10530.52245862313
+    "monthly_generation_mwh": 10530.52245862313,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 275.9298911486911
   },
   {
     "asset_id": 5,
@@ -2562,7 +2902,9 @@
     "merchant_energy_revenue": 3.3708118297553344,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10527.005832657042
+    "monthly_generation_mwh": 10527.005832657042,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 320.20613300111887
   },
   {
     "asset_id": 5,
@@ -2577,7 +2919,9 @@
     "merchant_energy_revenue": 3.3766271623634,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10523.490381054167
+    "monthly_generation_mwh": 10523.490381054167,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 320.86570520770067
   },
   {
     "asset_id": 5,
@@ -2592,7 +2936,9 @@
     "merchant_energy_revenue": 3.3824525275971498,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10519.97610342233
+    "monthly_generation_mwh": 10519.97610342233,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 321.52663602503617
   },
   {
     "asset_id": 5,
@@ -2607,7 +2953,9 @@
     "merchant_energy_revenue": 3.3882879427648946,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10516.462999369487
+    "monthly_generation_mwh": 10516.462999369487,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 322.18892825164113
   },
   {
     "asset_id": 5,
@@ -2622,7 +2970,9 @@
     "merchant_energy_revenue": 3.3941334252048043,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10512.951068503731
+    "monthly_generation_mwh": 10512.951068503731,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 322.85258469179564
   },
   {
     "asset_id": 5,
@@ -2637,7 +2987,9 @@
     "merchant_energy_revenue": 3.39998899228496,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10509.440310433276
+    "monthly_generation_mwh": 10509.440310433276,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 323.5176081555563
   },
   {
     "asset_id": 5,
@@ -2652,7 +3004,9 @@
     "merchant_energy_revenue": 3.40585466140341,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10505.930724766475
+    "monthly_generation_mwh": 10505.930724766475,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 324.18400145876797
   },
   {
     "asset_id": 5,
@@ -2667,7 +3021,9 @@
     "merchant_energy_revenue": 3.411730449988211,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10502.422311111804
+    "monthly_generation_mwh": 10502.422311111804,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 324.8517674230755
   },
   {
     "asset_id": 5,
@@ -2682,7 +3038,9 @@
     "merchant_energy_revenue": 3.2695661479279776,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10498.915069077879
+    "monthly_generation_mwh": 10498.915069077879,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 311.41943014261795
   },
   {
     "asset_id": 5,
@@ -2697,7 +3055,9 @@
     "merchant_energy_revenue": 3.2752068112442836,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10495.40899827344
+    "monthly_generation_mwh": 10495.40899827344,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 312.0609031799595
   },
   {
     "asset_id": 5,
@@ -2712,7 +3072,9 @@
     "merchant_energy_revenue": 3.280857205846395,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10491.904098307357
+    "monthly_generation_mwh": 10491.904098307357,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 312.7036975467295
   },
   {
     "asset_id": 5,
@@ -2727,7 +3089,9 @@
     "merchant_energy_revenue": 3.286517348522751,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10488.400368788638
+    "monthly_generation_mwh": 10488.400368788638,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 313.3478159646502
   },
   {
     "asset_id": 5,
@@ -2742,7 +3106,9 @@
     "merchant_energy_revenue": 3.292187256090753,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10484.897809326414
+    "monthly_generation_mwh": 10484.897809326414,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 313.99326116105027
   },
   {
     "asset_id": 5,
@@ -2757,7 +3123,9 @@
     "merchant_energy_revenue": 3.297866945396813,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10481.39641952995
+    "monthly_generation_mwh": 10481.39641952995,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 314.64003586887605
   },
   {
     "asset_id": 5,
@@ -2772,7 +3140,9 @@
     "merchant_energy_revenue": 3.303556433316409,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10477.89619900864
+    "monthly_generation_mwh": 10477.89619900864,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 315.2881428267034
   },
   {
     "asset_id": 5,
@@ -2787,7 +3157,9 @@
     "merchant_energy_revenue": 3.3092557367541335,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10474.39714737201
+    "monthly_generation_mwh": 10474.39714737201,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 315.9375847787492
   },
   {
     "asset_id": 5,
@@ -2802,7 +3174,9 @@
     "merchant_energy_revenue": 3.314964872643742,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10470.899264229716
+    "monthly_generation_mwh": 10470.899264229716,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 316.588364474883
   },
   {
     "asset_id": 5,
@@ -2817,7 +3191,9 @@
     "merchant_energy_revenue": 3.3206838579482034,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10467.402549191544
+    "monthly_generation_mwh": 10467.402549191544,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 317.24048467063864
   },
   {
     "asset_id": 5,
@@ -2832,7 +3208,9 @@
     "merchant_energy_revenue": 3.3264127096597518,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10463.907001867408
+    "monthly_generation_mwh": 10463.907001867408,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 317.8939481272257
   },
   {
     "asset_id": 5,
@@ -2847,7 +3225,9 @@
     "merchant_energy_revenue": 3.3321514447999365,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10460.412621867357
+    "monthly_generation_mwh": 10460.412621867357,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 318.5487576115417
   },
   {
     "asset_id": 5,
@@ -2862,7 +3242,9 @@
     "merchant_energy_revenue": 3.4090803452925047,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10456.919408801567
+    "monthly_generation_mwh": 10456.919408801567,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 326.01191727872447
   },
   {
     "asset_id": 5,
@@ -2877,7 +3259,9 @@
     "merchant_energy_revenue": 3.414961698834845,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10453.427362280345
+    "monthly_generation_mwh": 10453.427362280345,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 326.6834484503362
   },
   {
     "asset_id": 5,
@@ -2892,7 +3276,9 @@
     "merchant_energy_revenue": 3.4208531989023427,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10449.936481914128
+    "monthly_generation_mwh": 10449.936481914128,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 327.3563628662115
   },
   {
     "asset_id": 5,
@@ -2907,7 +3293,9 @@
     "merchant_energy_revenue": 3.426754862999809,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10446.446767313484
+    "monthly_generation_mwh": 10446.446767313484,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 328.03066337560716
   },
   {
     "asset_id": 5,
@@ -2922,7 +3310,9 @@
     "merchant_energy_revenue": 3.4326667086622513,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10442.958218089108
+    "monthly_generation_mwh": 10442.958218089108,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 328.70635283364885
   },
   {
     "asset_id": 5,
@@ -2937,7 +3327,9 @@
     "merchant_energy_revenue": 3.4385887534549306,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10439.47083385183
+    "monthly_generation_mwh": 10439.47083385183,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 329.38343410134337
   },
   {
     "asset_id": 5,
@@ -2952,7 +3344,9 @@
     "merchant_energy_revenue": 3.44452101497341,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10435.984614212606
+    "monthly_generation_mwh": 10435.984614212606,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 330.0619100455907
   },
   {
     "asset_id": 5,
@@ -2967,7 +3361,9 @@
     "merchant_energy_revenue": 3.4504635108436084,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10432.499558782521
+    "monthly_generation_mwh": 10432.499558782521,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 330.7417835391962
   },
   {
     "asset_id": 5,
@@ -2982,7 +3378,9 @@
     "merchant_energy_revenue": 3.4564162587218568,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10429.015667172798
+    "monthly_generation_mwh": 10429.015667172798,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 331.4230574608828
   },
   {
     "asset_id": 5,
@@ -2997,7 +3395,9 @@
     "merchant_energy_revenue": 3.462379276294942,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10425.532938994778
+    "monthly_generation_mwh": 10425.532938994778,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 332.10573469530294
   },
   {
     "asset_id": 5,
@@ -3012,7 +3412,9 @@
     "merchant_energy_revenue": 3.4683525812801648,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10422.051373859938
+    "monthly_generation_mwh": 10422.051373859938,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 332.78981813305114
   },
   {
     "asset_id": 5,
@@ -3027,7 +3429,9 @@
     "merchant_energy_revenue": 3.4743361914253947,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10418.570971379888
+    "monthly_generation_mwh": 10418.570971379888,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 333.475310670676
   },
   {
     "asset_id": 5,
@@ -3042,7 +3446,9 @@
     "merchant_energy_revenue": 3.536763731592451,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10415.091731166362
+    "monthly_generation_mwh": 10415.091731166362,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 339.5806607261036
   },
   {
     "asset_id": 5,
@@ -3057,7 +3463,9 @@
     "merchant_energy_revenue": 3.54286536481736,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10411.613652831224
+    "monthly_generation_mwh": 10411.613652831224,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 340.2801412876044
   },
   {
     "asset_id": 5,
@@ -3072,7 +3480,9 @@
     "merchant_energy_revenue": 3.548977524594461,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10408.13673598647
+    "monthly_generation_mwh": 10408.13673598647,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 340.9810626645359
   },
   {
     "asset_id": 5,
@@ -3087,7 +3497,9 @@
     "merchant_energy_revenue": 3.5551002290841867,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10404.660980244229
+    "monthly_generation_mwh": 10404.660980244229,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 341.68342782474184
   },
   {
     "asset_id": 5,
@@ -3102,7 +3514,9 @@
     "merchant_energy_revenue": 3.5612334964783017,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10401.186385216753
+    "monthly_generation_mwh": 10401.186385216753,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 342.3872397421795
   },
   {
     "asset_id": 5,
@@ -3117,7 +3531,9 @@
     "merchant_energy_revenue": 3.5673773449999517,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10397.712950516423
+    "monthly_generation_mwh": 10397.712950516423,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 343.0925013969318
   },
   {
     "asset_id": 5,
@@ -3132,7 +3548,9 @@
     "merchant_energy_revenue": 3.5735317929037245,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10394.240675755755
+    "monthly_generation_mwh": 10394.240675755755,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 343.7992157752203
   },
   {
     "asset_id": 5,
@@ -3147,7 +3565,9 @@
     "merchant_energy_revenue": 3.579696858475699,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10390.769560547391
+    "monthly_generation_mwh": 10390.769560547391,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 344.50738586941765
   },
   {
     "asset_id": 5,
@@ -3162,7 +3582,9 @@
     "merchant_energy_revenue": 3.5858725600335033,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10387.299604504105
+    "monthly_generation_mwh": 10387.299604504105,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 345.21701467806025
   },
   {
     "asset_id": 5,
@@ -3177,7 +3599,9 @@
     "merchant_energy_revenue": 3.592058915926363,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10383.830807238797
+    "monthly_generation_mwh": 10383.830807238797,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 345.92810520586096
   },
   {
     "asset_id": 5,
@@ -3192,7 +3616,9 @@
     "merchant_energy_revenue": 3.5982559445351643,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10380.3631683645
+    "monthly_generation_mwh": 10380.3631683645,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 346.640660463722
   },
   {
     "asset_id": 5,
@@ -3207,7 +3633,9 @@
     "merchant_energy_revenue": 3.6044636642724996,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10376.896687494367
+    "monthly_generation_mwh": 10376.896687494367,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 347.35468346874745
   },
   {
     "asset_id": 5,
@@ -3222,7 +3650,9 @@
     "merchant_energy_revenue": 3.4392634814021488,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10373.431364241695
+    "monthly_generation_mwh": 10373.431364241695,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 331.5454029278731
   },
   {
     "asset_id": 5,
@@ -3237,7 +3667,9 @@
     "merchant_energy_revenue": 3.4451969069628925,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10369.9671982199
+    "monthly_generation_mwh": 10369.9671982199,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 332.2283321739236
   },
   {
     "asset_id": 5,
@@ -3252,7 +3684,9 @@
     "merchant_energy_revenue": 3.4511405688835644,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10366.504189042525
+    "monthly_generation_mwh": 10366.504189042525,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 332.91266814240487
   },
   {
     "asset_id": 5,
@@ -3267,7 +3701,9 @@
     "merchant_energy_revenue": 3.4570944848239566,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10363.042336323253
+    "monthly_generation_mwh": 10363.042336323253,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 333.5984137309347
   },
   {
     "asset_id": 5,
@@ -3282,7 +3718,9 @@
     "merchant_energy_revenue": 3.4630586724743297,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10359.581639675886
+    "monthly_generation_mwh": 10359.581639675886,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 334.2855718430997
   },
   {
     "asset_id": 5,
@@ -3297,7 +3735,9 @@
     "merchant_energy_revenue": 3.4690331495554623,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10356.122098714357
+    "monthly_generation_mwh": 10356.122098714357,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 334.9741453884673
   },
   {
     "asset_id": 5,
@@ -3312,7 +3752,9 @@
     "merchant_energy_revenue": 3.475017933818704,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10352.663713052732
+    "monthly_generation_mwh": 10352.663713052732,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 335.66413728259806
   },
   {
     "asset_id": 5,
@@ -3327,7 +3769,9 @@
     "merchant_energy_revenue": 3.481013043046031,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10349.206482305204
+    "monthly_generation_mwh": 10349.206482305204,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 336.3555504470583
   },
   {
     "asset_id": 5,
@@ -3342,7 +3786,9 @@
     "merchant_energy_revenue": 3.487018495050094,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10345.75040608609
+    "monthly_generation_mwh": 10345.75040608609,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 337.0483878094321
   },
   {
     "asset_id": 5,
@@ -3357,7 +3803,9 @@
     "merchant_energy_revenue": 3.4930343076742782,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10342.295484009843
+    "monthly_generation_mwh": 10342.295484009843,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 337.742652303334
   },
   {
     "asset_id": 5,
@@ -3372,7 +3820,9 @@
     "merchant_energy_revenue": 3.499060498792749,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10338.84171569104
+    "monthly_generation_mwh": 10338.84171569104,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 338.4383468684214
   },
   {
     "asset_id": 5,
@@ -3387,7 +3837,9 @@
     "merchant_energy_revenue": 3.50509708631051,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10335.38910074439
+    "monthly_generation_mwh": 10335.38910074439,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 339.1354744504066
   },
   {
     "asset_id": 5,
@@ -3402,7 +3854,9 @@
     "merchant_energy_revenue": 3.570928128583328,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10331.937638784728
+    "monthly_generation_mwh": 10331.937638784728,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 345.620371843761
   },
   {
     "asset_id": 5,
@@ -3417,7 +3871,9 @@
     "merchant_energy_revenue": 3.577088702307407,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10328.487329427018
+    "monthly_generation_mwh": 10328.487329427018,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 346.33229322128136
   },
   {
     "asset_id": 5,
@@ -3432,7 +3888,9 @@
     "merchant_energy_revenue": 3.5832599042679694,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10325.038172286355
+    "monthly_generation_mwh": 10325.038172286355,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 347.04568104027646
   },
   {
     "asset_id": 5,
@@ -3447,7 +3905,9 @@
     "merchant_energy_revenue": 3.589441752800871,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10321.59016697796
+    "monthly_generation_mwh": 10321.59016697796,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 347.76053832137546
   },
   {
     "asset_id": 5,
@@ -3462,7 +3922,9 @@
     "merchant_energy_revenue": 3.5956342662736063,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10318.143313117182
+    "monthly_generation_mwh": 10318.143313117182,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 348.47686809142994
   },
   {
     "asset_id": 5,
@@ -3477,7 +3939,9 @@
     "merchant_energy_revenue": 3.601837463085353,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10314.6976103195
+    "monthly_generation_mwh": 10314.6976103195,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 349.1946733835259
   },
   {
     "asset_id": 5,
@@ -3492,7 +3956,9 @@
     "merchant_energy_revenue": 3.6080513616670338,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10311.25305820052
+    "monthly_generation_mwh": 10311.25305820052,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 349.91395723699725
   },
   {
     "asset_id": 5,
@@ -3507,7 +3973,9 @@
     "merchant_energy_revenue": 3.6142759804813682,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10307.809656375981
+    "monthly_generation_mwh": 10307.809656375981,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 350.63472269743824
   },
   {
     "asset_id": 5,
@@ -3522,7 +3990,9 @@
     "merchant_energy_revenue": 3.6205113380229275,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10304.367404461746
+    "monthly_generation_mwh": 10304.367404461746,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 351.35697281671673
   },
   {
     "asset_id": 5,
@@ -3537,7 +4007,9 @@
     "merchant_energy_revenue": 3.6267574528181874,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10300.926302073804
+    "monthly_generation_mwh": 10300.926302073804,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 352.08071065298674
   },
   {
     "asset_id": 5,
@@ -3552,7 +4024,9 @@
     "merchant_energy_revenue": 3.63301434342559,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10297.486348828277
+    "monthly_generation_mwh": 10297.486348828277,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 352.8059392707018
   },
   {
     "asset_id": 5,
@@ -3567,7 +4041,9 @@
     "merchant_energy_revenue": 3.6392820284355913,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10294.047544341414
+    "monthly_generation_mwh": 10294.047544341414,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 353.5326617406276
   },
   {
     "asset_id": 5,
@@ -3582,7 +4058,9 @@
     "merchant_energy_revenue": 3.4795690747013626,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10290.60988822959
+    "monthly_generation_mwh": 10290.60988822959,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 338.13050076665496
   },
   {
     "asset_id": 5,
@@ -3597,7 +4075,9 @@
     "merchant_energy_revenue": 3.485572035567794,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10287.17338010931
+    "monthly_generation_mwh": 10287.17338010931,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 338.82699423607426
   },
   {
     "asset_id": 5,
@@ -3612,7 +4092,9 @@
     "merchant_energy_revenue": 3.4915853527566294,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10283.738019597211
+    "monthly_generation_mwh": 10283.738019597211,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 339.5249223680035
   },
   {
     "asset_id": 5,
@@ -3627,7 +4109,9 @@
     "merchant_energy_revenue": 3.49760904413462,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10280.303806310047
+    "monthly_generation_mwh": 10280.303806310047,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 340.22428811761273
   },
   {
     "asset_id": 5,
@@ -3642,7 +4126,9 @@
     "merchant_energy_revenue": 3.5036431275993434,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10276.870739864713
+    "monthly_generation_mwh": 10276.870739864713,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 340.9250944461588
   },
   {
     "asset_id": 5,
@@ -3657,7 +4143,9 @@
     "merchant_energy_revenue": 3.509687621079251,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10273.438819878222
+    "monthly_generation_mwh": 10273.438819878222,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 341.62734432099865
   },
   {
     "asset_id": 5,
@@ -3672,7 +4160,9 @@
     "merchant_energy_revenue": 3.515742542533726,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10270.00804596772
+    "monthly_generation_mwh": 10270.00804596772,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 342.3310407156011
   },
   {
     "asset_id": 5,
@@ -3687,7 +4177,9 @@
     "merchant_energy_revenue": 3.5218079099531363,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10266.57841775048
+    "monthly_generation_mwh": 10266.57841775048,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 343.03618660956016
   },
   {
     "asset_id": 5,
@@ -3702,7 +4194,9 @@
     "merchant_energy_revenue": 3.5278837413588833,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10263.149934843897
+    "monthly_generation_mwh": 10263.149934843897,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 343.7427849886071
   },
   {
     "asset_id": 5,
@@ -3717,7 +4211,9 @@
     "merchant_energy_revenue": 3.533970054803463,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10259.722596865508
+    "monthly_generation_mwh": 10259.722596865508,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 344.4508388446235
   },
   {
     "asset_id": 5,
@@ -3732,7 +4228,9 @@
     "merchant_energy_revenue": 3.5400668683705114,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10256.296403432962
+    "monthly_generation_mwh": 10256.296403432962,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 345.1603511756534
   },
   {
     "asset_id": 5,
@@ -3747,7 +4245,9 @@
     "merchant_energy_revenue": 3.546174200174869,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10252.871354164046
+    "monthly_generation_mwh": 10252.871354164046,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 345.8713249859167
   },
   {
     "asset_id": 5,
@@ -3762,7 +4262,9 @@
     "merchant_energy_revenue": 3.4699969942054794,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10249.44744867667
+    "monthly_generation_mwh": 10249.44744867667,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 338.55454272839836
   },
   {
     "asset_id": 5,
@@ -3777,7 +4279,9 @@
     "merchant_energy_revenue": 3.475983441295811,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10246.024686588875
+    "monthly_generation_mwh": 10246.024686588875,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 339.2519096548304
   },
   {
     "asset_id": 5,
@@ -3792,7 +4296,9 @@
     "merchant_energy_revenue": 3.4819802162189384,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10242.60306751882
+    "monthly_generation_mwh": 10242.60306751882,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 339.9507130429509
   },
   {
     "asset_id": 5,
@@ -3807,7 +4313,9 @@
     "merchant_energy_revenue": 3.487987336792467,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10239.182591084807
+    "monthly_generation_mwh": 10239.182591084807,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 340.6509558516357
   },
   {
     "asset_id": 5,
@@ -3822,7 +4330,9 @@
     "merchant_energy_revenue": 3.494004820864736,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10235.763256905255
+    "monthly_generation_mwh": 10235.763256905255,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 341.3526410458555
   },
   {
     "asset_id": 5,
@@ -3837,7 +4347,9 @@
     "merchant_energy_revenue": 3.500032686314878,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10232.345064598709
+    "monthly_generation_mwh": 10232.345064598709,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 342.05577159668843
   },
   {
     "asset_id": 5,
@@ -3852,7 +4364,9 @@
     "merchant_energy_revenue": 3.5060709510528705,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10228.928013783849
+    "monthly_generation_mwh": 10228.928013783849,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 342.76035048133235
   },
   {
     "asset_id": 5,
@@ -3867,7 +4381,9 @@
     "merchant_energy_revenue": 3.5121196330195907,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10225.512104079477
+    "monthly_generation_mwh": 10225.512104079477,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 343.46638068311785
   },
   {
     "asset_id": 5,
@@ -3882,7 +4398,9 @@
     "merchant_energy_revenue": 3.5181787501868658,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10222.097335104521
+    "monthly_generation_mwh": 10222.097335104521,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 344.17386519152063
   },
   {
     "asset_id": 5,
@@ -3897,7 +4415,9 @@
     "merchant_energy_revenue": 3.524248320557529,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10218.683706478047
+    "monthly_generation_mwh": 10218.683706478047,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 344.8828070021741
   },
   {
     "asset_id": 5,
@@ -3912,7 +4432,9 @@
     "merchant_energy_revenue": 3.5303283621654704,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10215.27121781923
+    "monthly_generation_mwh": 10215.27121781923,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 345.59320911688235
   },
   {
     "asset_id": 5,
@@ -3927,7 +4449,9 @@
     "merchant_energy_revenue": 3.536418893075697,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10211.859868747391
+    "monthly_generation_mwh": 10211.859868747391,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 346.3050745436327
   },
   {
     "asset_id": 5,
@@ -3942,7 +4466,9 @@
     "merchant_energy_revenue": 3.57132508836964,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10208.449658881966
+    "monthly_generation_mwh": 10208.449658881966,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 349.84010380678836
   },
   {
     "asset_id": 5,
@@ -3957,7 +4483,9 @@
     "merchant_energy_revenue": 3.5774863469296885,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10205.040587842517
+    "monthly_generation_mwh": 10205.040587842517,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 350.5607171412551
   },
   {
     "asset_id": 5,
@@ -3972,7 +4500,9 @@
     "merchant_energy_revenue": 3.583658234907701,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10201.632655248746
+    "monthly_generation_mwh": 10201.632655248746,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 351.2828148212048
   },
   {
     "asset_id": 5,
@@ -3987,7 +4517,9 @@
     "merchant_energy_revenue": 3.589840770641573,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10198.225860720468
+    "monthly_generation_mwh": 10198.225860720468,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 352.006399904146
   },
   {
     "asset_id": 5,
@@ -4002,7 +4534,9 @@
     "merchant_energy_revenue": 3.5960339725008383,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10194.820203877633
+    "monthly_generation_mwh": 10194.820203877633,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 352.7314754538854
   },
   {
     "asset_id": 5,
@@ -4017,7 +4551,9 @@
     "merchant_energy_revenue": 3.6022378588867214,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10191.415684340313
+    "monthly_generation_mwh": 10191.415684340313,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 353.4580445405405
   },
   {
     "asset_id": 5,
@@ -4032,7 +4568,9 @@
     "merchant_energy_revenue": 3.6084524482321947,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10188.012301728713
+    "monthly_generation_mwh": 10188.012301728713,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 354.18611024055286
   },
   {
     "asset_id": 5,
@@ -4047,7 +4585,9 @@
     "merchant_energy_revenue": 3.614677759002027,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10184.610055663157
+    "monthly_generation_mwh": 10184.610055663157,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 354.9156756367009
   },
   {
     "asset_id": 5,
@@ -4062,7 +4602,9 @@
     "merchant_energy_revenue": 3.620913809692848,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10181.208945764105
+    "monthly_generation_mwh": 10181.208945764105,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 355.6467438181131
   },
   {
     "asset_id": 5,
@@ -4077,7 +4619,9 @@
     "merchant_energy_revenue": 3.627160618833194,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10177.808971652134
+    "monthly_generation_mwh": 10177.808971652134,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 356.37931788028123
   },
   {
     "asset_id": 5,
@@ -4092,7 +4636,9 @@
     "merchant_energy_revenue": 3.633418204983567,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10174.410132947954
+    "monthly_generation_mwh": 10174.410132947954,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 357.1134009250729
   },
   {
     "asset_id": 5,
@@ -4107,7 +4653,9 @@
     "merchant_energy_revenue": 3.6396865867364907,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10171.012429272401
+    "monthly_generation_mwh": 10171.012429272401,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 357.84899606074526
   },
   {
     "asset_id": 5,
@@ -4122,7 +4670,9 @@
     "merchant_energy_revenue": 3.5941531238426827,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10167.615860246437
+    "monthly_generation_mwh": 10167.615860246437,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 353.490255065121
   },
   {
     "asset_id": 5,
@@ -4137,7 +4687,9 @@
     "merchant_energy_revenue": 3.600353765383975,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10164.220425491148
+    "monthly_generation_mwh": 10164.220425491148,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 354.21838711354013
   },
   {
     "asset_id": 5,
@@ -4152,7 +4704,9 @@
     "merchant_energy_revenue": 3.606565104286844,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10160.826124627753
+    "monthly_generation_mwh": 10160.826124627753,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 354.94801899476187
   },
   {
     "asset_id": 5,
@@ -4167,7 +4721,9 @@
     "merchant_energy_revenue": 3.6127871590064005,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10157.432957277588
+    "monthly_generation_mwh": 10157.432957277588,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 355.67915379819607
   },
   {
     "asset_id": 5,
@@ -4182,7 +4738,9 @@
     "merchant_energy_revenue": 3.6190199480295995,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10154.040923062123
+    "monthly_generation_mwh": 10154.040923062123,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 356.4117946196166
   },
   {
     "asset_id": 5,
@@ -4197,7 +4755,9 @@
     "merchant_energy_revenue": 3.625263489875287,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10150.650021602953
+    "monthly_generation_mwh": 10150.650021602953,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 357.1459445611739
   },
   {
     "asset_id": 5,
@@ -4212,7 +4772,9 @@
     "merchant_energy_revenue": 3.6315178030942565,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10147.260252521797
+    "monthly_generation_mwh": 10147.260252521797,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 357.8816067314083
   },
   {
     "asset_id": 5,
@@ -4227,7 +4789,9 @@
     "merchant_energy_revenue": 3.6377829062693086,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10143.871615440505
+    "monthly_generation_mwh": 10143.871615440505,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 358.61878424526327
   },
   {
     "asset_id": 5,
@@ -4242,7 +4806,9 @@
     "merchant_energy_revenue": 3.6440588180153006,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10140.484109981047
+    "monthly_generation_mwh": 10140.484109981047,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 359.35748022409865
   },
   {
     "asset_id": 5,
@@ -4257,7 +4823,9 @@
     "merchant_energy_revenue": 3.650345556979205,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10137.097735765527
+    "monthly_generation_mwh": 10137.097735765527,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 360.09769779570354
   },
   {
     "asset_id": 5,
@@ -4272,7 +4840,9 @@
     "merchant_energy_revenue": 3.6566431418401626,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10133.712492416162
+    "monthly_generation_mwh": 10133.712492416162,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 360.83944009431
   },
   {
     "asset_id": 5,
@@ -4287,7 +4857,9 @@
     "merchant_energy_revenue": 3.662951591309543,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10130.32837955531
+    "monthly_generation_mwh": 10130.32837955531,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 361.5827102606061
   },
   {
     "asset_id": 5,
@@ -4302,7 +4874,9 @@
     "merchant_energy_revenue": 3.455365635269902,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10126.94539680545
+    "monthly_generation_mwh": 10126.94539680545,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 341.2051215719894
   },
   {
     "asset_id": 5,
@@ -4317,7 +4891,9 @@
     "merchant_energy_revenue": 3.4613268403049005,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10123.563543789181
+    "monthly_generation_mwh": 10123.563543789181,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 341.90794825685947
   },
   {
     "asset_id": 5,
@@ -4332,7 +4908,9 @@
     "merchant_energy_revenue": 3.4672983296250446,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10120.18282012924
+    "monthly_generation_mwh": 10120.18282012924,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 342.6122226496266
   },
   {
     "asset_id": 5,
@@ -4347,7 +4925,9 @@
     "merchant_energy_revenue": 3.4732801209728046,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10116.803225448475
+    "monthly_generation_mwh": 10116.803225448475,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 343.31794773233173
   },
   {
     "asset_id": 5,
@@ -4362,7 +4942,9 @@
     "merchant_energy_revenue": 3.4792722321212644,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10113.424759369873
+    "monthly_generation_mwh": 10113.424759369873,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 344.0251264931588
   },
   {
     "asset_id": 5,
@@ -4377,7 +4959,9 @@
     "merchant_energy_revenue": 3.485274680874169,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10110.04742151654
+    "monthly_generation_mwh": 10110.04742151654,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 344.7337619264467
   },
   {
     "asset_id": 5,
@@ -4392,7 +4976,9 @@
     "merchant_energy_revenue": 3.491287485065978,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10106.671211511712
+    "monthly_generation_mwh": 10106.671211511712,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 345.4438570327021
   },
   {
     "asset_id": 5,
@@ -4407,7 +4993,9 @@
     "merchant_energy_revenue": 3.497310662561919,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10103.296128978744
+    "monthly_generation_mwh": 10103.296128978744,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 346.1554148186125
   },
   {
     "asset_id": 5,
@@ -4422,7 +5010,9 @@
     "merchant_energy_revenue": 3.503344231258042,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10099.922173541125
+    "monthly_generation_mwh": 10099.922173541125,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 346.8684382970584
   },
   {
     "asset_id": 5,
@@ -4437,7 +5027,9 @@
     "merchant_energy_revenue": 3.509388209081268,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10096.549344822462
+    "monthly_generation_mwh": 10096.549344822462,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 347.5829304871264
   },
   {
     "asset_id": 5,
@@ -4452,7 +5044,9 @@
     "merchant_energy_revenue": 3.5154426139894492,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10093.177642446497
+    "monthly_generation_mwh": 10093.177642446497,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 348.298894414122
   },
   {
     "asset_id": 5,
@@ -4467,7 +5061,9 @@
     "merchant_energy_revenue": 3.5215074639714192,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10089.807066037089
+    "monthly_generation_mwh": 10089.807066037089,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 349.01633310958243
   },
   {
     "asset_id": 5,
@@ -4482,7 +5078,9 @@
     "merchant_energy_revenue": 3.4188509123842343,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10086.437615218227
+    "monthly_generation_mwh": 10086.437615218227,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 338.9552429517768
   },
   {
     "asset_id": 5,
@@ -4497,7 +5095,9 @@
     "merchant_energy_revenue": 3.424749122132225,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10083.069289614028
+    "monthly_generation_mwh": 10083.069289614028,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 339.6534352550623
   },
   {
     "asset_id": 5,
@@ -4512,7 +5112,9 @@
     "merchant_energy_revenue": 3.430657507485739,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10079.702088848722
+    "monthly_generation_mwh": 10079.702088848722,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 340.3530657201774
   },
   {
     "asset_id": 5,
@@ -4527,7 +5129,9 @@
     "merchant_energy_revenue": 3.4365760859997567,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10076.336012546682
+    "monthly_generation_mwh": 10076.336012546682,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 341.05413730950005
   },
   {
     "asset_id": 5,
@@ -4542,7 +5146,9 @@
     "merchant_energy_revenue": 3.4425048752595417,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10072.971060332395
+    "monthly_generation_mwh": 10072.971060332395,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 341.7566529915101
   },
   {
     "asset_id": 5,
@@ -4557,7 +5163,9 @@
     "merchant_energy_revenue": 3.448443892880699,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10069.607231830474
+    "monthly_generation_mwh": 10069.607231830474,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 342.46061574080215
   },
   {
     "asset_id": 5,
@@ -4572,7 +5180,9 @@
     "merchant_energy_revenue": 3.4543931565092194,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10066.244526665663
+    "monthly_generation_mwh": 10066.244526665663,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 343.16602853809775
   },
   {
     "asset_id": 5,
@@ -4587,7 +5197,9 @@
     "merchant_energy_revenue": 3.460352683821541,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10062.882944462828
+    "monthly_generation_mwh": 10062.882944462828,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 343.87289437025845
   },
   {
     "asset_id": 5,
@@ -4602,7 +5214,9 @@
     "merchant_energy_revenue": 3.4663224925245966,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10059.52248484696
+    "monthly_generation_mwh": 10059.52248484696,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 344.58121623029814
   },
   {
     "asset_id": 5,
@@ -4617,7 +5231,9 @@
     "merchant_energy_revenue": 3.4723026003558637,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10056.163147443174
+    "monthly_generation_mwh": 10056.163147443174,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 345.2909971173959
   },
   {
     "asset_id": 5,
@@ -4632,7 +5248,9 @@
     "merchant_energy_revenue": 3.4782930250834236,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10052.804931876712
+    "monthly_generation_mwh": 10052.804931876712,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 346.0022400369085
   },
   {
     "asset_id": 5,
@@ -4647,7 +5265,9 @@
     "merchant_energy_revenue": 3.4842937845060113,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10049.447837772943
+    "monthly_generation_mwh": 10049.447837772943,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 346.7149480003834
   },
   {
     "asset_id": 5,
@@ -4662,7 +5282,9 @@
     "merchant_energy_revenue": 3.8244354719192772,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10046.091864757356
+    "monthly_generation_mwh": 10046.091864757356,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 380.68888114947066
   },
   {
     "asset_id": 5,
@@ -4677,7 +5299,9 @@
     "merchant_energy_revenue": 3.831033397116694,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10042.737012455571
+    "monthly_generation_mwh": 10042.737012455571,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 381.4730379143882
   },
   {
     "asset_id": 5,
@@ -4692,7 +5316,9 @@
     "merchant_energy_revenue": 3.837642705070397,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10039.383280493328
+    "monthly_generation_mwh": 10039.383280493328,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 382.2588099138514
   },
   {
     "asset_id": 5,
@@ -4707,7 +5333,9 @@
     "merchant_energy_revenue": 3.844263415417946,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10036.030668496496
+    "monthly_generation_mwh": 10036.030668496496,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 383.04620047497895
   },
   {
     "asset_id": 5,
@@ -4722,7 +5350,9 @@
     "merchant_energy_revenue": 3.850895547830775,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10032.679176091064
+    "monthly_generation_mwh": 10032.679176091064,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 383.8352129317428
   },
   {
     "asset_id": 5,
@@ -4737,7 +5367,9 @@
     "merchant_energy_revenue": 3.8575391220142623,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10029.328802903152
+    "monthly_generation_mwh": 10029.328802903152,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 384.6258506249825
   },
   {
     "asset_id": 5,
@@ -4752,7 +5384,9 @@
     "merchant_energy_revenue": 3.8641941577077743,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10025.979548559
+    "monthly_generation_mwh": 10025.979548559,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 385.41811690241894
   },
   {
     "asset_id": 5,
@@ -4767,7 +5401,9 @@
     "merchant_energy_revenue": 3.870860674684738,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10022.631412684977
+    "monthly_generation_mwh": 10022.631412684977,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 386.21201511866906
   },
   {
     "asset_id": 5,
@@ -4782,7 +5418,9 @@
     "merchant_energy_revenue": 3.87753869275269,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10019.28439490757
+    "monthly_generation_mwh": 10019.28439490757,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 387.00754863525964
   },
   {
     "asset_id": 5,
@@ -4797,7 +5435,9 @@
     "merchant_energy_revenue": 3.8842282317533385,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10015.938494853399
+    "monthly_generation_mwh": 10015.938494853399,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 387.8047208206415
   },
   {
     "asset_id": 5,
@@ -4812,7 +5452,9 @@
     "merchant_energy_revenue": 3.8909293115626276,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10012.593712149206
+    "monthly_generation_mwh": 10012.593712149206,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 388.60353505020413
   },
   {
     "asset_id": 5,
@@ -4827,7 +5469,9 @@
     "merchant_energy_revenue": 3.8976419520907837,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10009.25004642185
+    "monthly_generation_mwh": 10009.25004642185,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 389.40399470628967
   },
   {
     "asset_id": 5,
@@ -4842,7 +5486,9 @@
     "merchant_energy_revenue": 3.926993015330729,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10005.907497298327
+    "monthly_generation_mwh": 10005.907497298327,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 392.4674514921358
   },
   {
     "asset_id": 5,
@@ -4857,7 +5503,9 @@
     "merchant_energy_revenue": 3.9337678730466394,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 10002.56606440575
+    "monthly_generation_mwh": 10002.56606440575,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 393.2758701834521
   },
   {
     "asset_id": 5,
@@ -4872,7 +5520,9 @@
     "merchant_energy_revenue": 3.940554418763237,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 9999.225747371354
+    "monthly_generation_mwh": 9999.225747371354,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 394.08595408491
   },
   {
     "asset_id": 5,
@@ -4887,7 +5537,9 @@
     "merchant_energy_revenue": 3.947352672644693,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 9995.88654582251
+    "monthly_generation_mwh": 9995.88654582251,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 394.89770662656974
   },
   {
     "asset_id": 5,
@@ -4902,7 +5554,9 @@
     "merchant_energy_revenue": 3.954162654889958,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 9992.5484593867
+    "monthly_generation_mwh": 9992.5484593867,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 395.7111312455569
   },
   {
     "asset_id": 5,
@@ -4917,7 +5571,9 @@
     "merchant_energy_revenue": 3.9609843857328344,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 9989.21148769154
+    "monthly_generation_mwh": 9989.21148769154,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 396.52623138607703
   },
   {
     "asset_id": 5,
@@ -4932,7 +5588,9 @@
     "merchant_energy_revenue": 3.9678178854420305,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 9985.875630364764
+    "monthly_generation_mwh": 9985.875630364764,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 397.3430104994302
   },
   {
     "asset_id": 5,
@@ -4947,7 +5605,9 @@
     "merchant_energy_revenue": 3.9746631743212224,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 9982.540887034236
+    "monthly_generation_mwh": 9982.540887034236,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 398.1614720440254
   },
   {
     "asset_id": 5,
@@ -4962,7 +5622,9 @@
     "merchant_energy_revenue": 3.981520272709117,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 9979.207257327942
+    "monthly_generation_mwh": 9979.207257327942,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 398.98161948539575
   },
   {
     "asset_id": 5,
@@ -4977,7 +5639,9 @@
     "merchant_energy_revenue": 3.9883892009795026,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 9975.874740873987
+    "monthly_generation_mwh": 9975.874740873987,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 399.8034562962124
   },
   {
     "asset_id": 5,
@@ -4992,7 +5656,9 @@
     "merchant_energy_revenue": 3.995269979541322,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 9972.543337300607
+    "monthly_generation_mwh": 9972.543337300607,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 400.62698595629985
   },
   {
     "asset_id": 5,
@@ -5007,7 +5673,9 @@
     "merchant_energy_revenue": 4.002162628838729,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 9969.213046236164
+    "monthly_generation_mwh": 9969.213046236164,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 401.4522119526505
   },
   {
     "asset_id": 5,
@@ -5022,7 +5690,9 @@
     "merchant_energy_revenue": 4.190176919460308,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 9965.883867309134
+    "monthly_generation_mwh": 9965.883867309134,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 420.4521119501755
   },
   {
     "asset_id": 5,
@@ -5037,7 +5707,9 @@
     "merchant_energy_revenue": 4.1974058226753135,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 9962.555800148126
+    "monthly_generation_mwh": 9962.555800148126,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 421.31817446010245
   },
   {
     "asset_id": 5,
@@ -5052,7 +5724,9 @@
     "merchant_energy_revenue": 4.204647197211387,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 9959.228844381869
+    "monthly_generation_mwh": 9959.228844381869,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 422.18602091699944
   },
   {
     "asset_id": 5,
@@ -5067,7 +5741,9 @@
     "merchant_energy_revenue": 4.211901064584081,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 9955.902999639218
+    "monthly_generation_mwh": 9955.902999639218,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 423.0556549955049
   },
   {
     "asset_id": 5,
@@ -5082,7 +5758,9 @@
     "merchant_energy_revenue": 4.219167446346067,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 9952.578265549153
+    "monthly_generation_mwh": 9952.578265549153,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 423.9270803778267
   },
   {
     "asset_id": 5,
@@ -5097,7 +5775,9 @@
     "merchant_energy_revenue": 4.226446364087199,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 9949.254641740772
+    "monthly_generation_mwh": 9949.254641740772,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 424.8003007537576
   },
   {
     "asset_id": 5,
@@ -5112,7 +5792,9 @@
     "merchant_energy_revenue": 4.233737839434578,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 9945.932127843305
+    "monthly_generation_mwh": 9945.932127843305,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 425.67531982069033
   },
   {
     "asset_id": 5,
@@ -5127,7 +5809,9 @@
     "merchant_energy_revenue": 4.241041894052616,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 9942.610723486101
+    "monthly_generation_mwh": 9942.610723486101,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 426.55214128363383
   },
   {
     "asset_id": 5,
@@ -5142,7 +5826,9 @@
     "merchant_energy_revenue": 4.248358549643101,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 9939.290428298627
+    "monthly_generation_mwh": 9939.290428298627,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 427.4307688552291
   },
   {
     "asset_id": 5,
@@ -5157,7 +5843,9 @@
     "merchant_energy_revenue": 4.255687827945263,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 9935.97124191049
+    "monthly_generation_mwh": 9935.97124191049,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 428.31120625576386
   },
   {
     "asset_id": 5,
@@ -5172,7 +5860,9 @@
     "merchant_energy_revenue": 4.2630297507358295,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 9932.653163951405
+    "monthly_generation_mwh": 9932.653163951405,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 429.1934572131896
   },
   {
     "asset_id": 5,
@@ -5187,7 +5877,9 @@
     "merchant_energy_revenue": 4.270384339829107,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 9929.336194051217
+    "monthly_generation_mwh": 9929.336194051217,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 430.0775254631367
   },
   {
     "asset_id": 5,
@@ -5202,7 +5894,9 @@
     "merchant_energy_revenue": 4.387737355401763,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 9926.020331839896
+    "monthly_generation_mwh": 9926.020331839896,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 442.04396210303224
   },
   {
     "asset_id": 5,
@@ -5217,7 +5911,9 @@
     "merchant_energy_revenue": 4.395307090352036,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 9922.705576947532
+    "monthly_generation_mwh": 9922.705576947532,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 442.9545002890371
   },
   {
     "asset_id": 5,
@@ -5232,7 +5928,9 @@
     "merchant_energy_revenue": 4.4028898846271005,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 9919.391929004341
+    "monthly_generation_mwh": 9919.391929004341,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 443.8669140346227
   },
   {
     "asset_id": 5,
@@ -5247,7 +5945,9 @@
     "merchant_energy_revenue": 4.410485760756931,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 9916.07938764066
+    "monthly_generation_mwh": 9916.07938764066,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 444.7812072031344
   },
   {
     "asset_id": 5,
@@ -5262,7 +5962,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 0.0
+    "monthly_generation_mwh": 0.0,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 0.0
   },
   {
     "asset_id": 5,
@@ -5277,7 +5979,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 0.0
+    "monthly_generation_mwh": 0.0,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 0.0
   },
   {
     "asset_id": 5,
@@ -5292,7 +5996,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 0.0
+    "monthly_generation_mwh": 0.0,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 0.0
   },
   {
     "asset_id": 5,
@@ -5307,7 +6013,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 0.0
+    "monthly_generation_mwh": 0.0,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 0.0
   },
   {
     "asset_id": 5,
@@ -5322,7 +6030,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 0.0
+    "monthly_generation_mwh": 0.0,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 0.0
   },
   {
     "asset_id": 5,
@@ -5337,7 +6047,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 0.0
+    "monthly_generation_mwh": 0.0,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 0.0
   },
   {
     "asset_id": 5,
@@ -5352,7 +6064,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 0.0
+    "monthly_generation_mwh": 0.0,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 0.0
   },
   {
     "asset_id": 5,
@@ -5367,7 +6081,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 0.0
+    "monthly_generation_mwh": 0.0,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 0.0
   },
   {
     "asset_id": 5,
@@ -5382,7 +6098,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 0.0
+    "monthly_generation_mwh": 0.0,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 0.0
   },
   {
     "asset_id": 5,
@@ -5397,7 +6115,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 0.0
+    "monthly_generation_mwh": 0.0,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 0.0
   },
   {
     "asset_id": 5,
@@ -5412,7 +6132,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 0.0
+    "monthly_generation_mwh": 0.0,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 0.0
   },
   {
     "asset_id": 5,
@@ -5427,7 +6149,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 0.0
+    "monthly_generation_mwh": 0.0,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 0.0
   },
   {
     "asset_id": 5,
@@ -5442,7 +6166,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 0.0
+    "monthly_generation_mwh": 0.0,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 0.0
   },
   {
     "asset_id": 5,
@@ -5457,7 +6183,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 0.0
+    "monthly_generation_mwh": 0.0,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 0.0
   },
   {
     "asset_id": 5,
@@ -5472,7 +6200,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 0.0
+    "monthly_generation_mwh": 0.0,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 0.0
   },
   {
     "asset_id": 5,
@@ -5487,7 +6217,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 0.0
+    "monthly_generation_mwh": 0.0,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 0.0
   },
   {
     "asset_id": 5,
@@ -5502,7 +6234,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 0.0
+    "monthly_generation_mwh": 0.0,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 0.0
   },
   {
     "asset_id": 5,
@@ -5517,7 +6251,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 0.0
+    "monthly_generation_mwh": 0.0,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 0.0
   },
   {
     "asset_id": 5,
@@ -5532,7 +6268,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 0.0
+    "monthly_generation_mwh": 0.0,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 0.0
   },
   {
     "asset_id": 5,
@@ -5547,7 +6285,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 0.0
+    "monthly_generation_mwh": 0.0,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 0.0
   },
   {
     "asset_id": 5,
@@ -5562,7 +6302,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 0.0
+    "monthly_generation_mwh": 0.0,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 0.0
   },
   {
     "asset_id": 5,
@@ -5577,7 +6319,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 0.0
+    "monthly_generation_mwh": 0.0,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 0.0
   },
   {
     "asset_id": 5,
@@ -5592,7 +6336,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 0.0
+    "monthly_generation_mwh": 0.0,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 0.0
   },
   {
     "asset_id": 5,
@@ -5607,7 +6353,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 0.0
+    "monthly_generation_mwh": 0.0,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 0.0
   },
   {
     "asset_id": 5,
@@ -5622,7 +6370,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 0.0
+    "monthly_generation_mwh": 0.0,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 0.0
   },
   {
     "asset_id": 5,
@@ -5637,7 +6387,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 0.0
+    "monthly_generation_mwh": 0.0,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 0.0
   },
   {
     "asset_id": 5,
@@ -5652,7 +6404,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 0.0
+    "monthly_generation_mwh": 0.0,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 0.0
   },
   {
     "asset_id": 5,
@@ -5667,7 +6421,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 0.0
+    "monthly_generation_mwh": 0.0,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 0.0
   },
   {
     "asset_id": 5,
@@ -5682,7 +6438,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 0.0
+    "monthly_generation_mwh": 0.0,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 0.0
   },
   {
     "asset_id": 5,
@@ -5697,7 +6455,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 0.0
+    "monthly_generation_mwh": 0.0,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 0.0
   },
   {
     "asset_id": 5,
@@ -5712,7 +6472,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 0.0
+    "monthly_generation_mwh": 0.0,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 0.0
   },
   {
     "asset_id": 5,
@@ -5727,7 +6489,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 0.0
+    "monthly_generation_mwh": 0.0,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 0.0
   },
   {
     "asset_id": 5,
@@ -5742,7 +6506,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 0.0
+    "monthly_generation_mwh": 0.0,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 0.0
   },
   {
     "asset_id": 5,
@@ -5757,7 +6523,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 0.0
+    "monthly_generation_mwh": 0.0,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 0.0
   },
   {
     "asset_id": 5,
@@ -5772,7 +6540,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 0.0
+    "monthly_generation_mwh": 0.0,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 0.0
   },
   {
     "asset_id": 5,
@@ -5787,7 +6557,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 0.0
+    "monthly_generation_mwh": 0.0,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 0.0
   },
   {
     "asset_id": 5,
@@ -5802,7 +6574,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 0.0
+    "monthly_generation_mwh": 0.0,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 0.0
   },
   {
     "asset_id": 5,
@@ -5817,7 +6591,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 0.0
+    "monthly_generation_mwh": 0.0,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 0.0
   },
   {
     "asset_id": 5,
@@ -5832,7 +6608,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 0.0
+    "monthly_generation_mwh": 0.0,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 0.0
   },
   {
     "asset_id": 5,
@@ -5847,7 +6625,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 0.0
+    "monthly_generation_mwh": 0.0,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 0.0
   },
   {
     "asset_id": 5,
@@ -5862,7 +6642,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 0.0
+    "monthly_generation_mwh": 0.0,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 0.0
   },
   {
     "asset_id": 5,
@@ -5877,7 +6659,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 0.0
+    "monthly_generation_mwh": 0.0,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 0.0
   },
   {
     "asset_id": 5,
@@ -5892,7 +6676,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 0.0
+    "monthly_generation_mwh": 0.0,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 0.0
   },
   {
     "asset_id": 5,
@@ -5907,7 +6693,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 0.0
+    "monthly_generation_mwh": 0.0,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 0.0
   },
   {
     "asset_id": 5,
@@ -5922,7 +6710,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 0.0
+    "monthly_generation_mwh": 0.0,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 0.0
   },
   {
     "asset_id": 5,
@@ -5937,7 +6727,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 0.0
+    "monthly_generation_mwh": 0.0,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 0.0
   },
   {
     "asset_id": 5,
@@ -5952,7 +6744,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 0.0
+    "monthly_generation_mwh": 0.0,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 0.0
   },
   {
     "asset_id": 5,
@@ -5967,7 +6761,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 0.0
+    "monthly_generation_mwh": 0.0,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 0.0
   },
   {
     "asset_id": 5,
@@ -5982,7 +6778,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 0.0
+    "monthly_generation_mwh": 0.0,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 0.0
   },
   {
     "asset_id": 5,
@@ -5997,7 +6795,9 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 0.0
+    "monthly_generation_mwh": 0.0,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 0.0
   },
   {
     "asset_id": 5,
@@ -6012,6 +6812,8 @@
     "merchant_energy_revenue": 0.0,
     "green_percentage_contracted": 0.0,
     "energy_percentage_contracted": 0.0,
-    "monthly_generation_mwh": 0.0
+    "monthly_generation_mwh": 0.0,
+    "avg_green_price_mwh": 0.0,
+    "avg_energy_price_mwh": 0.0
   }
 ]

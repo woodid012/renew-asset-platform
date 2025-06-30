@@ -21,6 +21,7 @@ from core.output_generator import generate_asset_and_platform_output
 from core.summary_generator import generate_summary_data
 from core.equity_irr import calculate_equity_irr
 
+
 # Load real data
 # Construct the absolute path to the public directory
 current_dir = os.path.dirname(os.path.abspath(__file__))

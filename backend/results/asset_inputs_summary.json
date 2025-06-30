@@ -456,7 +456,7 @@
     ],
     "general_config": {
         "DATE_FORMAT": "%Y-%m-%d",
-        "OUTPUT_DATE_FORMAT": "%Y-%m-%dT%H:%M:%S.%fZ",
+        "OUTPUT_DATE_FORMAT": "%Y-%m-%dT%H:%MZ",
         "DEFAULT_CAPEX_FUNDING_TYPE": "equity_first",
         "DEFAULT_DEBT_REPAYMENT_FREQUENCY": "quarterly",
         "DEFAULT_DEBT_GRACE_PERIOD": "full_period",
